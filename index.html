@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 밸런스 & 퀵 포션 업데이트</title>
+  <title>군주의 길 3D - 맵 축소 & 골드/경험치 밸런스 패치</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -172,7 +172,7 @@
         </div>
         <div class="bar-container">
           <div class="bar-fill exp-bar" id="exp-fill" style="width: 0%;"></div>
-          <div class="bar-text" id="exp-text">0/50 (0%)</div>
+          <div class="bar-text" id="exp-text">0/38 (0%)</div>
         </div>
 
         <!-- 실시간 스탯(공격력/방어력/치명타) & 재화 -->
@@ -210,7 +210,7 @@
       <div class="btn-zoom" onclick="changeZoom(0.25)">🔍-</div>
     </div>
 
-    <!-- [신규] 조이스틱 상단 퀵 포션 구매 UI -->
+    <!-- 조이스틱 상단 퀵 포션 구매 UI -->
     <div id="quick-potions" class="interactive">
       <button class="btn-potion btn-hp" onclick="buyQuickPotion('hp')">🧪 HP (1kG)</button>
       <button class="btn-potion btn-mp" onclick="buyQuickPotion('mp')">🧪 MP (1kG)</button>
@@ -257,7 +257,7 @@
     </div>
   </div>
 
-  <!-- Shop Modal (포션 탭 삭제됨) -->
+  <!-- Shop Modal -->
   <div class="modal interactive" id="shop-modal">
     <div class="modal-title">🛒 조선 저자거리 상점</div>
     
@@ -345,14 +345,14 @@
 
       const tex = new THREE.CanvasTexture(cvs);
       tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(6, 6);
+      tex.repeat.set(5, 5);
       return tex;
     }
 
     /* ==========================================
-       3. STAGE BUILDERS
+       3. STAGE BUILDERS (30% 축소 맵 규격 floorSize: 84)
        ========================================== */
-    const floorSize = 120;
+    const floorSize = 84; // [수정] 기존 120 대비 30% 축소 적용
     let floorMesh = null;
     const environmentObjects = [];
 
@@ -365,7 +365,7 @@
     function buildStage1() {
       clearEnvironment();
       scene.background = new THREE.Color(0x3a483a);
-      scene.fog = new THREE.FogExp2(0x3a483a, 0.008);
+      scene.fog = new THREE.FogExp2(0x3a483a, 0.01);
       ambientLight.color.setHex(0xffffff);
       ambientLight.intensity = 0.85;
       dirLight.intensity = 0.95;
@@ -377,10 +377,10 @@
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
 
-      for (let i = 0; i < 12; i++) {
-        const rx = (Math.random() - 0.5) * 100;
-        const rz = (Math.random() - 0.5) * 100;
-        if (Math.hypot(rx, rz + 8) < 16) continue;
+      for (let i = 0; i < 10; i++) {
+        const rx = (Math.random() - 0.5) * 70;
+        const rz = (Math.random() - 0.5) * 70;
+        if (Math.hypot(rx, rz + 6) < 12) continue;
 
         const pillar = new THREE.Group();
         const base = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 2), new THREE.MeshStandardMaterial({ color: 0x8c7060 }));
@@ -400,7 +400,7 @@
     function buildStage2() {
       clearEnvironment();
       scene.background = new THREE.Color(0x386b58);
-      scene.fog = new THREE.FogExp2(0x386b58, 0.005);
+      scene.fog = new THREE.FogExp2(0x386b58, 0.007);
       ambientLight.color.setHex(0xe0f2fe);
       ambientLight.intensity = 1.35;
       dirLight.intensity = 1.1;
@@ -412,10 +412,10 @@
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
 
-      for (let i = 0; i < 24; i++) {
-        const rx = (Math.random() - 0.5) * 110;
-        const rz = (Math.random() - 0.5) * 110;
-        if (Math.hypot(rx, rz) < 12) continue;
+      for (let i = 0; i < 18; i++) {
+        const rx = (Math.random() - 0.5) * 75;
+        const rz = (Math.random() - 0.5) * 75;
+        if (Math.hypot(rx, rz) < 10) continue;
 
         const rockGroup = new THREE.Group();
         const rockG = new THREE.ConeGeometry(2.2 + Math.random() * 1.5, 7 + Math.random() * 4, 8);
@@ -438,7 +438,7 @@
     function buildDungeonStage() {
       clearEnvironment();
       scene.background = new THREE.Color(0x450a0a);
-      scene.fog = new THREE.FogExp2(0x450a0a, 0.008);
+      scene.fog = new THREE.FogExp2(0x450a0a, 0.01);
       ambientLight.color.setHex(0xfecdd3);
       ambientLight.intensity = 1.2;
       dirLight.intensity = 1.0;
@@ -450,9 +450,9 @@
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
 
-      for (let i = 0; i < 16; i++) {
-        const angle = (i / 16) * Math.PI * 2;
-        const radius = 45;
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const radius = 32;
         const pillarGroup = new THREE.Group();
         
         const pillarG = new THREE.CylinderGeometry(1.2, 1.5, 8, 8);
@@ -474,7 +474,7 @@
     }
 
     /* ==========================================
-       4. PLAYER STATE & MESH (치명타 스탯 추가)
+       4. PLAYER STATE & MESH (필요 경험치 -25% 적용: 38)
        ========================================== */
     const playerState = {
       name: "조선유생",
@@ -482,11 +482,12 @@
       level: 1, job: "평민",
       hp: 100, maxHp: 100,
       mp: 50, maxMp: 50,
-      exp: 0, maxExp: 50,
+      exp: 0, 
+      maxExp: 38, // [수정] 레벨업 필요 경험치 -25% 하향 (50 -> 38)
       gold: 100,
       attackPower: 12,
       defensePower: 5,
-      critChance: 0.05, // [신규] 기본 치명타 확률 5%
+      critChance: 0.05,
       attackRange: 2.5, 
       attackSpeed: 1200,
       lastAttackTime: 0,
@@ -662,7 +663,7 @@
     }
 
     /* ==========================================
-       6. MONSTER MODELS & BALANCED HP
+       6. MONSTER MODELS & GOLD 5X REWARDS
        ========================================== */
     const monsters = [];
     const projectiles = [];
@@ -791,36 +792,36 @@
       return group;
     }
 
-    // [밸런스 적용] 1스테이지: 2~4회 공격으로 처치 (HP: 20)
+    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 100G)
     function spawnStage1Monsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼"];
 
       for (let i = 0; i < 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
-        const radius = 16 + Math.random() * 20;
+        const radius = 12 + Math.random() * 14;
         const mType = types[i % types.length];
         const mGroup = createBeginnerMonsterMesh(mType);
         
         const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius - 3;
+        const z = Math.sin(angle) * radius - 2;
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 20, maxHp: 20, expReward: 30, goldReward: 20, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 20, maxHp: 20, expReward: 30, goldReward: 100, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.${(i%4)+1} ${mType}`, true);
       }
     }
 
-    // [밸런스 적용] 2스테이지: 4~8회 공격으로 처치 (HP: 320)
+    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 600G)
     function spawnStage2Monsters() {
       clearMonsters();
       const types = ["웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
 
       for (let i = 0; i < 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
-        const radius = 18 + Math.random() * 22;
+        const radius = 12 + Math.random() * 15;
         const mType = types[i % types.length];
         const mGroup = createCaveMonsterMesh(mType);
         
@@ -829,19 +830,20 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 320, maxHp: 320, expReward: 96, goldReward: 120, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 320, maxHp: 320, expReward: 96, goldReward: 600, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
       }
     }
 
+    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 250G)
     function spawnDungeonMonsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼", "웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
 
       for (let i = 0; i < 24; i++) {
         const angle = (i / 24) * Math.PI * 2;
-        const radius = 8 + Math.random() * 32;
+        const radius = 5 + Math.random() * 22;
         const mType = types[i % types.length];
         const mGroup = (i % 2 === 0) ? createBeginnerMonsterMesh(mType) : createCaveMonsterMesh(mType);
         
@@ -850,7 +852,7 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 80, maxHp: 80, expReward: 150, goldReward: 50, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 80, maxHp: 80, expReward: 150, goldReward: 250, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
       }
@@ -935,7 +937,6 @@
       setTimeout(() => el.remove(), 800);
     }
 
-    // [신규] 조이스틱 상단 퀵 포션 구매 함수
     function buyQuickPotion(type) {
       if (playerState.gold < 1000) return;
       playerState.gold -= 1000;
@@ -1014,7 +1015,7 @@
     }
 
     /* ==========================================
-       9. SHOP SYSTEM & MODALS (치명타 스킬 & 포션 탭 삭제)
+       9. SHOP SYSTEM & MODALS
        ========================================== */
     let currentShopCategory = 'hero';
 
@@ -1320,7 +1321,7 @@
     }
 
     /* ==========================================
-       13. COMBAT & DAMAGE (방어력 & 치명타 적용)
+       13. COMBAT & DAMAGE 연산
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1368,7 +1369,6 @@
       projectiles.push({ mesh: pMesh, target: target, speed: isMagic ? 20 : 32, damage: playerState.attackPower });
     }
 
-    // [밸런스 적용] 방어력 연산 및 치명타 시스템
     function applyDamage(target, amount) {
       if (!target.alive) return;
 
@@ -1377,7 +1377,7 @@
       
       let netDmg = Math.round(amount * (1 - defRate) * (0.9 + Math.random() * 0.2));
       if (isCrit) {
-        netDmg = Math.round(netDmg * 1.8); // 치명타 발동 시 1.8배 데미지
+        netDmg = Math.round(netDmg * 1.8);
       }
       netDmg = Math.max(1, netDmg);
 
@@ -1394,7 +1394,7 @@
         setTimeout(() => {
           target.hp = target.maxHp;
           target.alive = true;
-          target.group.position.set((Math.random() - 0.5) * 50, 0, (Math.random() - 0.5) * 50 - 5);
+          target.group.position.set((Math.random() - 0.5) * 35, 0, (Math.random() - 0.5) * 35 - 5);
           scene.add(target.group);
         }, respawnDelay);
       }
