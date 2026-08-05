@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - Classic HD Edition</title>
+  <title>군주의 길 3D - 웅녀동굴 업데이트</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -11,82 +11,94 @@
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
     
     /* UI Layer Overlays */
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; }
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; }
     .interactive { pointer-events: auto; }
 
-    /* 클래식 PC MMORPG HUD 스타일 */
+    /* 군주 스타일 HUD */
     .status-panel {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(8, 14, 26, 0.95));
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
       border: 2px solid #a88a44;
       border-radius: 8px;
-      padding: 10px 14px;
-      width: 240px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6), inset 0 0 10px rgba(212, 175, 55, 0.15);
-      backdrop-filter: blur(6px);
+      padding: 10px;
+      width: 250px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
     }
-    .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 13px; }
+    .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: bold; font-size: 13px; }
+    .stage-badge { background: #1e3a8a; border: 1px solid #60a5fa; color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
     .job-badge { background: #3d2c1d; border: 1px solid #d4af37; padding: 2px 6px; border-radius: 4px; color: #ffd700; font-size: 11px; }
     
-    .bar-container { background: #111827; height: 13px; border-radius: 4px; margin-bottom: 5px; overflow: hidden; border: 1px solid #374151; position: relative; }
+    .bar-container { background: #111827; height: 13px; border-radius: 4px; margin-bottom: 4px; overflow: hidden; border: 1px solid #374151; position: relative; }
     .bar-fill { height: 100%; transition: width 0.2s ease; }
     .hp-bar { background: linear-gradient(90deg, #b31212, #ff4d4d); }
     .mp-bar { background: linear-gradient(90deg, #1251b3, #4d88ff); }
     .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
     .bar-text { position: absolute; width: 100%; text-align: center; font-size: 9px; line-height: 13px; top: 0; left: 0; text-shadow: 1px 1px 2px #000; font-weight: bold; }
 
-    /* 우측 상단 메뉴 */
-    .top-right-controls { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    /* 우측 상단 버튼 */
+    .top-right-controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
     .btn-small {
       background: linear-gradient(180deg, #2a3852, #162238);
       border: 1px solid #a88a44; color: #ffd700;
-      padding: 7px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer;
+      padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer;
       box-shadow: 0 3px 8px rgba(0,0,0,0.5);
     }
-    .btn-small:active { transform: scale(0.95); background: #3b4c6b; }
+    .btn-stage {
+      background: linear-gradient(180deg, #1e40af, #1e1b4b);
+      border: 2px solid #60a5fa; color: #fff; font-size: 12px;
+      animation: stagePulse 1.5s infinite;
+    }
+
+    @keyframes stagePulse {
+      0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(96, 165, 250, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+    }
 
     /* Zoom Controls */
-    .zoom-controls { position: absolute; right: 12px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 15; }
-    .btn-zoom { width: 42px; height: 42px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 18px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .zoom-controls { position: absolute; right: 10px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 15; }
+    .btn-zoom { width: 40px; height: 40px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 18px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 80px; right: 12px; width: 130px; height: 130px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 8px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 85px; right: 10px; width: 125px; height: 125px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 8px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
-    /* Joystick & Buttons */
-    #joystick-zone { position: absolute; bottom: 25px; left: 25px; width: 125px; height: 125px; z-index: 20; pointer-events: auto; }
-    .joystick-base { width: 100%; height: 100%; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; position: relative; backdrop-filter: blur(2px); }
-    .joystick-knob { width: 48px; height: 48px; background: rgba(212, 175, 55, 0.85); border: 2px solid #fff; border-radius: 50%; position: absolute; top: 38px; left: 38px; transform: translate(0, 0); box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+    /* Joystick & Action Buttons */
+    #joystick-zone { position: absolute; bottom: 25px; left: 25px; width: 120px; height: 120px; z-index: 20; pointer-events: auto; }
+    .joystick-base { width: 100%; height: 100%; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; position: relative; }
+    .joystick-knob { width: 46px; height: 46px; background: rgba(212, 175, 55, 0.85); border: 2px solid #fff; border-radius: 50%; position: absolute; top: 37px; left: 37px; transform: translate(0, 0); }
 
-    #action-zone { position: absolute; bottom: 25px; right: 20px; display: flex; gap: 12px; align-items: flex-end; z-index: 20; pointer-events: auto; }
+    #action-zone { position: absolute; bottom: 25px; right: 20px; display: flex; gap: 10px; align-items: flex-end; z-index: 20; pointer-events: auto; }
     .action-btn { border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer; }
     .action-btn:active { transform: scale(0.92); }
     
-    .btn-attack { width: 72px; height: 72px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 24px; }
-    .btn-auto { width: 56px; height: 56px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 12px; font-weight: bold; }
-    .btn-auto.active { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fef08a; animation: pulse 1.2s infinite; }
-    .btn-target { width: 48px; height: 48px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 18px; }
+    .btn-attack { width: 70px; height: 70px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 24px; }
+    .btn-auto { width: 54px; height: 54px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 12px; }
+    .btn-auto.active { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fef08a; }
+    .btn-target { width: 46px; height: 46px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 18px; }
 
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    /* Nametags Layer */
+    .goonzu-nametag {
+      position: absolute; transform: translate(-50%, -100%); pointer-events: none; text-align: center; font-size: 11px; z-index: 25; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
     }
+    .tag-title { color: #ff99ff; font-weight: bold; font-size: 10px; }
+    .tag-name { color: #ffffff; font-weight: bold; }
+    .tag-monster { color: #ff5555; font-weight: bold; }
 
-    /* Modals */
-    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 20px; width: 90%; max-width: 500px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
-    .modal-title { text-align: center; color: #ffd700; font-size: 18px; font-weight: bold; margin-bottom: 14px; border-bottom: 1px solid #374151; padding-bottom: 8px; }
-    .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
-    .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 8px; padding: 12px 6px; text-align: center; cursor: pointer; }
-    .job-card:active { border-color: #ffd700; background: rgba(212, 175, 55, 0.2); }
-    
+    /* Modal */
+    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 20px; width: 90%; max-width: 480px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .modal-title { text-align: center; color: #ffd700; font-size: 17px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #374151; padding-bottom: 8px; }
+    .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 8px; padding: 10px 4px; text-align: center; cursor: pointer; }
+
     .damage-text { position: absolute; color: #ff3333; font-weight: bold; font-size: 18px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
-    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-30px) scale(1.2); } }
+    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
   <div id="canvas-container"></div>
+  <div id="nametag-layer"></div>
 
   <div id="ui-layer">
     <!-- HUD Top -->
@@ -94,6 +106,7 @@
       <div class="status-panel interactive">
         <div class="character-info">
           <span><strong id="player-name">조선유생</strong> <span style="color:#aaa;" id="player-lv">Lv.1</span></span>
+          <span class="stage-badge" id="stage-badge">1단계: 한옥마을</span>
           <span class="job-badge" id="player-job">평민</span>
         </div>
         
@@ -109,21 +122,22 @@
           <div class="bar-fill exp-bar" id="exp-fill" style="width: 0%;"></div>
           <div class="bar-text" id="exp-text">0 / 50 (0%)</div>
         </div>
-        <div style="font-size: 11px; color: #ffd700; margin-top: 4px; text-align: right; font-weight: bold;">
+        <div style="font-size: 11px; color: #ffd700; margin-top: 3px; text-align: right; font-weight: bold;">
           냥(G): <span id="gold-val">100</span>
         </div>
       </div>
 
       <!-- Top Right Controls -->
       <div class="top-right-controls interactive">
+        <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 입장 (Lv.20+)</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵</button>
-        <button class="btn-small" onclick="addExpDev()">⚡ 빠른 레벨업 (+5)</button>
+        <button class="btn-small" onclick="addExpDev()">⚡ 레벨업 (+5)</button>
       </div>
     </div>
 
     <!-- Minimap -->
     <div id="minimap-box" class="interactive">
-      <canvas id="minimap-canvas" width="130" height="130"></canvas>
+      <canvas id="minimap-canvas" width="125" height="125"></canvas>
     </div>
 
     <!-- Zoom Controls -->
@@ -144,28 +158,28 @@
       <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>OFF</div>
       <div class="action-btn btn-target" id="btn-target" onclick="targetNearestMonster()">🎯</div>
       <div class="action-btn btn-attack" id="btn-attack" onclick="triggerAttackBtn()">⚔️</div>
-      <div class="action-btn" id="btn-job-modal" style="display: none; width: 54px; height: 54px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 22px; animation: pulse 1.5s infinite;" onclick="openJobModal()">📜</div>
+      <div class="action-btn" id="btn-job-modal" style="display: none; width: 50px; height: 50px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 20px;" onclick="openJobModal()">📜</div>
     </div>
   </div>
 
   <!-- Job Change Modal -->
   <div class="modal interactive" id="job-modal">
-    <div class="modal-title">⚔️ 1차 직업 전직 선택 (Lv.20 달성)</div>
+    <div class="modal-title">⚔️ 1차 직업 전직 선택</div>
     <div class="job-cards">
       <div class="job-card" onclick="selectJob('검사')">
-        <div style="font-size: 26px;">⚔️</div>
-        <div style="font-weight: bold; color: #ff6b6b; font-size: 14px; margin-top: 4px;">검사</div>
-        <div style="font-size: 11px; color: #aaa; margin-top: 4px;">근접 탱커/물리<br>높은 체력 및 방어력<br>주무기: 장검</div>
+        <div style="font-size: 24px;">⚔️</div>
+        <div style="font-weight: bold; color: #ff6b6b; font-size: 13px;">검사</div>
+        <div style="font-size: 10px; color: #aaa;">근접 탱커/물리<br>주무기: 장검</div>
       </div>
       <div class="job-card" onclick="selectJob('총사')">
-        <div style="font-size: 26px;">🔫</div>
-        <div style="font-weight: bold; color: #6bccff; font-size: 14px; margin-top: 4px;">총사</div>
-        <div style="font-size: 11px; color: #aaa; margin-top: 4px;">원거리 물리 딜러<br>높은 단일 피해<br>주무기: 화승총</div>
+        <div style="font-size: 24px;">🔫</div>
+        <div style="font-weight: bold; color: #6bccff; font-size: 13px;">총사</div>
+        <div style="font-size: 10px; color: #aaa;">원거리 물리 딜러<br>주무기: 화승총</div>
       </div>
       <div class="job-card" onclick="selectJob('주술사')">
-        <div style="font-size: 26px;">🔮</div>
-        <div style="font-weight: bold; color: #d86bff; font-size: 14px; margin-top: 4px;">주술사</div>
-        <div style="font-size: 11px; color: #aaa; margin-top: 4px;">광역 마법 딜러<br>원소/부적 광역술<br>주무기: 주술봉</div>
+        <div style="font-size: 24px;">🔮</div>
+        <div style="font-weight: bold; color: #d86bff; font-size: 13px;">주술사</div>
+        <div style="font-size: 10px; color: #aaa;">광역 마법 딜러<br>주무기: 주술봉</div>
       </div>
     </div>
     <div style="text-align: center;">
@@ -175,18 +189,18 @@
 
   <script>
     /* ==========================================
-       1. HIGH-DEF WEBGL ENGINE SETUP
+       1. ENGINE SETUP & GAME STATE
        ========================================== */
     const container = document.getElementById('canvas-container');
+    const nametagLayer = document.getElementById('nametag-layer');
+
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x2d4829); // 초록 잔디 배경
-    scene.fog = new THREE.FogExp2(0x2d4829, 0.012);
+    let currentStage = 1; // 1: 한옥마을, 2: 웅녀동굴
 
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 22, 22);
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    // 고해상도 WebGL 렌더러 (부드러운 안티앨리어싱 + 소프트 섀도우)
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -194,7 +208,7 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // Light Setup
+    // Lightings
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
@@ -206,86 +220,106 @@
     scene.add(dirLight);
 
     /* ==========================================
-       2. HIGH QUALITY ENVIRONMENT & TERRAIN
+       2. STAGE BUILDERS (Stage 1 & Stage 2)
        ========================================== */
     const floorSize = 120;
-    const floorGeo = new THREE.PlaneGeometry(floorSize, floorSize);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x3a6032, roughness: 0.8 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
+    let floorMesh = null;
+    const environmentObjects = [];
 
-    const grid = new THREE.GridHelper(floorSize, 60, 0x5d8054, 0x486b40);
-    grid.position.y = 0.02;
-    scene.add(grid);
+    function clearEnvironment() {
+      environmentObjects.forEach(obj => scene.remove(obj));
+      environmentObjects.length = 0;
+      if (floorMesh) scene.remove(floorMesh);
+    }
 
-    // 3D 소나무 모델
-    function createPineTree(x, z) {
-      const treeGroup = new THREE.Group();
-      
-      const trunkG = new THREE.CylinderGeometry(0.3, 0.5, 3.5, 12);
-      const trunkM = new THREE.MeshStandardMaterial({ color: 0x5c3d24, roughness: 0.9 });
-      const trunk = new THREE.Mesh(trunkG, trunkM);
-      trunk.position.y = 1.75;
-      trunk.castShadow = true;
-      treeGroup.add(trunk);
+    // [Stage 1: 조선 한옥마을]
+    function buildStage1() {
+      clearEnvironment();
+      scene.background = new THREE.Color(0x2d4829);
+      scene.fog = new THREE.FogExp2(0x2d4829, 0.012);
+      ambientLight.color.setHex(0xffffff);
 
-      const leafM = new THREE.MeshStandardMaterial({ color: 0x1e4620, roughness: 0.6 });
-      for (let i = 0; i < 3; i++) {
-        const leafG = new THREE.ConeGeometry(2.2 - i * 0.4, 1.8, 10);
-        const leaf = new THREE.Mesh(leafG, leafM);
-        leaf.position.y = 2.8 + i * 1.0;
-        leaf.castShadow = true;
-        treeGroup.add(leaf);
+      const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
+      const floorM = new THREE.MeshStandardMaterial({ color: 0x3a6032, roughness: 0.8 });
+      floorMesh = new THREE.Mesh(floorG, floorM);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // 소나무 및 한옥 생성
+      for (let i = 0; i < 15; i++) {
+        const rx = (Math.random() - 0.5) * 100;
+        const rz = (Math.random() - 0.5) * 100;
+        if (Math.hypot(rx, rz + 8) < 16) continue;
+
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3.5, 12), new THREE.MeshStandardMaterial({ color: 0x5c3d24 }));
+        trunk.position.y = 1.75;
+        trunk.castShadow = true;
+        tree.add(trunk);
+
+        const leafM = new THREE.MeshStandardMaterial({ color: 0x1e4620 });
+        for (let j = 0; j < 3; j++) {
+          const leaf = new THREE.Mesh(new THREE.ConeGeometry(2.2 - j * 0.4, 1.8, 10), leafM);
+          leaf.position.y = 2.8 + j * 1.0;
+          leaf.castShadow = true;
+          tree.add(leaf);
+        }
+        tree.position.set(rx, 0, rz);
+        scene.add(tree);
+        environmentObjects.push(tree);
       }
-
-      treeGroup.position.set(x, 0, z);
-      scene.add(treeGroup);
     }
 
-    // 한옥 가옥
-    function createHanokHouse(x, z) {
-      const houseGroup = new THREE.Group();
-      
-      const baseG = new THREE.BoxGeometry(6, 0.6, 5);
-      const baseM = new THREE.MeshStandardMaterial({ color: 0x7a6b58 });
-      const base = new THREE.Mesh(baseG, baseM);
-      base.position.y = 0.3;
-      houseGroup.add(base);
+    // [Stage 2: 웅녀 동굴 - 이미지 2 참고]
+    function buildStage2() {
+      clearEnvironment();
+      scene.background = new THREE.Color(0x11241a); // 어두운 청록색 동굴
+      scene.fog = new THREE.FogExp2(0x11241a, 0.018);
+      ambientLight.color.setHex(0x93c5fd); // 푸르스름한 동굴 은은한 조명
 
-      const bodyG = new THREE.BoxGeometry(5.2, 2.5, 4.2);
-      const bodyM = new THREE.MeshStandardMaterial({ color: 0xd9c5a0 });
-      const body = new THREE.Mesh(bodyG, bodyM);
-      body.position.y = 1.85;
-      houseGroup.add(body);
+      // 바닥: 어두운 암석 청록색 지형
+      const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
+      const floorM = new THREE.MeshStandardMaterial({ color: 0x234233, roughness: 0.9, metalness: 0.1 });
+      floorMesh = new THREE.Mesh(floorG, floorM);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
 
-      const roofG = new THREE.ConeGeometry(4.8, 2.2, 4);
-      const roofM = new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.3 });
-      const roof = new THREE.Mesh(roofG, roofM);
-      roof.position.y = 4.2;
-      roof.rotation.y = Math.PI / 4;
-      houseGroup.add(roof);
+      // 동굴 벽면 및 종유석 암석 기둥 배치
+      for (let i = 0; i < 28; i++) {
+        const rx = (Math.random() - 0.5) * 110;
+        const rz = (Math.random() - 0.5) * 110;
+        if (Math.hypot(rx, rz) < 12) continue;
 
-      houseGroup.position.set(x, 0, z);
-      scene.add(houseGroup);
-    }
+        const rockGroup = new THREE.Group();
+        // 암석 종유석 기둥
+        const rockG = new THREE.ConeGeometry(2.5 + Math.random() * 2, 8 + Math.random() * 6, 7);
+        const rockM = new THREE.MeshStandardMaterial({ color: 0x1a3328, roughness: 0.8 });
+        const rock = new THREE.Mesh(rockG, rockM);
+        rock.position.y = 3.5;
+        rock.castShadow = true;
+        rockGroup.add(rock);
 
-    createHanokHouse(-10, -12);
-    createHanokHouse(10, -12);
+        // 발광 동굴 결정체 소품
+        const crystalG = new THREE.OctahedronGeometry(0.6);
+        const crystalM = new THREE.MeshBasicMaterial({ color: 0x55ffaa });
+        const crystal = new THREE.Mesh(crystalG, crystalM);
+        crystal.position.set(1.2, 1.5, 0.5);
+        rockGroup.add(crystal);
 
-    for (let i = 0; i < 16; i++) {
-      const rx = (Math.random() - 0.5) * 100;
-      const rz = (Math.random() - 0.5) * 100;
-      if (Math.hypot(rx, rz + 8) < 16) continue;
-      createPineTree(rx, rz);
+        rockGroup.position.set(rx, 0, rz);
+        scene.add(rockGroup);
+        environmentObjects.push(rockGroup);
+      }
     }
 
     /* ==========================================
-       3. PLAYER STATE & 3D MESH
+       3. PLAYER MESH & STATE
        ========================================== */
     const playerState = {
       name: "조선유생",
+      title: "유생",
       level: 1, job: "평민",
       hp: 100, maxHp: 100,
       mp: 50, maxMp: 50,
@@ -297,7 +331,6 @@
 
     const playerGroup = new THREE.Group();
     
-    // 캐릭터 바디 (매끄러운 Cylinder/Sphere 메쉬)
     const bodyG = new THREE.CylinderGeometry(0.45, 0.55, 1.5, 16);
     const bodyM = new THREE.MeshStandardMaterial({ color: 0xefefef });
     const playerBody = new THREE.Mesh(bodyG, bodyM);
@@ -312,7 +345,6 @@
     playerHead.castShadow = true;
     playerGroup.add(playerHead);
 
-    // 갓 모자 메쉬
     const hatG = new THREE.CylinderGeometry(0.65, 0.65, 0.04, 16);
     const hatTopG = new THREE.CylinderGeometry(0.2, 0.2, 0.4, 16);
     const hatM = new THREE.MeshStandardMaterial({ color: 0x111111 });
@@ -322,7 +354,6 @@
     hatTop.position.y = 2.35;
     playerGroup.add(hat); playerGroup.add(hatTop);
 
-    // 원형 발밑 오라 마법진
     const auraG = new THREE.RingGeometry(0.6, 1.1, 32);
     const auraM = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
     const auraMesh = new THREE.Mesh(auraG, auraM);
@@ -343,18 +374,18 @@
         mat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
       } else if (playerState.job === "검사") {
         geo = new THREE.BoxGeometry(0.08, 2.2, 0.15);
-        mat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, metalness: 0.8, roughness: 0.2 });
-        bodyM.color.setHex(0xb31212); // 무관 붉은 제복
+        mat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, metalness: 0.8 });
+        bodyM.color.setHex(0xb31212);
         auraM.color.setHex(0xff3333);
       } else if (playerState.job === "총사") {
         geo = new THREE.CylinderGeometry(0.06, 0.1, 2.0, 8);
         mat = new THREE.MeshStandardMaterial({ color: 0x3a2518 });
-        bodyM.color.setHex(0x1251b3); // 포수 푸른 제복
+        bodyM.color.setHex(0x1251b3);
         auraM.color.setHex(0x3399ff);
       } else if (playerState.job === "주술사") {
         geo = new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8);
         mat = new THREE.MeshStandardMaterial({ color: 0x6b24b3, emissive: 0x2a0845 });
-        bodyM.color.setHex(0x6b24b3); // 보라 무녀 제복
+        bodyM.color.setHex(0x6b24b3);
         auraM.color.setHex(0xff00ff);
       }
       currentWeaponMesh = new THREE.Mesh(geo, mat);
@@ -367,43 +398,179 @@
     scene.add(playerGroup);
 
     /* ==========================================
-       4. MONSTERS & COMBAT SYSTEM
+       4. MONSTER SYSTEM & STAGE 2 MONSTERS (이미지 1 참고)
        ========================================== */
     const monsters = [];
     const projectiles = [];
+    const nametags = new Map();
 
-    function spawnMonster(x, z) {
-      const mGroup = new THREE.Group();
-      
-      const bodyG = new THREE.SphereGeometry(0.65, 16, 16);
-      const bodyM = new THREE.MeshStandardMaterial({ color: 0xa83232, roughness: 0.4 });
-      const mBody = new THREE.Mesh(bodyG, bodyM);
-      mBody.position.y = 0.8;
-      mBody.castShadow = true;
-      mGroup.add(mBody);
+    function clearMonsters() {
+      monsters.forEach(m => {
+        scene.remove(m.group);
+      });
+      monsters.length = 0;
 
-      const hornG = new THREE.ConeGeometry(0.15, 0.5, 8);
-      const hornM = new THREE.MeshStandardMaterial({ color: 0xffd700 });
-      const horn = new THREE.Mesh(hornG, hornM);
-      horn.position.set(0, 1.5, 0);
-      mGroup.add(horn);
-
-      mGroup.position.set(x, 0, z);
-      scene.add(mGroup);
-
-      monsters.push({
-        group: mGroup, hp: 45, maxHp: 45, expReward: 25, goldReward: 20, alive: true
+      nametags.forEach((el, key) => {
+        if (key.startsWith('monster_')) {
+          el.remove();
+          nametags.delete(key);
+        }
       });
     }
 
-    for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * Math.PI * 2;
-      const radius = 18 + Math.random() * 20;
-      spawnMonster(Math.cos(angle) * radius, Math.sin(angle) * radius - 5);
+    function createNametagElement(id, titleText, nameText, isMonster = false) {
+      const el = document.createElement('div');
+      el.className = 'goonzu-nametag';
+      el.innerHTML = isMonster ? `<div class="tag-monster">${nameText}</div>` : `<div class="tag-title">${titleText}</div><div class="tag-name">${nameText}</div>`;
+      nametagLayer.appendChild(el);
+      nametags.set(id, el);
+      return el;
+    }
+
+    // 몬스터 3D 모델링 생성자 (이미지 1 속 웅양, 마늘장갑차, 마늘대왕, 병자호랑)
+    function createMonsterMesh(type) {
+      const group = new THREE.Group();
+
+      if (type === "웅양") {
+        // [웅양]: 해바라기를 쓴 곰 캐릭터
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
+        body.position.y = 0.7;
+        group.add(body);
+
+        // 머리 위 해바라기 모자
+        const flowerCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x4a2e18 }));
+        flowerCenter.position.set(0, 1.35, 0);
+        const flowerPetal = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xffd700 }));
+        flowerPetal.position.set(0, 1.32, 0);
+        group.add(flowerCenter); group.add(flowerPetal);
+
+      } else if (type === "마늘장갑차") {
+        // [마늘장갑차]: 나무 통 바퀴 탱크 + 보라 마늘 머리
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0x6e4a28 }));
+        barrel.position.y = 0.55;
+        group.add(barrel);
+
+        // 보라 마늘 캐릭터 조종사
+        const garlicHead = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshStandardMaterial({ color: 0xc084fc }));
+        garlicHead.position.set(0, 1.1, 0);
+        group.add(garlicHead);
+
+      } else if (type === "마늘대왕") {
+        // [마늘대왕]: 잎사귀 볏이 달린 분홍/보라 마늘
+        const garlicBody = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe879f9 }));
+        garlicBody.position.y = 0.7;
+        garlicBody.scale.set(1.1, 0.9, 1.1);
+        group.add(garlicBody);
+
+        // 상단 초록 잎사귀 줄기
+        const leafStem = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+        leafStem.position.set(0, 1.4, 0);
+        group.add(leafStem);
+
+      } else if (type === "병자호랑") {
+        // [병자호랑]: 붕대를 감은 호랑이
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+        body.position.y = 0.7;
+        group.add(body);
+
+        // 이마 하얀 붕대 띠
+        const bandage = new THREE.Mesh(new THREE.CylinderGeometry(0.67, 0.67, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        bandage.position.set(0, 1.0, 0);
+        group.add(bandage);
+      }
+
+      return group;
+    }
+
+    function spawnStage1Monsters() {
+      clearMonsters();
+      for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const radius = 18 + Math.random() * 20;
+        const mGroup = createMonsterMesh("웅양");
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius - 5;
+        mGroup.position.set(x, 0, z);
+        scene.add(mGroup);
+
+        const mObj = { group: mGroup, type: "도깨비", hp: 45, maxHp: 45, expReward: 25, goldReward: 20, alive: true };
+        monsters.push(mObj);
+        createNametagElement(`monster_${i}`, '', `Lv.15 도깨비`, true);
+      }
+    }
+
+    function spawnStage2Monsters() {
+      clearMonsters();
+      const types = ["웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
+
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const radius = 18 + Math.random() * 22;
+        const mType = types[i % types.length];
+        const mGroup = createMonsterMesh(mType);
+        
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        mGroup.position.set(x, 0, z);
+        scene.add(mGroup);
+
+        const mObj = { group: mGroup, type: mType, hp: 120, maxHp: 120, expReward: 80, goldReward: 120, alive: true };
+        monsters.push(mObj);
+        createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
+      }
     }
 
     /* ==========================================
-       5. AUTO-HUNT SYSTEM
+       5. STAGE TRANSITION LOGIC
+       ========================================== */
+    function goToNextStage() {
+      if (playerState.level < 20) return;
+
+      currentStage = 2;
+      document.getElementById('stage-badge').innerText = "2단계: 웅녀동굴";
+      document.getElementById('btn-next-stage').style.display = "none";
+
+      // 웅녀 동굴 배경 연출 및 몬스터 스폰
+      buildStage2();
+      spawnStage2Monsters();
+
+      playerGroup.position.set(0, 0, 10);
+    }
+
+    /* ==========================================
+       6. NAMETAG POSITION TRACKING
+       ========================================== */
+    createNametagElement('player', `Lv.${playerState.level} ${playerState.title}`, `[${playerState.name}]`);
+
+    function updateNametagsPosition() {
+      const tempV = new THREE.Vector3();
+
+      tempV.copy(playerGroup.position).add(new THREE.Vector3(0, 2.6, 0));
+      tempV.project(camera);
+      const pEl = nametags.get('player');
+      if (pEl) {
+        pEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
+        pEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
+      }
+
+      monsters.forEach((m, idx) => {
+        const mEl = nametags.get(`monster_${idx}`);
+        if (mEl) {
+          if (m.alive) {
+            mEl.style.display = 'block';
+            tempV.copy(m.group.position).add(new THREE.Vector3(0, 1.8, 0));
+            tempV.project(camera);
+            mEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
+            mEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
+          } else {
+            mEl.style.display = 'none';
+          }
+        }
+      });
+    }
+
+    /* ==========================================
+       7. AUTO-HUNT & JOYSTICK CONTROLS
        ========================================== */
     let isAutoHunt = false;
 
@@ -435,9 +602,6 @@
       }
     }
 
-    /* ==========================================
-       6. JOYSTICK & TOUCH SYSTEM
-       ========================================== */
     const joystickBase = document.getElementById('joystick-base');
     const joystickKnob = document.getElementById('joystick-knob');
     let joystickTouchId = null;
@@ -512,7 +676,7 @@
     });
 
     /* ==========================================
-       7. MINIMAP & CAMERA ZOOM
+       8. MINIMAP & CAMERA ZOOM
        ========================================== */
     const minimapBox = document.getElementById('minimap-box');
     const minimapCanvas = document.getElementById('minimap-canvas');
@@ -535,7 +699,7 @@
       const mapRadius = floorSize / 2;
 
       mCtx.clearRect(0, 0, w, h);
-      mCtx.fillStyle = '#0f172a';
+      mCtx.fillStyle = currentStage === 1 ? '#0f172a' : '#0e1f17';
       mCtx.fillRect(0, 0, w, h);
 
       const worldToMap = (wx, wz) => ({
@@ -557,7 +721,7 @@
     }
 
     /* ==========================================
-       8. COMBAT & PROGRESSION
+       9. COMBAT & PROGRESSION
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -672,8 +836,18 @@
 
       document.getElementById('gold-val').innerText = playerState.gold;
 
-      const jobBtn = document.getElementById('btn-job-modal');
-      jobBtn.style.display = (playerState.level >= 20 && playerState.job === "평민") ? "flex" : "none";
+      const pEl = nametags.get('player');
+      if (pEl) pEl.querySelector('.tag-title').innerText = `Lv.${playerState.level} ${playerState.title}`;
+
+      // Level 20 달성 시 웅녀동굴 입장 버튼 & 전직 버튼 활성화
+      if (playerState.level >= 20) {
+        if (currentStage === 1) {
+          document.getElementById('btn-next-stage').style.display = "block";
+        }
+        if (playerState.job === "평민") {
+          document.getElementById('btn-job-modal').style.display = "flex";
+        }
+      }
     }
 
     function openJobModal() { document.getElementById('job-modal').style.display = 'block'; }
@@ -682,11 +856,14 @@
     function selectJob(jobName) {
       playerState.job = jobName;
       if (jobName === "검사") {
+        playerState.title = "무관";
         playerState.maxHp += 150; playerState.hp = playerState.maxHp;
         playerState.attackPower += 25; playerState.attackRange = 3.0;
       } else if (jobName === "총사") {
+        playerState.title = "포수";
         playerState.attackPower += 35; playerState.attackRange = 14.0;
       } else if (jobName === "주술사") {
+        playerState.title = "도사";
         playerState.attackPower += 45; playerState.attackRange = 12.0;
       }
       updateWeaponMesh();
@@ -695,7 +872,7 @@
     }
 
     /* ==========================================
-       9. MAIN ANIMATION LOOP
+       10. MAIN ANIMATION LOOP
        ========================================== */
     const clock = new THREE.Clock();
 
@@ -743,6 +920,7 @@
       camera.position.lerp(desiredCamPos, 0.1);
       camera.lookAt(playerGroup.position);
 
+      updateNametagsPosition();
       renderMinimap();
       renderer.render(scene, camera);
     }
@@ -753,6 +931,9 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    // Start Game
+    buildStage1();
+    spawnStage1Monsters();
     updateUI();
     animate();
   </script>
