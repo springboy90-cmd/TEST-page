@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 모바일 발열 최적화 & 도구 패치</title>
+  <title>군주의 길 3D - 광역 스킬 & 이동 공격 보정</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -120,6 +120,7 @@
     .action-btn:active { transform: scale(0.92); }
     
     .btn-attack { width: 64px; height: 64px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 22px; }
+    .btn-aoe { width: 52px; height: 52px; background: linear-gradient(135deg, #f59e0b, #b45309); border: 2px solid #fef08a; font-size: 11px; text-align: center; line-height: 1.1; }
     .btn-auto { width: 50px; height: 50px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 11px; }
     .btn-auto.active { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fef08a; }
     .btn-target { width: 42px; height: 42px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 16px; }
@@ -193,7 +194,7 @@
           <div class="bar-text" id="exp-text">0/38 (0%)</div>
         </div>
 
-        <!-- 실시간 스탯(공격력/방어력/치명타) & 재화 -->
+        <!-- 실시간 스탯 표시줄 -->
         <div class="stat-rows">
           <div class="stat-row-item">
             <span class="stat-atk">⚔️<span id="atk-val">12</span></span>
@@ -248,12 +249,14 @@
     <div id="action-zone">
       <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>OFF</div>
       <div class="action-btn btn-target" id="btn-target" onclick="targetNearestMonster()">🎯</div>
+      <!-- [신규] 전직 완료 시 활성화되는 직업별 1차 광역 스킬 버튼 -->
+      <div class="action-btn btn-aoe" id="btn-aoe" style="display: none;" onclick="triggerAoeSkill()">💥<br>광역</div>
       <div class="action-btn btn-attack" id="btn-attack" onclick="triggerAttackBtn()">⚔️</div>
       <div class="action-btn" id="btn-job-modal" style="display: none; width: 46px; height: 46px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 18px;" onclick="openJobModal()">📜</div>
     </div>
   </div>
 
-  <!-- [신규] 게임 도구 & 발열 최적화 설정 모달 (Tools Modal) -->
+  <!-- Tools Modal -->
   <div class="modal interactive" id="tools-modal">
     <div class="modal-title">⚙️ 게임 도구 & 발열 최적화 설정</div>
     
@@ -287,17 +290,17 @@
       <div class="job-card" onclick="selectJob('검사')">
         <div style="font-size: 22px;">⚔️</div>
         <div style="font-weight: bold; color: #ff6b6b; font-size: 12px;">검사</div>
-        <div style="font-size: 10px; color: #aaa;">근접 탱커/물리<br>공+25 / 방+20</div>
+        <div style="font-size: 10px; color: #aaa;">근접 탱커/물리<br>광역: 회풍참 🌀</div>
       </div>
       <div class="job-card" onclick="selectJob('총사')">
         <div style="font-size: 22px;">🔫</div>
         <div style="font-weight: bold; color: #6bccff; font-size: 12px;">총사</div>
-        <div style="font-size: 10px; color: #aaa;">원거리 물리 딜러<br>공+35 / 방+10</div>
+        <div style="font-size: 10px; color: #aaa;">원거리 물리 딜러<br>광역: 폭열탄사 💣</div>
       </div>
       <div class="job-card" onclick="selectJob('주술사')">
         <div style="font-size: 22px;">🔮</div>
         <div style="font-weight: bold; color: #d86bff; font-size: 12px;">주술사</div>
-        <div style="font-size: 10px; color: #aaa;">광역 마법 딜러<br>공+45 / 방+5</div>
+        <div style="font-size: 10px; color: #aaa;">광역 마법 딜러<br>광역: 뇌전벼락 ⚡</div>
       </div>
     </div>
     <div style="text-align: center;">
@@ -357,8 +360,7 @@
     const baseCameraOffset = new THREE.Vector3(0, 22, 22);
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    // [신규] 프레임(FPS) 제한 & 발열 제어 변수
-    let targetFPS = 30; // 기본 모바일 추천 30 FPS
+    let targetFPS = 30;
     let fpsInterval = 1000 / targetFPS;
     let lastFrameTime = performance.now();
     let currentScaleSetting = 1.0;
@@ -419,7 +421,7 @@
     }
 
     /* ==========================================
-       3. STAGE BUILDERS (floorSize: 84)
+       3. STAGE BUILDERS
        ========================================== */
     const floorSize = 84;
     let floorMesh = null;
@@ -573,7 +575,7 @@
     }
 
     /* ==========================================
-       4. PLAYER STATE & MESH
+       4. PLAYER STATE & MESH (광역 스킬 상태 추가)
        ========================================== */
     const playerState = {
       name: "조선유생",
@@ -595,7 +597,11 @@
       hasJanggeum: false,
       hasAutoHeal: false,
       atkSpeedLv: 0,
-      idleTimer: 0
+      idleTimer: 0,
+
+      // [신규] 광역 스킬 쿨타임 관리
+      lastAoeTime: 0,
+      aoeCooldown: 4000 // 4초
     };
 
     const playerGroup = new THREE.Group();
@@ -671,7 +677,29 @@
     }
 
     /* ==========================================
-       5. SUMMON HEROES
+       5. 3D VFX (광역 스킬 및 이펙트 파티클 관리)
+       ========================================== */
+    const vfxList = [];
+
+    function addVfx(mesh, updateFn) {
+      scene.add(mesh);
+      vfxList.push({ mesh, updateFn, age: 0 });
+    }
+
+    function processVfx(delta) {
+      for (let i = vfxList.length - 1; i >= 0; i--) {
+        const vfx = vfxList[i];
+        vfx.age += delta;
+        const isDead = vfx.updateFn(vfx.mesh, vfx.age, delta);
+        if (isDead) {
+          scene.remove(vfx.mesh);
+          vfxList.splice(i, 1);
+        }
+      }
+    }
+
+    /* ==========================================
+       6. SUMMON HEROES
        ========================================== */
     let hwangJiniGroup = null;
     let hwangJiniInstrumentTip = null;
@@ -799,7 +827,7 @@
     }
 
     /* ==========================================
-       6. MONSTER MODELS & REWARDS
+       7. MONSTER MODELS & REWARDS
        ========================================== */
     const monsters = [];
     const projectiles = [];
@@ -1030,7 +1058,7 @@
     }
 
     /* ==========================================
-       7. MONSTER ATTACK & AI LOGIC
+       8. MONSTER ATTACK & AI LOGIC
        ========================================== */
     function monsterAttackPlayer(m) {
       if (m.type === "금화상자") return;
@@ -1128,7 +1156,95 @@
     }
 
     /* ==========================================
-       8. DUNGEONS LOGIC
+       9. AOE SKILLS & VFX EXECUTION (직업별 광역 스킬 구현)
+       ========================================== */
+    function triggerAoeSkill() {
+      if (playerState.job === "평민") return;
+
+      const now = Date.now();
+      if (now - playerState.lastAoeTime < playerState.aoeCooldown) return;
+      playerState.lastAoeTime = now;
+
+      const btn = document.getElementById('btn-aoe');
+      btn.style.opacity = "0.5";
+      setTimeout(() => btn.style.opacity = "1.0", playerState.aoeCooldown);
+
+      if (playerState.job === "검사") {
+        // [검사]: 회풍참 🌀 - 주변 360도 붉은 검기 오라 링 회전 확장
+        const ringG = new THREE.RingGeometry(0.5, 1.2, 32);
+        const ringM = new THREE.MeshBasicMaterial({ color: 0xff2222, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const ringMesh = new THREE.Mesh(ringG, ringM);
+        ringMesh.rotation.x = Math.PI / 2;
+        ringMesh.position.copy(playerGroup.position).add(new THREE.Vector3(0, 0.3, 0));
+
+        addVfx(ringMesh, (mesh, age) => {
+          mesh.scale.addScalar(0.4);
+          mesh.material.opacity = Math.max(0, 0.9 - age * 2.0);
+          mesh.rotation.z += 0.3;
+          return age >= 0.5;
+        });
+
+        // 5.5m 내 몬스터 200% 광역 피해
+        const radius = 5.5;
+        monsters.forEach(m => {
+          if (m.alive && playerGroup.position.distanceTo(m.group.position) <= radius) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.0));
+          }
+        });
+
+      } else if (playerState.job === "총사") {
+        // [총사]: 폭열탄사 💣 - 타깃 방향 착탄 시 거대한 화염 폭발 구체 생성
+        let targetPos = playerGroup.position.clone().add(new THREE.Vector3(0, 0, -6).applyQuaternion(playerGroup.quaternion));
+        if (selectedTargetMonster && selectedTargetMonster.alive) {
+          targetPos = selectedTargetMonster.group.position.clone();
+        }
+
+        const expG = new THREE.SphereGeometry(0.5, 16, 16);
+        const expM = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9 });
+        const expMesh = new THREE.Mesh(expG, expM);
+        expMesh.position.copy(targetPos).add(new THREE.Vector3(0, 0.8, 0));
+
+        addVfx(expMesh, (mesh, age) => {
+          mesh.scale.addScalar(0.35);
+          mesh.material.opacity = Math.max(0, 0.9 - age * 1.8);
+          return age >= 0.5;
+        });
+
+        // 5m 내 몬스터 220% 광역 피해
+        monsters.forEach(m => {
+          if (m.alive && m.group.position.distanceTo(targetPos) <= 5.0) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.2));
+          }
+        });
+
+      } else if (playerState.job === "주술사") {
+        // [주술사]: 뇌전벼락 ⚡ - 타깃 위치 마법진 + 거대한 번개 기둥 강하
+        let targetPos = playerGroup.position.clone().add(new THREE.Vector3(0, 0, -6).applyQuaternion(playerGroup.quaternion));
+        if (selectedTargetMonster && selectedTargetMonster.alive) {
+          targetPos = selectedTargetMonster.group.position.clone();
+        }
+
+        const lightningG = new THREE.CylinderGeometry(1.5, 1.5, 16, 16);
+        const lightningM = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
+        const lightningMesh = new THREE.Mesh(lightningG, lightningM);
+        lightningMesh.position.copy(targetPos).add(new THREE.Vector3(0, 8, 0));
+
+        addVfx(lightningMesh, (mesh, age) => {
+          mesh.material.opacity = Math.max(0, 0.8 - age * 2.0);
+          return age >= 0.4;
+        });
+
+        // 5m 내 몬스터 250% 광역 피해
+        monsters.forEach(m => {
+          if (m.alive && m.group.position.distanceTo(targetPos) <= 5.0) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.5));
+          }
+        });
+      }
+    }
+
+    /* ==========================================
+       10. DUNGEONS LOGIC
        ========================================== */
     function enterExpDungeon() {
       if (inDungeon || inGoldDungeon || dungeonCooldown > 0) return;
@@ -1249,7 +1365,7 @@
     }
 
     /* ==========================================
-       9. TOOLS & SKILL MODALS
+       11. TOOLS & SKILL MODALS
        ========================================== */
     function openToolsModal() {
       document.getElementById('tools-modal').style.display = 'block';
@@ -1448,7 +1564,7 @@
     }
 
     /* ==========================================
-       10. STAGE TRANSITION & NAMETAGS
+       12. STAGE TRANSITION & NAMETAGS
        ========================================== */
     function goToNextStage() {
       if (playerState.level < 20 || inDungeon || inGoldDungeon) return;
@@ -1513,7 +1629,7 @@
     }
 
     /* ==========================================
-       11. AUTO-HUNT & JOYSTICK CONTROLS
+       13. AUTO-HUNT & JOYSTICK CONTROLS (이동 연동 로직 개선)
        ========================================== */
     let isAutoHunt = false;
 
@@ -1525,23 +1641,24 @@
       if (isAutoHunt) targetNearestMonster();
     }
 
-    function processAutoHuntLogic(delta) {
-      if (!isAutoHunt) return;
-
+    // [수정] AUTO 모드가 아니더라도 타깃이 지정된 상태면 사거리 내로 걸어가서 공격하도록 보정
+    function processTargetChaseAndAttack(delta) {
       if (!selectedTargetMonster || !selectedTargetMonster.alive) {
-        targetNearestMonster();
+        if (isAutoHunt) targetNearestMonster();
+        return;
       }
 
-      if (selectedTargetMonster && selectedTargetMonster.alive) {
-        const dist = playerGroup.position.distanceTo(selectedTargetMonster.group.position);
-        if (dist > playerState.attackRange) {
-          const dir = selectedTargetMonster.group.position.clone().sub(playerGroup.position).normalize();
-          playerGroup.position.x += dir.x * playerState.moveSpeed * delta;
-          playerGroup.position.z += dir.z * playerState.moveSpeed * delta;
-          playerGroup.lookAt(selectedTargetMonster.group.position.x, playerGroup.position.y, selectedTargetMonster.group.position.z);
-        } else {
-          attackMonster(selectedTargetMonster);
-        }
+      const dist = playerGroup.position.distanceTo(selectedTargetMonster.group.position);
+
+      // 사거리 밖이면 몬스터 위치로 이동
+      if (dist > playerState.attackRange) {
+        const dir = selectedTargetMonster.group.position.clone().sub(playerGroup.position).normalize();
+        playerGroup.position.x += dir.x * playerState.moveSpeed * delta;
+        playerGroup.position.z += dir.z * playerState.moveSpeed * delta;
+        playerGroup.lookAt(selectedTargetMonster.group.position.x, playerGroup.position.y, selectedTargetMonster.group.position.z);
+      } else {
+        // 사거리 진입 시 바로 공격
+        attackMonster(selectedTargetMonster);
       }
     }
 
@@ -1619,7 +1736,7 @@
     });
 
     /* ==========================================
-       12. MINIMAP & CAMERA ZOOM
+       14. MINIMAP & CAMERA ZOOM
        ========================================== */
     const minimapBox = document.getElementById('minimap-box');
     const minimapCanvas = document.getElementById('minimap-canvas');
@@ -1676,7 +1793,7 @@
     }
 
     /* ==========================================
-       13. COMBAT & DAMAGE 연산
+       15. COMBAT & DAMAGE 연산
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1693,7 +1810,9 @@
       if (!selectedTargetMonster || !selectedTargetMonster.alive) targetNearestMonster();
       if (selectedTargetMonster) {
         const dist = playerGroup.position.distanceTo(selectedTargetMonster.group.position);
-        if (dist <= playerState.attackRange) attackMonster(selectedTargetMonster);
+        if (dist <= playerState.attackRange) {
+          attackMonster(selectedTargetMonster);
+        }
       }
     }
 
@@ -1839,20 +1958,23 @@
         playerState.title = "도사";
         playerState.attackPower += 45; playerState.defensePower += 5; playerState.attackRange = 12.0;
       }
+
+      // [신규] 전직 시 광역 스킬 버튼 활성화
+      document.getElementById('btn-aoe').style.display = "flex";
+
       updateWeaponMesh();
       updateUI();
       closeJobModal();
     }
 
     /* ==========================================
-       14. MAIN ANIMATION LOOP (FPS Limiter 적용)
+       16. MAIN ANIMATION LOOP
        ========================================== */
     const clock = new THREE.Clock();
 
     function animate(now) {
       requestAnimationFrame(animate);
 
-      // [신규] FPS 제한 프레임 스킵 연산 (발열 방지)
       const elapsed = now - lastFrameTime;
       if (elapsed < fpsInterval) return;
 
@@ -1861,6 +1983,7 @@
 
       updateDungeonTimer(delta);
       processMonsterAI(delta);
+      processVfx(delta);
 
       let moveX = joystickVector.x, moveZ = joystickVector.y;
       if (keys['w'] || keys['arrowup']) moveZ -= 1;
@@ -1883,7 +2006,8 @@
 
         playerState.idleTimer = 0;
       } else {
-        processAutoHuntLogic(delta);
+        // [수정] 조이스틱 조작이 없으면 타깃을 향해 자동 추적 및 공격
+        processTargetChaseAndAttack(delta);
 
         if (playerState.hasAutoHeal && !isAutoHunt && (now - playerState.lastAttackTime > playerState.attackSpeed)) {
           playerState.idleTimer += delta;
