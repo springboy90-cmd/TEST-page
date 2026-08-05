@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 포션 상점 업데이트</title>
+  <title>군주의 길 3D - 모바일 UI 축소 & 스탯 시스템</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -11,36 +11,43 @@
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
     
     /* UI Layer Overlays */
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; }
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
-    /* 군주 스타일 HUD */
+    /* [수정] 모바일 최적화: 기존 대비 1/2 크기의 슬림 캐릭터 상태 패널 */
     .status-panel {
       background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
-      border: 2px solid #a88a44;
-      border-radius: 8px;
-      padding: 10px;
-      width: 260px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+      border: 1px solid #a88a44;
+      border-radius: 6px;
+      padding: 6px 8px;
+      width: 150px; /* 기존 260px 대비 약 1/2 축소 */
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
     }
-    .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: bold; font-size: 13px; }
-    .stage-badge { background: #1e3a8a; border: 1px solid #60a5fa; color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
-    .job-badge { background: #3d2c1d; border: 1px solid #d4af37; padding: 2px 6px; border-radius: 4px; color: #ffd700; font-size: 11px; }
+    .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: bold; font-size: 10px; }
+    .stage-badge { background: #1e3a8a; border: 1px solid #60a5fa; color: #93c5fd; padding: 1px 4px; border-radius: 3px; font-size: 8px; }
+    .job-badge { background: #3d2c1d; border: 1px solid #d4af37; padding: 1px 4px; border-radius: 3px; color: #ffd700; font-size: 8px; }
     
-    .bar-container { background: #111827; height: 13px; border-radius: 4px; margin-bottom: 4px; overflow: hidden; border: 1px solid #374151; position: relative; }
+    .bar-container { background: #111827; height: 10px; border-radius: 3px; margin-bottom: 3px; overflow: hidden; border: 1px solid #374151; position: relative; }
     .bar-fill { height: 100%; transition: width 0.2s ease; }
     .hp-bar { background: linear-gradient(90deg, #b31212, #ff4d4d); }
     .mp-bar { background: linear-gradient(90deg, #1251b3, #4d88ff); }
     .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
-    .bar-text { position: absolute; width: 100%; text-align: center; font-size: 9px; line-height: 13px; top: 0; left: 0; text-shadow: 1px 1px 2px #000; font-weight: bold; }
+    .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 10px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
+
+    /* [신규] 실시간 스탯(공격력/방어력) 및 재화 표시줄 */
+    .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
+    .stat-row-item { display: flex; justify-content: space-between; font-weight: bold; }
+    .stat-atk { color: #f87171; }
+    .stat-def { color: #60a5fa; }
+    .stat-gold { color: #facc15; }
 
     /* 우측 상단 버튼 */
     .top-right-controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
     .btn-small {
       background: linear-gradient(180deg, #2a3852, #162238);
       border: 1px solid #a88a44; color: #ffd700;
-      padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      padding: 5px 10px; font-size: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
     }
     .btn-dungeon {
       background: linear-gradient(180deg, #7c3aed, #4c1d95);
@@ -48,37 +55,37 @@
     }
     .btn-stage {
       background: linear-gradient(180deg, #1e40af, #1e1b4b);
-      border: 2px solid #60a5fa; color: #fff; font-size: 12px;
+      border: 2px solid #60a5fa; color: #fff; font-size: 11px;
       animation: stagePulse 1.5s infinite;
     }
 
     @keyframes stagePulse {
       0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(96, 165, 250, 0); }
+      70% { box-shadow: 0 0 0 8px rgba(96, 165, 250, 0); }
       100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
     }
 
     /* Zoom Controls */
     .zoom-controls { position: absolute; right: 10px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 15; }
-    .btn-zoom { width: 40px; height: 40px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 18px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+    .btn-zoom { width: 36px; height: 38px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 145px; right: 10px; width: 125px; height: 125px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 8px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 145px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
-    #joystick-zone { position: absolute; bottom: 25px; left: 25px; width: 120px; height: 120px; z-index: 20; pointer-events: auto; }
+    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px; z-index: 20; pointer-events: auto; }
     .joystick-base { width: 100%; height: 100%; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; position: relative; }
-    .joystick-knob { width: 46px; height: 46px; background: rgba(212, 175, 55, 0.85); border: 2px solid #fff; border-radius: 50%; position: absolute; top: 37px; left: 37px; transform: translate(0, 0); }
+    .joystick-knob { width: 42px; height: 42px; background: rgba(212, 175, 55, 0.85); border: 2px solid #fff; border-radius: 50%; position: absolute; top: 34px; left: 34px; transform: translate(0, 0); }
 
-    #action-zone { position: absolute; bottom: 25px; right: 20px; display: flex; gap: 10px; align-items: flex-end; z-index: 20; pointer-events: auto; }
+    #action-zone { position: absolute; bottom: 20px; right: 15px; display: flex; gap: 8px; align-items: flex-end; z-index: 20; pointer-events: auto; }
     .action-btn { border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer; }
     .action-btn:active { transform: scale(0.92); }
     
-    .btn-attack { width: 70px; height: 70px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 24px; }
-    .btn-auto { width: 54px; height: 54px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 12px; }
+    .btn-attack { width: 64px; height: 64px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 22px; }
+    .btn-auto { width: 50px; height: 50px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 11px; }
     .btn-auto.active { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fef08a; }
-    .btn-target { width: 46px; height: 46px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 18px; }
+    .btn-target { width: 42px; height: 42px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 16px; }
 
     /* Nametags Layer */
     .goonzu-nametag {
@@ -90,24 +97,24 @@
     .tag-monster { color: #ff5555; font-weight: bold; }
 
     /* Modals */
-    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 20px; width: 92%; max-width: 520px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-    .modal-title { text-align: center; color: #ffd700; font-size: 17px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #374151; padding-bottom: 8px; }
+    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 18px; width: 92%; max-width: 500px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .modal-title { text-align: center; color: #ffd700; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #374151; padding-bottom: 6px; }
     
-    .shop-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
-    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 8px 0; font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
+    .shop-tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
+    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 0; font-size: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; text-align: center; }
     .shop-tab.active { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-color: #60a5fa; color: #fff; }
     
-    .shop-items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
-    .shop-item-card { background: rgba(255,255,255,0.04); border: 1px solid #475569; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
-    .item-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; color: #f8fafc; margin-bottom: 4px; }
-    .item-desc { font-size: 10px; color: #94a3b8; line-height: 1.3; margin-bottom: 8px; }
+    .shop-items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
+    .shop-item-card { background: rgba(255,255,255,0.04); border: 1px solid #475569; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
+    .item-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; color: #f8fafc; margin-bottom: 3px; }
+    .item-desc { font-size: 10px; color: #94a3b8; line-height: 1.2; margin-bottom: 6px; }
     .item-footer { display: flex; justify-content: space-between; align-items: center; }
-    .item-price { font-size: 11px; font-weight: bold; color: #facc15; }
-    .btn-buy { background: linear-gradient(180deg, #16a34a, #15803d); border: 1px solid #4ade80; color: #fff; font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+    .item-price { font-size: 10px; font-weight: bold; color: #facc15; }
+    .btn-buy { background: linear-gradient(180deg, #16a34a, #15803d); border: 1px solid #4ade80; color: #fff; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
     .btn-buy:disabled { background: #475569; border-color: #64748b; color: #94a3b8; cursor: not-allowed; }
 
-    .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-    .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 8px; padding: 10px 4px; text-align: center; cursor: pointer; }
+    .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+    .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 6px; padding: 8px 4px; text-align: center; cursor: pointer; }
 
     .damage-text { position: absolute; color: #ff3333; font-weight: bold; font-size: 18px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
     @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
@@ -122,43 +129,52 @@
   <div id="ui-layer">
     <!-- HUD Top -->
     <div style="display: flex; justify-content: space-between; width: 100%;">
+      <!-- 1/2 슬림화 적용된 캐릭터 상태 UI -->
       <div class="status-panel interactive">
         <div class="character-info">
           <span><strong id="player-name">조선유생</strong> <span style="color:#aaa;" id="player-lv">Lv.1</span></span>
-          <span class="stage-badge" id="stage-badge">1단계: 초보자 사냥터</span>
           <span class="job-badge" id="player-job">평민</span>
         </div>
         
         <div class="bar-container">
           <div class="bar-fill hp-bar" id="hp-fill" style="width: 100%;"></div>
-          <div class="bar-text" id="hp-text">100 / 100</div>
+          <div class="bar-text" id="hp-text">100/100</div>
         </div>
         <div class="bar-container">
           <div class="bar-fill mp-bar" id="mp-fill" style="width: 100%;"></div>
-          <div class="bar-text" id="mp-text">50 / 50</div>
+          <div class="bar-text" id="mp-text">50/50</div>
         </div>
         <div class="bar-container">
           <div class="bar-fill exp-bar" id="exp-fill" style="width: 0%;"></div>
-          <div class="bar-text" id="exp-text">0 / 50 (0%)</div>
+          <div class="bar-text" id="exp-text">0/50 (0%)</div>
         </div>
-        <div style="font-size: 11px; color: #ffd700; margin-top: 3px; text-align: right; font-weight: bold;">
-          냥(G): <span id="gold-val">100</span>
+
+        <!-- [신규] 실시간 스탯(공격력/방어력) & 재화 라인 -->
+        <div class="stat-rows">
+          <div class="stat-row-item">
+            <span class="stat-atk">⚔️공: <span id="atk-val">12</span></span>
+            <span class="stat-def">🛡️방: <span id="def-val">5</span></span>
+          </div>
+          <div class="stat-row-item" style="margin-top: 1px;">
+            <span class="stage-badge" id="stage-badge">초보자 사냥터</span>
+            <span class="stat-gold"><span id="gold-val">100</span> G</span>
+          </div>
         </div>
       </div>
 
       <!-- Top Right Controls -->
       <div class="top-right-controls interactive">
-        <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 입장 (Lv.20+)</button>
+        <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 (Lv.20+)</button>
         <button class="btn-small btn-dungeon" id="btn-dungeon" onclick="enterExpDungeon()">🏰 경험치 던전</button>
         <button class="btn-small" style="background: linear-gradient(180deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff;" onclick="openShopModal()">🛒 상점</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵</button>
-        <button class="btn-small" onclick="addExpDev()">⚡ 테스트 지원 (+Lv.5/G)</button>
+        <button class="btn-small" onclick="addExpDev()">⚡ 테스트 지원 (+5)</button>
       </div>
     </div>
 
     <!-- Minimap -->
     <div id="minimap-box" class="interactive">
-      <canvas id="minimap-canvas" width="125" height="125"></canvas>
+      <canvas id="minimap-canvas" width="110" height="110"></canvas>
     </div>
 
     <!-- Zoom Controls -->
@@ -179,7 +195,7 @@
       <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>OFF</div>
       <div class="action-btn btn-target" id="btn-target" onclick="targetNearestMonster()">🎯</div>
       <div class="action-btn btn-attack" id="btn-attack" onclick="triggerAttackBtn()">⚔️</div>
-      <div class="action-btn" id="btn-job-modal" style="display: none; width: 50px; height: 50px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 20px;" onclick="openJobModal()">📜</div>
+      <div class="action-btn" id="btn-job-modal" style="display: none; width: 46px; height: 46px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 18px;" onclick="openJobModal()">📜</div>
     </div>
   </div>
 
@@ -188,19 +204,19 @@
     <div class="modal-title">⚔️ 1차 직업 전직 선택</div>
     <div class="job-cards">
       <div class="job-card" onclick="selectJob('검사')">
-        <div style="font-size: 24px;">⚔️</div>
-        <div style="font-weight: bold; color: #ff6b6b; font-size: 13px;">검사</div>
-        <div style="font-size: 10px; color: #aaa;">근접 탱커/물리<br>주무기: 장검</div>
+        <div style="font-size: 22px;">⚔️</div>
+        <div style="font-weight: bold; color: #ff6b6b; font-size: 12px;">검사</div>
+        <div style="font-size: 10px; color: #aaa;">근접 탱커/물리<br>공+25 / 방+20</div>
       </div>
       <div class="job-card" onclick="selectJob('총사')">
-        <div style="font-size: 24px;">🔫</div>
-        <div style="font-weight: bold; color: #6bccff; font-size: 13px;">총사</div>
-        <div style="font-size: 10px; color: #aaa;">원거리 물리 딜러<br>주무기: 화승총</div>
+        <div style="font-size: 22px;">🔫</div>
+        <div style="font-weight: bold; color: #6bccff; font-size: 12px;">총사</div>
+        <div style="font-size: 10px; color: #aaa;">원거리 물리 딜러<br>공+35 / 방+10</div>
       </div>
       <div class="job-card" onclick="selectJob('주술사')">
-        <div style="font-size: 24px;">🔮</div>
-        <div style="font-weight: bold; color: #d86bff; font-size: 13px;">주술사</div>
-        <div style="font-size: 10px; color: #aaa;">광역 마법 딜러<br>주무기: 주술봉</div>
+        <div style="font-size: 22px;">🔮</div>
+        <div style="font-weight: bold; color: #d86bff; font-size: 12px;">주술사</div>
+        <div style="font-size: 10px; color: #aaa;">광역 마법 딜러<br>공+45 / 방+5</div>
       </div>
     </div>
     <div style="text-align: center;">
@@ -222,7 +238,7 @@
 
     <div class="shop-items-grid" id="shop-items-container"></div>
 
-    <div style="text-align: center; margin-top: 14px;">
+    <div style="text-align: center; margin-top: 12px;">
       <button class="btn-small" onclick="closeShopModal()">상점 닫기</button>
     </div>
   </div>
@@ -436,7 +452,9 @@
       mp: 50, maxMp: 50,
       exp: 0, maxExp: 50,
       gold: 100,
-      attackPower: 12, attackRange: 2.5, 
+      attackPower: 12,  // 실시간 공격력
+      defensePower: 5,   // [신규] 실시간 방어력
+      attackRange: 2.5, 
       attackSpeed: 1200,
       lastAttackTime: 0,
       moveSpeed: 9,
@@ -807,8 +825,10 @@
        7. MONSTER ATTACK & AI LOGIC
        ========================================== */
     function monsterAttackPlayer(m) {
-      const dmgPercent = (currentStage === 1) ? 0.03 : 0.065;
-      const dmg = Math.max(1, Math.round(playerState.maxHp * dmgPercent));
+      // 방어력 감소 수치 반영 데미지 연산
+      const baseDmgPercent = (currentStage === 1) ? 0.03 : 0.065;
+      const rawDmg = playerState.maxHp * baseDmgPercent;
+      const dmg = Math.max(1, Math.round(rawDmg - playerState.defensePower * 0.2));
 
       playerState.hp -= dmg;
       showPlayerDamageText(dmg, playerGroup.position);
@@ -873,7 +893,7 @@
 
       const el = document.createElement('div');
       el.className = 'damage-text';
-      el.style.color = '#34d399'; // 초록색 회복 텍스트
+      el.style.color = '#34d399';
       el.innerText = text;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
@@ -892,7 +912,7 @@
       previousStage = currentStage;
       currentStage = 'dungeon';
 
-      document.getElementById('stage-badge').innerText = "SPECIAL: 경험치 던전";
+      document.getElementById('stage-badge').innerText = "경험치 던전";
 
       buildDungeonStage();
       spawnDungeonMonsters();
@@ -906,7 +926,7 @@
       dungeonCooldown = 60;
 
       currentStage = previousStage;
-      document.getElementById('stage-badge').innerText = currentStage === 1 ? "1단계: 초보자 사냥터" : "2단계: 웅녀동굴";
+      document.getElementById('stage-badge').innerText = currentStage === 1 ? "초보자 사냥터" : "웅녀동굴";
 
       if (currentStage === 1) {
         buildStage1();
@@ -943,7 +963,7 @@
     }
 
     /* ==========================================
-       9. SHOP SYSTEM & MODALS (포션 카테고리 추가)
+       9. SHOP SYSTEM & MODALS
        ========================================== */
     let currentShopCategory = 'potion';
 
@@ -953,8 +973,8 @@
         { id: 'w2', name: '명품 화승총', desc: '공격력 +30 증가', price: 25000, type: 'atk', val: 30 }
       ],
       armor: [
-        { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100 증가', price: 10000, type: 'hp', val: 100 },
-        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250 증가', price: 25000, type: 'hp', val: 250 }
+        { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8 증가', price: 10000, type: 'armor', valHp: 100, valDef: 8 },
+        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20 증가', price: 25000, type: 'armor', valHp: 250, valDef: 20 }
       ],
       skill: [
         { id: 's1', name: '일격필살 초급', desc: '공격력 +10 영구 상승', price: 8000, type: 'atk', val: 10 },
@@ -963,7 +983,6 @@
       hero: [
         { id: 'h1', name: '황진이', desc: '캐릭터를 따라다니며 가야금 끝에서 불꽃 에너지 볼트를 발사하는 보조 영웅', price: 50000, type: 'hero' }
       ],
-      // [신규 포션 카테고리]
       potion: [
         { id: 'p1', name: 'HP 포션', desc: '최대 HP의 15%를 즉시 회복합니다.', price: 1000, type: 'hp_potion', val: 0.15 },
         { id: 'p2', name: 'MP 포션', desc: '최대 MP의 15%를 즉시 회복합니다.', price: 1000, type: 'mp_potion', val: 0.15 }
@@ -1031,9 +1050,10 @@
         showHealText(`+${manaAmt} MP`, playerGroup.position);
       } else if (item.type === 'atk') {
         playerState.attackPower += item.val;
-      } else if (item.type === 'hp') {
-        playerState.maxHp += item.val;
-        playerState.hp += item.val;
+      } else if (item.type === 'armor') {
+        playerState.maxHp += item.valHp;
+        playerState.hp += item.valHp;
+        playerState.defensePower += item.valDef;
       }
 
       updateUI();
@@ -1047,7 +1067,7 @@
       if (playerState.level < 20 || inDungeon) return;
 
       currentStage = 2;
-      document.getElementById('stage-badge').innerText = "2단계: 웅녀동굴";
+      document.getElementById('stage-badge').innerText = "웅녀동굴";
       document.getElementById('btn-next-stage').style.display = "none";
 
       buildStage2();
@@ -1349,6 +1369,7 @@
         playerState.maxHp += 20;
         playerState.hp = playerState.maxHp;
         playerState.attackPower += 5;
+        playerState.defensePower += 2; // 레벨업 시 방어력 증가
       }
       updateUI();
     }
@@ -1361,12 +1382,18 @@
       document.getElementById('player-job').innerText = playerState.job;
 
       document.getElementById('hp-fill').style.width = `${(playerState.hp / playerState.maxHp) * 100}%`;
-      document.getElementById('hp-text').innerText = `${playerState.hp} / ${playerState.maxHp}`;
+      document.getElementById('hp-text').innerText = `${playerState.hp}/${playerState.maxHp}`;
+
+      document.getElementById('mp-fill').style.width = `${(playerState.mp / playerState.maxMp) * 100}%`;
+      document.getElementById('mp-text').innerText = `${playerState.mp}/${playerState.maxMp}`;
 
       document.getElementById('exp-fill').style.width = `${(playerState.exp / playerState.maxExp) * 100}%`;
       const expPct = Math.round((playerState.exp / playerState.maxExp) * 100);
-      document.getElementById('exp-text').innerText = `${playerState.exp} / ${playerState.maxExp} (${expPct}%)`;
+      document.getElementById('exp-text').innerText = `${playerState.exp}/${playerState.maxExp} (${expPct}%)`;
 
+      // 실시간 스탯(공격력 / 방어력) UI 업데이트
+      document.getElementById('atk-val').innerText = playerState.attackPower;
+      document.getElementById('def-val').innerText = playerState.defensePower;
       document.getElementById('gold-val').innerText = playerState.gold.toLocaleString();
 
       const pEl = nametags.get('player');
@@ -1392,13 +1419,13 @@
       if (jobName === "검사") {
         playerState.title = "무관";
         playerState.maxHp += 150; playerState.hp = playerState.maxHp;
-        playerState.attackPower += 25; playerState.attackRange = 3.0;
+        playerState.attackPower += 25; playerState.defensePower += 20; playerState.attackRange = 3.0;
       } else if (jobName === "총사") {
         playerState.title = "포수";
-        playerState.attackPower += 35; playerState.attackRange = 14.0;
+        playerState.attackPower += 35; playerState.defensePower += 10; playerState.attackRange = 14.0;
       } else if (jobName === "주술사") {
         playerState.title = "도사";
-        playerState.attackPower += 45; playerState.attackRange = 12.0;
+        playerState.attackPower += 45; playerState.defensePower += 5; playerState.attackRange = 12.0;
       }
       updateWeaponMesh();
       updateUI();
