@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 경험치 던전 업데이트</title>
+  <title>군주의 길 3D - 포션 상점 업데이트</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -93,8 +93,8 @@
     .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 20px; width: 92%; max-width: 520px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .modal-title { text-align: center; color: #ffd700; font-size: 17px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #374151; padding-bottom: 8px; }
     
-    .shop-tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
-    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 8px 0; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
+    .shop-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
+    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 8px 0; font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
     .shop-tab.active { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-color: #60a5fa; color: #fff; }
     
     .shop-items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
@@ -216,7 +216,8 @@
       <div class="shop-tab" id="tab-weapon" onclick="switchShopCategory('weapon')">무기</div>
       <div class="shop-tab" id="tab-armor" onclick="switchShopCategory('armor')">방어구</div>
       <div class="shop-tab" id="tab-skill" onclick="switchShopCategory('skill')">스킬</div>
-      <div class="shop-tab active" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
+      <div class="shop-tab" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
+      <div class="shop-tab active" id="tab-potion" onclick="switchShopCategory('potion')">포션</div>
     </div>
 
     <div class="shop-items-grid" id="shop-items-container"></div>
@@ -237,10 +238,9 @@
     let currentStage = 1;
     let previousStage = 1;
 
-    // 던전 상태 관리 변수
     let inDungeon = false;
-    let dungeonTimer = 0;      // 던전 내부 남아있는 시간 (초)
-    let dungeonCooldown = 0;   // 던전 재입장 쿨타임 (초)
+    let dungeonTimer = 0;
+    let dungeonCooldown = 0;
 
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 22, 22);
@@ -387,7 +387,6 @@
       }
     }
 
-    // 경험치 전용 던전 무대 조성 (붉은 마법 진)
     function buildDungeonStage() {
       clearEnvironment();
       scene.background = new THREE.Color(0x450a0a);
@@ -403,7 +402,6 @@
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
 
-      // 던전 외곽 기둥 장식
       for (let i = 0; i < 16; i++) {
         const angle = (i / 16) * Math.PI * 2;
         const radius = 45;
@@ -757,7 +755,7 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 35, maxHp: 35, expReward: 30, goldReward: 20, alive: true };
+        const mObj = { group: mGroup, type: mType, hp: 35, maxHp: 35, expReward: 30, goldReward: 20, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.${(i%4)+1} ${mType}`, true);
       }
@@ -778,13 +776,12 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 120, maxHp: 120, expReward: 96, goldReward: 120, alive: true };
+        const mObj = { group: mGroup, type: mType, hp: 120, maxHp: 120, expReward: 96, goldReward: 120, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
       }
     }
 
-    // 경험치 던전 전용 스폰 (2배 이상 스폰 = 24마리, 경험치 500% = 5배)
     function spawnDungeonMonsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼", "웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
@@ -800,21 +797,98 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        // 경험치 500% (5배) 적용 (30 * 5 = 150 EXP)
-        const mObj = { group: mGroup, type: mType, hp: 45, maxHp: 45, expReward: 150, goldReward: 50, alive: true };
+        const mObj = { group: mGroup, type: mType, hp: 45, maxHp: 45, expReward: 150, goldReward: 50, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
       }
     }
 
     /* ==========================================
-       7. EXP DUNGEON LOGIC (1분 입장 / 1분 쿨타임)
+       7. MONSTER ATTACK & AI LOGIC
+       ========================================== */
+    function monsterAttackPlayer(m) {
+      const dmgPercent = (currentStage === 1) ? 0.03 : 0.065;
+      const dmg = Math.max(1, Math.round(playerState.maxHp * dmgPercent));
+
+      playerState.hp -= dmg;
+      showPlayerDamageText(dmg, playerGroup.position);
+
+      if (playerState.hp <= 0) {
+        playerState.hp = 0;
+        updateUI();
+        alert("몬스터의 공격에 쓰러졌습니다! 안전지대에서 부활합니다.");
+        
+        playerState.hp = playerState.maxHp;
+        playerGroup.position.set(0, 0, 5);
+        if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 6.2);
+      }
+
+      updateUI();
+    }
+
+    function processMonsterAI(delta) {
+      const now = Date.now();
+
+      monsters.forEach(m => {
+        if (!m.alive) return;
+
+        const dist = m.group.position.distanceTo(playerGroup.position);
+
+        if (dist <= m.attackRange) {
+          m.group.lookAt(playerGroup.position.x, m.group.position.y, playerGroup.position.z);
+          if (now - m.lastAttackTime >= m.attackSpeed) {
+            m.lastAttackTime = now;
+            monsterAttackPlayer(m);
+          }
+        } else if (dist <= 8.0) {
+          const dir = playerGroup.position.clone().sub(m.group.position).normalize();
+          m.group.position.x += dir.x * 3.5 * delta;
+          m.group.position.z += dir.z * 3.5 * delta;
+          m.group.lookAt(playerGroup.position.x, m.group.position.y, playerGroup.position.z);
+        }
+      });
+    }
+
+    function showPlayerDamageText(dmg, worldPos) {
+      const tempV = worldPos.clone().add(new THREE.Vector3(0, 2.0, 0));
+      tempV.project(camera);
+      const x = (tempV.x * .5 + .5) * window.innerWidth;
+      const y = (tempV.y * -.5 + .5) * window.innerHeight;
+
+      const el = document.createElement('div');
+      el.className = 'damage-text';
+      el.style.color = '#ff9900';
+      el.innerText = `-${dmg}`;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+
+    function showHealText(text, worldPos) {
+      const tempV = worldPos.clone().add(new THREE.Vector3(0, 2.0, 0));
+      tempV.project(camera);
+      const x = (tempV.x * .5 + .5) * window.innerWidth;
+      const y = (tempV.y * -.5 + .5) * window.innerHeight;
+
+      const el = document.createElement('div');
+      el.className = 'damage-text';
+      el.style.color = '#34d399'; // 초록색 회복 텍스트
+      el.innerText = text;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+
+    /* ==========================================
+       8. EXP DUNGEON LOGIC
        ========================================== */
     function enterExpDungeon() {
       if (inDungeon || dungeonCooldown > 0) return;
 
       inDungeon = true;
-      dungeonTimer = 60; // 1분 던전 체류 시간
+      dungeonTimer = 60;
       previousStage = currentStage;
       currentStage = 'dungeon';
 
@@ -829,7 +903,7 @@
 
     function exitExpDungeon() {
       inDungeon = false;
-      dungeonCooldown = 60; // 1분 재입장 쿨타임 시작
+      dungeonCooldown = 60;
 
       currentStage = previousStage;
       document.getElementById('stage-badge').innerText = currentStage === 1 ? "1단계: 초보자 사냥터" : "2단계: 웅녀동굴";
@@ -869,9 +943,9 @@
     }
 
     /* ==========================================
-       8. SHOP SYSTEM & MODALS
+       9. SHOP SYSTEM & MODALS (포션 카테고리 추가)
        ========================================== */
-    let currentShopCategory = 'hero';
+    let currentShopCategory = 'potion';
 
     const shopCatalog = {
       weapon: [
@@ -888,6 +962,11 @@
       ],
       hero: [
         { id: 'h1', name: '황진이', desc: '캐릭터를 따라다니며 가야금 끝에서 불꽃 에너지 볼트를 발사하는 보조 영웅', price: 50000, type: 'hero' }
+      ],
+      // [신규 포션 카테고리]
+      potion: [
+        { id: 'p1', name: 'HP 포션', desc: '최대 HP의 15%를 즉시 회복합니다.', price: 1000, type: 'hp_potion', val: 0.15 },
+        { id: 'p2', name: 'MP 포션', desc: '최대 MP의 15%를 즉시 회복합니다.', price: 1000, type: 'mp_potion', val: 0.15 }
       ]
     };
 
@@ -902,8 +981,9 @@
 
     function switchShopCategory(cat) {
       currentShopCategory = cat;
-      ['weapon', 'armor', 'skill', 'hero'].forEach(c => {
-        document.getElementById(`tab-${c}`).classList.toggle('active', c === cat);
+      ['weapon', 'armor', 'skill', 'hero', 'potion'].forEach(c => {
+        const el = document.getElementById(`tab-${c}`);
+        if (el) el.classList.toggle('active', c === cat);
       });
 
       const container = document.getElementById('shop-items-container');
@@ -941,6 +1021,14 @@
       if (id === 'h1') {
         playerState.hasHwangJini = true;
         spawnHwangJiniHero();
+      } else if (item.type === 'hp_potion') {
+        const healAmt = Math.round(playerState.maxHp * item.val);
+        playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
+        showHealText(`+${healAmt} HP`, playerGroup.position);
+      } else if (item.type === 'mp_potion') {
+        const manaAmt = Math.round(playerState.maxMp * item.val);
+        playerState.mp = Math.min(playerState.maxMp, playerState.mp + manaAmt);
+        showHealText(`+${manaAmt} MP`, playerGroup.position);
       } else if (item.type === 'atk') {
         playerState.attackPower += item.val;
       } else if (item.type === 'hp') {
@@ -953,7 +1041,7 @@
     }
 
     /* ==========================================
-       9. STAGE TRANSITION & NAMETAGS
+       10. STAGE TRANSITION & NAMETAGS
        ========================================== */
     function goToNextStage() {
       if (playerState.level < 20 || inDungeon) return;
@@ -1008,7 +1096,7 @@
     }
 
     /* ==========================================
-       10. AUTO-HUNT & JOYSTICK CONTROLS
+       11. AUTO-HUNT & JOYSTICK CONTROLS
        ========================================== */
     let isAutoHunt = false;
 
@@ -1114,7 +1202,7 @@
     });
 
     /* ==========================================
-       11. MINIMAP & CAMERA ZOOM
+       12. MINIMAP & CAMERA ZOOM
        ========================================== */
     const minimapBox = document.getElementById('minimap-box');
     const minimapCanvas = document.getElementById('minimap-canvas');
@@ -1165,7 +1253,7 @@
     }
 
     /* ==========================================
-       12. COMBAT & PROGRESSION
+       13. COMBAT & PROGRESSION
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1225,7 +1313,6 @@
         addReward(target.expReward, target.goldReward);
         if (selectedTargetMonster === target) selectedTargetMonster = null;
 
-        // 던전에서는 리젠 속도 2배 (1.5초), 일반 필드는 3초
         const respawnDelay = inDungeon ? 1500 : 3000;
         setTimeout(() => {
           target.hp = target.maxHp;
@@ -1319,7 +1406,7 @@
     }
 
     /* ==========================================
-       13. MAIN ANIMATION LOOP
+       14. MAIN ANIMATION LOOP
        ========================================== */
     const clock = new THREE.Clock();
 
@@ -1327,8 +1414,8 @@
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      // 던전 타이머 업데이트
       updateDungeonTimer(delta);
+      processMonsterAI(delta);
 
       let moveX = joystickVector.x, moveZ = joystickVector.y;
       if (keys['w'] || keys['arrowup']) moveZ -= 1;
