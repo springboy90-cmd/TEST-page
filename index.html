@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 상점 & 소환영웅 황진이</title>
+  <title>군주의 길 3D - 경험치 던전 업데이트</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -42,6 +42,10 @@
       padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer;
       box-shadow: 0 3px 8px rgba(0,0,0,0.5);
     }
+    .btn-dungeon {
+      background: linear-gradient(180deg, #7c3aed, #4c1d95);
+      border: 1px solid #c084fc; color: #fff;
+    }
     .btn-stage {
       background: linear-gradient(180deg, #1e40af, #1e1b4b);
       border: 2px solid #60a5fa; color: #fff; font-size: 12px;
@@ -59,7 +63,7 @@
     .btn-zoom { width: 40px; height: 40px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 18px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 115px; right: 10px; width: 125px; height: 125px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 8px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 145px; right: 10px; width: 125px; height: 125px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 8px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
@@ -85,11 +89,10 @@
     .tag-name { color: #ffffff; font-weight: bold; }
     .tag-monster { color: #ff5555; font-weight: bold; }
 
-    /* Modal (Job & Shop) */
+    /* Modals */
     .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 20px; width: 92%; max-width: 520px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .modal-title { text-align: center; color: #ffd700; font-size: 17px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #374151; padding-bottom: 8px; }
     
-    /* Shop UI Category Tabs */
     .shop-tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
     .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 8px 0; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
     .shop-tab.active { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-color: #60a5fa; color: #fff; }
@@ -146,6 +149,7 @@
       <!-- Top Right Controls -->
       <div class="top-right-controls interactive">
         <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 입장 (Lv.20+)</button>
+        <button class="btn-small btn-dungeon" id="btn-dungeon" onclick="enterExpDungeon()">🏰 경험치 던전</button>
         <button class="btn-small" style="background: linear-gradient(180deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff;" onclick="openShopModal()">🛒 상점</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵</button>
         <button class="btn-small" onclick="addExpDev()">⚡ 테스트 지원 (+Lv.5/G)</button>
@@ -175,7 +179,6 @@
       <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>OFF</div>
       <div class="action-btn btn-target" id="btn-target" onclick="targetNearestMonster()">🎯</div>
       <div class="action-btn btn-attack" id="btn-attack" onclick="triggerAttackBtn()">⚔️</div>
-      <!-- 전직 완료 시 자동으로 숨겨지는 전직 버튼 -->
       <div class="action-btn" id="btn-job-modal" style="display: none; width: 50px; height: 50px; background: linear-gradient(135deg, #ffd700, #b8860b); border: 2px solid #fff; font-size: 20px;" onclick="openJobModal()">📜</div>
     </div>
   </div>
@@ -216,9 +219,7 @@
       <div class="shop-tab active" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
     </div>
 
-    <div class="shop-items-grid" id="shop-items-container">
-      <!-- 동적 생성 항목 -->
-    </div>
+    <div class="shop-items-grid" id="shop-items-container"></div>
 
     <div style="text-align: center; margin-top: 14px;">
       <button class="btn-small" onclick="closeShopModal()">상점 닫기</button>
@@ -234,6 +235,12 @@
 
     const scene = new THREE.Scene();
     let currentStage = 1;
+    let previousStage = 1;
+
+    // 던전 상태 관리 변수
+    let inDungeon = false;
+    let dungeonTimer = 0;      // 던전 내부 남아있는 시간 (초)
+    let dungeonCooldown = 0;   // 던전 재입장 쿨타임 (초)
 
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 22, 22);
@@ -311,6 +318,7 @@
       clearEnvironment();
       scene.background = new THREE.Color(0x3a483a);
       scene.fog = new THREE.FogExp2(0x3a483a, 0.008);
+      ambientLight.color.setHex(0xffffff);
       ambientLight.intensity = 0.85;
       dirLight.intensity = 0.95;
 
@@ -379,6 +387,46 @@
       }
     }
 
+    // 경험치 전용 던전 무대 조성 (붉은 마법 진)
+    function buildDungeonStage() {
+      clearEnvironment();
+      scene.background = new THREE.Color(0x450a0a);
+      scene.fog = new THREE.FogExp2(0x450a0a, 0.008);
+      ambientLight.color.setHex(0xfecdd3);
+      ambientLight.intensity = 1.2;
+      dirLight.intensity = 1.0;
+
+      const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
+      const floorM = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.5, metalness: 0.2 });
+      floorMesh = new THREE.Mesh(floorG, floorM);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // 던전 외곽 기둥 장식
+      for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * Math.PI * 2;
+        const radius = 45;
+        const pillarGroup = new THREE.Group();
+        
+        const pillarG = new THREE.CylinderGeometry(1.2, 1.5, 8, 8);
+        const pillarM = new THREE.MeshStandardMaterial({ color: 0x450a0a });
+        const pillar = new THREE.Mesh(pillarG, pillarM);
+        pillar.position.y = 4;
+        pillarGroup.add(pillar);
+
+        const flameG = new THREE.SphereGeometry(0.8, 8, 8);
+        const flameM = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+        const flame = new THREE.Mesh(flameG, flameM);
+        flame.position.y = 8.5;
+        pillarGroup.add(flame);
+
+        pillarGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+        scene.add(pillarGroup);
+        environmentObjects.push(pillarGroup);
+      }
+    }
+
     /* ==========================================
        4. PLAYER STATE & MESH
        ========================================== */
@@ -391,7 +439,7 @@
       exp: 0, maxExp: 50,
       gold: 100,
       attackPower: 12, attackRange: 2.5, 
-      attackSpeed: 1200, // 0.3초 느려진 묵직한 공격 쿨타임
+      attackSpeed: 1200,
       lastAttackTime: 0,
       moveSpeed: 9,
       hasHwangJini: false
@@ -466,7 +514,7 @@
     scene.add(playerGroup);
 
     /* ==========================================
-       5. SUMMON HERO: HWANG JIN-I (소환영웅 황진이)
+       5. SUMMON HERO HWANG JIN-I
        ========================================== */
     let hwangJiniGroup = null;
     let hwangJiniInstrumentTip = null;
@@ -482,7 +530,6 @@
 
       hwangJiniGroup = new THREE.Group();
 
-      // 한복 치마 (푸른색 패턴 치마)
       const skirtG = new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16);
       const skirtM = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 });
       const skirt = new THREE.Mesh(skirtG, skirtM);
@@ -490,7 +537,6 @@
       skirt.castShadow = true;
       hwangJiniGroup.add(skirt);
 
-      // 한복 저고리 (붉은 저고리)
       const topG = new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16);
       const topM = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3 });
       const top = new THREE.Mesh(topG, topM);
@@ -498,7 +544,6 @@
       top.castShadow = true;
       hwangJiniGroup.add(top);
 
-      // 머리 & 전모/가체 모자
       const headG = new THREE.SphereGeometry(0.28, 16, 16);
       const headM = new THREE.MeshStandardMaterial({ color: 0xffdbac });
       const head = new THREE.Mesh(headG, headM);
@@ -506,7 +551,6 @@
       head.castShadow = true;
       hwangJiniGroup.add(head);
 
-      // 가체 머리장식/모자
       const hatG = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16);
       const hatM = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
       const hat = new THREE.Mesh(hatG, hatM);
@@ -514,20 +558,17 @@
       hat.rotation.z = 0.1;
       hwangJiniGroup.add(hat);
 
-      // 대각선으로 든 가야금/거문고 악기
       const instG = new THREE.BoxGeometry(0.2, 1.4, 0.08);
       const instM = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3 });
       const instrument = new THREE.Mesh(instG, instM);
       instrument.position.set(0.1, 1.1, 0.25);
-      instrument.rotation.z = -Math.PI / 3; // 대각선으로 안은 모양
+      instrument.rotation.z = -Math.PI / 3;
       hwangJiniGroup.add(instrument);
 
-      // 악기 끝부분 (불꽃 에너지 볼트가 발사될 위치)
       hwangJiniInstrumentTip = new THREE.Object3D();
       hwangJiniInstrumentTip.position.set(0.6, 1.5, 0.25);
       hwangJiniGroup.add(hwangJiniInstrumentTip);
 
-      // 발밑 영웅 오라
       const heroAuraG = new THREE.RingGeometry(0.4, 0.8, 24);
       const heroAuraM = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
       const heroAura = new THREE.Mesh(heroAuraG, heroAuraM);
@@ -538,11 +579,9 @@
       hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.2, 0, 1.2));
       scene.add(hwangJiniGroup);
 
-      // 이름표 생성
       createNametagElement('hero_hwangjini', '소환영웅', '황진이', false, true);
     }
 
-    // 황진이의 불꽃 에너지 볼트 발사
     function attackHwangJini(target) {
       const now = Date.now();
       if (now - hwangJiniState.lastAttackTime < hwangJiniState.attackSpeed) return;
@@ -553,13 +592,11 @@
       const startPos = new THREE.Vector3();
       hwangJiniInstrumentTip.getWorldPosition(startPos);
 
-      // 불꽃 에너지 볼트 메쉬 (붉은 주황빛 발광 볼트)
       const boltG = new THREE.SphereGeometry(0.28, 12, 12);
       const boltM = new THREE.MeshBasicMaterial({ color: 0xff4500 });
       const boltMesh = new THREE.Mesh(boltG, boltM);
       boltMesh.position.copy(startPos);
 
-      // 볼트 외곽 화염 코로라
       const coronaG = new THREE.SphereGeometry(0.4, 12, 12);
       const coronaM = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 });
       const corona = new THREE.Mesh(coronaG, coronaM);
@@ -571,8 +608,7 @@
         mesh: boltMesh,
         target: target,
         speed: 22,
-        damage: hwangJiniState.attackPower,
-        isHeroBolt: true
+        damage: hwangJiniState.attackPower
       });
     }
 
@@ -748,8 +784,92 @@
       }
     }
 
+    // 경험치 던전 전용 스폰 (2배 이상 스폰 = 24마리, 경험치 500% = 5배)
+    function spawnDungeonMonsters() {
+      clearMonsters();
+      const types = ["야옹이", "돼지", "버섯돌이", "토끼", "웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
+
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        const radius = 8 + Math.random() * 32;
+        const mType = types[i % types.length];
+        const mGroup = (i % 2 === 0) ? createBeginnerMonsterMesh(mType) : createCaveMonsterMesh(mType);
+        
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        mGroup.position.set(x, 0, z);
+        scene.add(mGroup);
+
+        // 경험치 500% (5배) 적용 (30 * 5 = 150 EXP)
+        const mObj = { group: mGroup, type: mType, hp: 45, maxHp: 45, expReward: 150, goldReward: 50, alive: true };
+        monsters.push(mObj);
+        createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
+      }
+    }
+
     /* ==========================================
-       7. SHOP SYSTEM & MODALS
+       7. EXP DUNGEON LOGIC (1분 입장 / 1분 쿨타임)
+       ========================================== */
+    function enterExpDungeon() {
+      if (inDungeon || dungeonCooldown > 0) return;
+
+      inDungeon = true;
+      dungeonTimer = 60; // 1분 던전 체류 시간
+      previousStage = currentStage;
+      currentStage = 'dungeon';
+
+      document.getElementById('stage-badge').innerText = "SPECIAL: 경험치 던전";
+
+      buildDungeonStage();
+      spawnDungeonMonsters();
+
+      playerGroup.position.set(0, 0, 0);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 1.2);
+    }
+
+    function exitExpDungeon() {
+      inDungeon = false;
+      dungeonCooldown = 60; // 1분 재입장 쿨타임 시작
+
+      currentStage = previousStage;
+      document.getElementById('stage-badge').innerText = currentStage === 1 ? "1단계: 초보자 사냥터" : "2단계: 웅녀동굴";
+
+      if (currentStage === 1) {
+        buildStage1();
+        spawnStage1Monsters();
+      } else {
+        buildStage2();
+        spawnStage2Monsters();
+      }
+
+      playerGroup.position.set(0, 0, 5);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 6.2);
+    }
+
+    function updateDungeonTimer(delta) {
+      const btn = document.getElementById('btn-dungeon');
+
+      if (inDungeon) {
+        dungeonTimer -= delta;
+        if (dungeonTimer <= 0) {
+          exitExpDungeon();
+          return;
+        }
+        btn.innerText = `🏰 던전 (${Math.ceil(dungeonTimer)}s)`;
+        btn.style.opacity = "0.9";
+      } else if (dungeonCooldown > 0) {
+        dungeonCooldown -= delta;
+        if (dungeonCooldown < 0) dungeonCooldown = 0;
+        btn.innerText = `🏰 쿨타임 (${Math.ceil(dungeonCooldown)}s)`;
+        btn.style.opacity = "0.5";
+      } else {
+        btn.innerText = `🏰 경험치 던전`;
+        btn.style.opacity = "1.0";
+      }
+    }
+
+    /* ==========================================
+       8. SHOP SYSTEM & MODALS
        ========================================== */
     let currentShopCategory = 'hero';
 
@@ -833,10 +953,10 @@
     }
 
     /* ==========================================
-       8. STAGE TRANSITION & NAMETAGS
+       9. STAGE TRANSITION & NAMETAGS
        ========================================== */
     function goToNextStage() {
-      if (playerState.level < 20) return;
+      if (playerState.level < 20 || inDungeon) return;
 
       currentStage = 2;
       document.getElementById('stage-badge').innerText = "2단계: 웅녀동굴";
@@ -853,7 +973,6 @@
     function updateNametagsPosition() {
       const tempV = new THREE.Vector3();
 
-      // 플레이어
       tempV.copy(playerGroup.position).add(new THREE.Vector3(0, 2.6, 0));
       tempV.project(camera);
       const pEl = nametags.get('player');
@@ -862,7 +981,6 @@
         pEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
       }
 
-      // 소환영웅 황진이
       if (hwangJiniGroup) {
         tempV.copy(hwangJiniGroup.position).add(new THREE.Vector3(0, 2.2, 0));
         tempV.project(camera);
@@ -873,7 +991,6 @@
         }
       }
 
-      // 몬스터
       monsters.forEach((m, idx) => {
         const mEl = nametags.get(`monster_${idx}`);
         if (mEl) {
@@ -891,7 +1008,7 @@
     }
 
     /* ==========================================
-       9. AUTO-HUNT & CONTROLS
+       10. AUTO-HUNT & JOYSTICK CONTROLS
        ========================================== */
     let isAutoHunt = false;
 
@@ -997,7 +1114,7 @@
     });
 
     /* ==========================================
-       10. MINIMAP & CAMERA ZOOM
+       11. MINIMAP & CAMERA ZOOM
        ========================================== */
     const minimapBox = document.getElementById('minimap-box');
     const minimapCanvas = document.getElementById('minimap-canvas');
@@ -1020,7 +1137,7 @@
       const mapRadius = floorSize / 2;
 
       mCtx.clearRect(0, 0, w, h);
-      mCtx.fillStyle = currentStage === 1 ? '#1e293b' : '#132a20';
+      mCtx.fillStyle = inDungeon ? '#450a0a' : (currentStage === 1 ? '#1e293b' : '#132a20');
       mCtx.fillRect(0, 0, w, h);
 
       const worldToMap = (wx, wz) => ({
@@ -1040,7 +1157,6 @@
       mCtx.fillStyle = '#06b6d4';
       mCtx.beginPath(); mCtx.arc(pPos.x, pPos.y, 4, 0, Math.PI * 2); mCtx.fill();
 
-      // 황진이 미니맵 지점 (노란색 점)
       if (hwangJiniGroup) {
         const hPos = worldToMap(hwangJiniGroup.position.x, hwangJiniGroup.position.z);
         mCtx.fillStyle = '#facc15';
@@ -1049,7 +1165,7 @@
     }
 
     /* ==========================================
-       11. COMBAT & PROGRESSION
+       12. COMBAT & PROGRESSION
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1109,12 +1225,14 @@
         addReward(target.expReward, target.goldReward);
         if (selectedTargetMonster === target) selectedTargetMonster = null;
 
+        // 던전에서는 리젠 속도 2배 (1.5초), 일반 필드는 3초
+        const respawnDelay = inDungeon ? 1500 : 3000;
         setTimeout(() => {
           target.hp = target.maxHp;
           target.alive = true;
           target.group.position.set((Math.random() - 0.5) * 50, 0, (Math.random() - 0.5) * 50 - 5);
           scene.add(target.group);
-        }, 3000);
+        }, respawnDelay);
       }
     }
 
@@ -1167,16 +1285,14 @@
       const pEl = nametags.get('player');
       if (pEl) pEl.querySelector('.tag-title').innerText = `Lv.${playerState.level} ${playerState.title}`;
 
-      // 전직 버튼 활성화/숨김 조건
-      // 레벨 20 이상이면서 아직 평민일 때만 전직 버튼을 표시
       const jobBtn = document.getElementById('btn-job-modal');
       if (playerState.level >= 20 && playerState.job === "평민") {
         jobBtn.style.display = "flex";
       } else {
-        jobBtn.style.display = "none"; // 전직을 마치면 자동으로 깔끔하게 사라짐
+        jobBtn.style.display = "none";
       }
 
-      if (playerState.level >= 20 && currentStage === 1) {
+      if (playerState.level >= 20 && currentStage === 1 && !inDungeon) {
         document.getElementById('btn-next-stage').style.display = "block";
       }
     }
@@ -1203,13 +1319,16 @@
     }
 
     /* ==========================================
-       12. MAIN ANIMATION LOOP
+       13. MAIN ANIMATION LOOP
        ========================================== */
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
+
+      // 던전 타이머 업데이트
+      updateDungeonTimer(delta);
 
       let moveX = joystickVector.x, moveZ = joystickVector.y;
       if (keys['w'] || keys['arrowup']) moveZ -= 1;
@@ -1231,7 +1350,6 @@
         processAutoHuntLogic(delta);
       }
 
-      // 황진이 따라다니기 및 보조 공격 AI
       if (hwangJiniGroup) {
         const desiredPos = playerGroup.position.clone().add(new THREE.Vector3(-1.3, 0, 1.3));
         hwangJiniGroup.position.lerp(desiredPos, 0.08);
@@ -1246,7 +1364,6 @@
 
       auraMesh.rotation.z += delta * 1.5;
 
-      // 투사체 (캐릭터 & 황진이 불꽃 볼트 연산)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         if (!p.target.alive) { scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
