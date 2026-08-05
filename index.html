@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 모바일 UI 축소 & 스탯 시스템</title>
+  <title>군주의 길 3D - 밸런스 & 퀵 포션 업데이트</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -14,13 +14,13 @@
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
-    /* [수정] 모바일 최적화: 기존 대비 1/2 크기의 슬림 캐릭터 상태 패널 */
+    /* 슬림 캐릭터 상태 패널 */
     .status-panel {
       background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
       border: 1px solid #a88a44;
       border-radius: 6px;
       padding: 6px 8px;
-      width: 150px; /* 기존 260px 대비 약 1/2 축소 */
+      width: 165px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.8);
     }
     .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: bold; font-size: 10px; }
@@ -34,12 +34,37 @@
     .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
     .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 10px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
 
-    /* [신규] 실시간 스탯(공격력/방어력) 및 재화 표시줄 */
+    /* 실시간 스탯(공격력/방어력/치명타) 표시줄 */
     .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
     .stat-row-item { display: flex; justify-content: space-between; font-weight: bold; }
     .stat-atk { color: #f87171; }
     .stat-def { color: #60a5fa; }
+    .stat-crit { color: #fde047; }
     .stat-gold { color: #facc15; }
+
+    /* 조이스틱 상단 퀵 포션 구매 UI */
+    #quick-potions {
+      position: absolute;
+      bottom: 140px;
+      left: 15px;
+      display: flex;
+      gap: 6px;
+      z-index: 20;
+      pointer-events: auto;
+    }
+    .btn-potion {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid #a88a44;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 5px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+    .btn-potion:active { transform: scale(0.92); }
+    .btn-hp { border-color: #f87171; color: #fca5a5; }
+    .btn-mp { border-color: #60a5fa; color: #93c5fd; }
 
     /* 우측 상단 버튼 */
     .top-right-controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
@@ -101,7 +126,7 @@
     .modal-title { text-align: center; color: #ffd700; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #374151; padding-bottom: 6px; }
     
     .shop-tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
-    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 0; font-size: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; text-align: center; }
+    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 0; font-size: 11px; font-weight: bold; border-radius: 5px; cursor: pointer; text-align: center; }
     .shop-tab.active { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-color: #60a5fa; color: #fff; }
     
     .shop-items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
@@ -116,7 +141,8 @@
     .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
     .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 6px; padding: 8px 4px; text-align: center; cursor: pointer; }
 
-    .damage-text { position: absolute; color: #ff3333; font-weight: bold; font-size: 18px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
+    .damage-text { position: absolute; color: #ff3333; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
+    .crit-text { font-size: 20px; color: #facc15 !important; text-shadow: 2px 2px 0px #854d0e; }
     @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -129,7 +155,7 @@
   <div id="ui-layer">
     <!-- HUD Top -->
     <div style="display: flex; justify-content: space-between; width: 100%;">
-      <!-- 1/2 슬림화 적용된 캐릭터 상태 UI -->
+      <!-- 슬림 캐릭터 상태 패널 -->
       <div class="status-panel interactive">
         <div class="character-info">
           <span><strong id="player-name">조선유생</strong> <span style="color:#aaa;" id="player-lv">Lv.1</span></span>
@@ -149,11 +175,12 @@
           <div class="bar-text" id="exp-text">0/50 (0%)</div>
         </div>
 
-        <!-- [신규] 실시간 스탯(공격력/방어력) & 재화 라인 -->
+        <!-- 실시간 스탯(공격력/방어력/치명타) & 재화 -->
         <div class="stat-rows">
           <div class="stat-row-item">
-            <span class="stat-atk">⚔️공: <span id="atk-val">12</span></span>
-            <span class="stat-def">🛡️방: <span id="def-val">5</span></span>
+            <span class="stat-atk">⚔️<span id="atk-val">12</span></span>
+            <span class="stat-def">🛡️<span id="def-val">5</span></span>
+            <span class="stat-crit">💥<span id="crit-val">5</span>%</span>
           </div>
           <div class="stat-row-item" style="margin-top: 1px;">
             <span class="stage-badge" id="stage-badge">초보자 사냥터</span>
@@ -181,6 +208,12 @@
     <div class="zoom-controls interactive">
       <div class="btn-zoom" onclick="changeZoom(-0.25)">🔍+</div>
       <div class="btn-zoom" onclick="changeZoom(0.25)">🔍-</div>
+    </div>
+
+    <!-- [신규] 조이스틱 상단 퀵 포션 구매 UI -->
+    <div id="quick-potions" class="interactive">
+      <button class="btn-potion btn-hp" onclick="buyQuickPotion('hp')">🧪 HP (1kG)</button>
+      <button class="btn-potion btn-mp" onclick="buyQuickPotion('mp')">🧪 MP (1kG)</button>
     </div>
 
     <!-- Joystick -->
@@ -224,7 +257,7 @@
     </div>
   </div>
 
-  <!-- Shop Modal -->
+  <!-- Shop Modal (포션 탭 삭제됨) -->
   <div class="modal interactive" id="shop-modal">
     <div class="modal-title">🛒 조선 저자거리 상점</div>
     
@@ -232,8 +265,7 @@
       <div class="shop-tab" id="tab-weapon" onclick="switchShopCategory('weapon')">무기</div>
       <div class="shop-tab" id="tab-armor" onclick="switchShopCategory('armor')">방어구</div>
       <div class="shop-tab" id="tab-skill" onclick="switchShopCategory('skill')">스킬</div>
-      <div class="shop-tab" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
-      <div class="shop-tab active" id="tab-potion" onclick="switchShopCategory('potion')">포션</div>
+      <div class="shop-tab active" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
     </div>
 
     <div class="shop-items-grid" id="shop-items-container"></div>
@@ -442,7 +474,7 @@
     }
 
     /* ==========================================
-       4. PLAYER STATE & MESH
+       4. PLAYER STATE & MESH (치명타 스탯 추가)
        ========================================== */
     const playerState = {
       name: "조선유생",
@@ -452,8 +484,9 @@
       mp: 50, maxMp: 50,
       exp: 0, maxExp: 50,
       gold: 100,
-      attackPower: 12,  // 실시간 공격력
-      defensePower: 5,   // [신규] 실시간 방어력
+      attackPower: 12,
+      defensePower: 5,
+      critChance: 0.05, // [신규] 기본 치명타 확률 5%
       attackRange: 2.5, 
       attackSpeed: 1200,
       lastAttackTime: 0,
@@ -629,7 +662,7 @@
     }
 
     /* ==========================================
-       6. MONSTER MODELS
+       6. MONSTER MODELS & BALANCED HP
        ========================================== */
     const monsters = [];
     const projectiles = [];
@@ -758,6 +791,7 @@
       return group;
     }
 
+    // [밸런스 적용] 1스테이지: 2~4회 공격으로 처치 (HP: 20)
     function spawnStage1Monsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼"];
@@ -773,12 +807,13 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 35, maxHp: 35, expReward: 30, goldReward: 20, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 20, maxHp: 20, expReward: 30, goldReward: 20, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.${(i%4)+1} ${mType}`, true);
       }
     }
 
+    // [밸런스 적용] 2스테이지: 4~8회 공격으로 처치 (HP: 320)
     function spawnStage2Monsters() {
       clearMonsters();
       const types = ["웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
@@ -794,7 +829,7 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 120, maxHp: 120, expReward: 96, goldReward: 120, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 320, maxHp: 320, expReward: 96, goldReward: 120, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
       }
@@ -815,7 +850,7 @@
         mGroup.position.set(x, 0, z);
         scene.add(mGroup);
 
-        const mObj = { group: mGroup, type: mType, hp: 45, maxHp: 45, expReward: 150, goldReward: 50, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
+        const mObj = { group: mGroup, type: mType, hp: 80, maxHp: 80, expReward: 150, goldReward: 50, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
         monsters.push(mObj);
         createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
       }
@@ -825,7 +860,6 @@
        7. MONSTER ATTACK & AI LOGIC
        ========================================== */
     function monsterAttackPlayer(m) {
-      // 방어력 감소 수치 반영 데미지 연산
       const baseDmgPercent = (currentStage === 1) ? 0.03 : 0.065;
       const rawDmg = playerState.maxHp * baseDmgPercent;
       const dmg = Math.max(1, Math.round(rawDmg - playerState.defensePower * 0.2));
@@ -901,6 +935,23 @@
       setTimeout(() => el.remove(), 800);
     }
 
+    // [신규] 조이스틱 상단 퀵 포션 구매 함수
+    function buyQuickPotion(type) {
+      if (playerState.gold < 1000) return;
+      playerState.gold -= 1000;
+
+      if (type === 'hp') {
+        const healAmt = Math.round(playerState.maxHp * 0.15);
+        playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
+        showHealText(`+${healAmt} HP`, playerGroup.position);
+      } else if (type === 'mp') {
+        const manaAmt = Math.round(playerState.maxMp * 0.15);
+        playerState.mp = Math.min(playerState.maxMp, playerState.mp + manaAmt);
+        showHealText(`+${manaAmt} MP`, playerGroup.position);
+      }
+      updateUI();
+    }
+
     /* ==========================================
        8. EXP DUNGEON LOGIC
        ========================================== */
@@ -963,9 +1014,9 @@
     }
 
     /* ==========================================
-       9. SHOP SYSTEM & MODALS
+       9. SHOP SYSTEM & MODALS (치명타 스킬 & 포션 탭 삭제)
        ========================================== */
-    let currentShopCategory = 'potion';
+    let currentShopCategory = 'hero';
 
     const shopCatalog = {
       weapon: [
@@ -977,15 +1028,12 @@
         { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20 증가', price: 25000, type: 'armor', valHp: 250, valDef: 20 }
       ],
       skill: [
+        { id: 'crit_up', name: '치명타 수련', desc: '치명타 확률 +3% 영구 증가 (최대 80%)', price: 25000, type: 'crit' },
         { id: 's1', name: '일격필살 초급', desc: '공격력 +10 영구 상승', price: 8000, type: 'atk', val: 10 },
         { id: 's2', name: '화염의 축복', desc: '공격력 +25 영구 상승', price: 20000, type: 'atk', val: 25 }
       ],
       hero: [
         { id: 'h1', name: '황진이', desc: '캐릭터를 따라다니며 가야금 끝에서 불꽃 에너지 볼트를 발사하는 보조 영웅', price: 50000, type: 'hero' }
-      ],
-      potion: [
-        { id: 'p1', name: 'HP 포션', desc: '최대 HP의 15%를 즉시 회복합니다.', price: 1000, type: 'hp_potion', val: 0.15 },
-        { id: 'p2', name: 'MP 포션', desc: '최대 MP의 15%를 즉시 회복합니다.', price: 1000, type: 'mp_potion', val: 0.15 }
       ]
     };
 
@@ -1000,7 +1048,7 @@
 
     function switchShopCategory(cat) {
       currentShopCategory = cat;
-      ['weapon', 'armor', 'skill', 'hero', 'potion'].forEach(c => {
+      ['weapon', 'armor', 'skill', 'hero'].forEach(c => {
         const el = document.getElementById(`tab-${c}`);
         if (el) el.classList.toggle('active', c === cat);
       });
@@ -1011,6 +1059,8 @@
       const items = shopCatalog[cat];
       items.forEach(item => {
         const isBought = (item.id === 'h1' && playerState.hasHwangJini);
+        const isMaxCrit = (item.id === 'crit_up' && playerState.critChance >= 0.80);
+        
         const card = document.createElement('div');
         card.className = 'shop-item-card';
         card.innerHTML = `
@@ -1022,8 +1072,8 @@
           </div>
           <div class="item-footer">
             <span class="item-price">${item.price.toLocaleString()}냥</span>
-            <button class="btn-buy" ${isBought || playerState.gold < item.price ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">
-              ${isBought ? '보유중' : '구매하기'}
+            <button class="btn-buy" ${isBought || isMaxCrit || playerState.gold < item.price ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">
+              ${isMaxCrit ? '최대 달성' : (isBought ? '보유중' : '구매하기')}
             </button>
           </div>
         `;
@@ -1035,22 +1085,19 @@
       const item = shopCatalog[cat].find(i => i.id === id);
       if (!item || playerState.gold < item.price) return;
 
-      playerState.gold -= item.price;
-
-      if (id === 'h1') {
+      if (id === 'crit_up') {
+        if (playerState.critChance >= 0.80) return;
+        playerState.gold -= item.price;
+        playerState.critChance = Math.min(0.80, playerState.critChance + 0.03);
+      } else if (id === 'h1') {
+        playerState.gold -= item.price;
         playerState.hasHwangJini = true;
         spawnHwangJiniHero();
-      } else if (item.type === 'hp_potion') {
-        const healAmt = Math.round(playerState.maxHp * item.val);
-        playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
-        showHealText(`+${healAmt} HP`, playerGroup.position);
-      } else if (item.type === 'mp_potion') {
-        const manaAmt = Math.round(playerState.maxMp * item.val);
-        playerState.mp = Math.min(playerState.maxMp, playerState.mp + manaAmt);
-        showHealText(`+${manaAmt} MP`, playerGroup.position);
       } else if (item.type === 'atk') {
+        playerState.gold -= item.price;
         playerState.attackPower += item.val;
       } else if (item.type === 'armor') {
+        playerState.gold -= item.price;
         playerState.maxHp += item.valHp;
         playerState.hp += item.valHp;
         playerState.defensePower += item.valDef;
@@ -1273,7 +1320,7 @@
     }
 
     /* ==========================================
-       13. COMBAT & PROGRESSION
+       13. COMBAT & DAMAGE (방어력 & 치명타 적용)
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1321,11 +1368,21 @@
       projectiles.push({ mesh: pMesh, target: target, speed: isMagic ? 20 : 32, damage: playerState.attackPower });
     }
 
+    // [밸런스 적용] 방어력 연산 및 치명타 시스템
     function applyDamage(target, amount) {
       if (!target.alive) return;
-      const dmg = Math.round(amount * (0.8 + Math.random() * 0.4));
-      target.hp -= dmg;
-      showDamageText(dmg, target.group.position);
+
+      const isCrit = Math.random() < playerState.critChance;
+      const defRate = (currentStage === 1) ? (0.40 + Math.random() * 0.10) : (0.35 + Math.random() * 0.10);
+      
+      let netDmg = Math.round(amount * (1 - defRate) * (0.9 + Math.random() * 0.2));
+      if (isCrit) {
+        netDmg = Math.round(netDmg * 1.8); // 치명타 발동 시 1.8배 데미지
+      }
+      netDmg = Math.max(1, netDmg);
+
+      target.hp -= netDmg;
+      showDamageText(netDmg, target.group.position, isCrit);
 
       if (target.hp <= 0) {
         target.alive = false;
@@ -1343,15 +1400,15 @@
       }
     }
 
-    function showDamageText(dmg, worldPos) {
+    function showDamageText(dmg, worldPos, isCrit = false) {
       const tempV = worldPos.clone().add(new THREE.Vector3(0, 1.8, 0));
       tempV.project(camera);
       const x = (tempV.x * .5 + .5) * window.innerWidth;
       const y = (tempV.y * -.5 + .5) * window.innerHeight;
 
       const el = document.createElement('div');
-      el.className = 'damage-text';
-      el.innerText = `-${dmg}`;
+      el.className = `damage-text ${isCrit ? 'crit-text' : ''}`;
+      el.innerText = isCrit ? `💥 CRIT -${dmg}` : `-${dmg}`;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
       document.body.appendChild(el);
@@ -1369,7 +1426,7 @@
         playerState.maxHp += 20;
         playerState.hp = playerState.maxHp;
         playerState.attackPower += 5;
-        playerState.defensePower += 2; // 레벨업 시 방어력 증가
+        playerState.defensePower += 2;
       }
       updateUI();
     }
@@ -1391,9 +1448,9 @@
       const expPct = Math.round((playerState.exp / playerState.maxExp) * 100);
       document.getElementById('exp-text').innerText = `${playerState.exp}/${playerState.maxExp} (${expPct}%)`;
 
-      // 실시간 스탯(공격력 / 방어력) UI 업데이트
       document.getElementById('atk-val').innerText = playerState.attackPower;
       document.getElementById('def-val').innerText = playerState.defensePower;
+      document.getElementById('crit-val').innerText = Math.round(playerState.critChance * 100);
       document.getElementById('gold-val').innerText = playerState.gold.toLocaleString();
 
       const pEl = nametags.get('player');
