@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 맵 축소 & 골드/경험치 밸런스 패치</title>
+  <title>군주의 길 3D - 금화 던전 업데이트</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -34,7 +34,7 @@
     .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
     .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 10px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
 
-    /* 실시간 스탯(공격력/방어력/치명타) 표시줄 */
+    /* 실시간 스탯 표시줄 */
     .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
     .stat-row-item { display: flex; justify-content: space-between; font-weight: bold; }
     .stat-atk { color: #f87171; }
@@ -78,6 +78,10 @@
       background: linear-gradient(180deg, #7c3aed, #4c1d95);
       border: 1px solid #c084fc; color: #fff;
     }
+    .btn-gold-dungeon {
+      background: linear-gradient(180deg, #d97706, #78350f);
+      border: 1px solid #fde047; color: #fff;
+    }
     .btn-stage {
       background: linear-gradient(180deg, #1e40af, #1e1b4b);
       border: 2px solid #60a5fa; color: #fff; font-size: 11px;
@@ -95,7 +99,7 @@
     .btn-zoom { width: 36px; height: 38px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 145px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 165px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
@@ -193,6 +197,7 @@
       <div class="top-right-controls interactive">
         <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 (Lv.20+)</button>
         <button class="btn-small btn-dungeon" id="btn-dungeon" onclick="enterExpDungeon()">🏰 경험치 던전</button>
+        <button class="btn-small btn-gold-dungeon" id="btn-gold-dungeon" onclick="enterGoldDungeon()">💰 금화 던전</button>
         <button class="btn-small" style="background: linear-gradient(180deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff;" onclick="openShopModal()">🛒 상점</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵</button>
         <button class="btn-small" onclick="addExpDev()">⚡ 테스트 지원 (+5)</button>
@@ -290,6 +295,11 @@
     let dungeonTimer = 0;
     let dungeonCooldown = 0;
 
+    // [신규] 금화 던전 전용 변수 (시간 30초 / 쿨타임 60초)
+    let inGoldDungeon = false;
+    let goldDungeonTimer = 0;
+    let goldDungeonCooldown = 0;
+
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 22, 22);
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -350,9 +360,9 @@
     }
 
     /* ==========================================
-       3. STAGE BUILDERS (30% 축소 맵 규격 floorSize: 84)
+       3. STAGE BUILDERS (floorSize: 84)
        ========================================== */
-    const floorSize = 84; // [수정] 기존 120 대비 30% 축소 적용
+    const floorSize = 84;
     let floorMesh = null;
     const environmentObjects = [];
 
@@ -473,8 +483,40 @@
       }
     }
 
+    // [신규] 금화 던전 스테이지 지형 생성
+    function buildGoldDungeonStage() {
+      clearEnvironment();
+      scene.background = new THREE.Color(0x3a2e05);
+      scene.fog = new THREE.FogExp2(0x3a2e05, 0.008);
+      ambientLight.color.setHex(0xfef08a);
+      ambientLight.intensity = 1.4;
+      dirLight.intensity = 1.2;
+
+      const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
+      const floorM = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.4, metalness: 0.3 });
+      floorMesh = new THREE.Mesh(floorG, floorM);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // 황금 보물더미 장식물 배치
+      for (let i = 0; i < 14; i++) {
+        const angle = (i / 14) * Math.PI * 2;
+        const radius = 30;
+        const goldHeap = new THREE.Group();
+
+        const heapMesh = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 10), new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.9, roughness: 0.1 }));
+        heapMesh.position.y = 0.75;
+        goldHeap.add(heapMesh);
+
+        goldHeap.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+        scene.add(goldHeap);
+        environmentObjects.push(goldHeap);
+      }
+    }
+
     /* ==========================================
-       4. PLAYER STATE & MESH (필요 경험치 -25% 적용: 38)
+       4. PLAYER STATE & MESH
        ========================================== */
     const playerState = {
       name: "조선유생",
@@ -483,7 +525,7 @@
       hp: 100, maxHp: 100,
       mp: 50, maxMp: 50,
       exp: 0, 
-      maxExp: 38, // [수정] 레벨업 필요 경험치 -25% 하향 (50 -> 38)
+      maxExp: 38,
       gold: 100,
       attackPower: 12,
       defensePower: 5,
@@ -492,7 +534,8 @@
       attackSpeed: 1200,
       lastAttackTime: 0,
       moveSpeed: 9,
-      hasHwangJini: false
+      hasHwangJini: false,
+      hasJanggeum: false
     };
 
     const playerGroup = new THREE.Group();
@@ -564,71 +607,40 @@
     scene.add(playerGroup);
 
     /* ==========================================
-       5. SUMMON HERO HWANG JIN-I
+       5. SUMMON HEROES (황진이 & 의녀장금)
        ========================================== */
     let hwangJiniGroup = null;
     let hwangJiniInstrumentTip = null;
-    const hwangJiniState = {
-      attackPower: 30,
-      attackRange: 12,
-      attackSpeed: 1400,
-      lastAttackTime: 0
-    };
+    const hwangJiniState = { attackPower: 30, attackRange: 12, attackSpeed: 1400, lastAttackTime: 0 };
 
     function spawnHwangJiniHero() {
       if (hwangJiniGroup) return;
-
       hwangJiniGroup = new THREE.Group();
 
-      const skirtG = new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16);
-      const skirtM = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 });
-      const skirt = new THREE.Mesh(skirtG, skirtM);
-      skirt.position.y = 0.5;
-      skirt.castShadow = true;
-      hwangJiniGroup.add(skirt);
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 }));
+      skirt.position.y = 0.5; skirt.castShadow = true; hwangJiniGroup.add(skirt);
 
-      const topG = new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16);
-      const topM = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3 });
-      const top = new THREE.Mesh(topG, topM);
-      top.position.y = 1.15;
-      top.castShadow = true;
-      hwangJiniGroup.add(top);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3 }));
+      top.position.y = 1.15; top.castShadow = true; hwangJiniGroup.add(top);
 
-      const headG = new THREE.SphereGeometry(0.28, 16, 16);
-      const headM = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-      const head = new THREE.Mesh(headG, headM);
-      head.position.y = 1.6;
-      head.castShadow = true;
-      hwangJiniGroup.add(head);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+      head.position.y = 1.6; head.castShadow = true; hwangJiniGroup.add(head);
 
-      const hatG = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16);
-      const hatM = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
-      const hat = new THREE.Mesh(hatG, hatM);
-      hat.position.y = 1.85;
-      hat.rotation.z = 0.1;
-      hwangJiniGroup.add(hat);
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }));
+      hat.position.y = 1.85; hat.rotation.z = 0.1; hwangJiniGroup.add(hat);
 
-      const instG = new THREE.BoxGeometry(0.2, 1.4, 0.08);
-      const instM = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3 });
-      const instrument = new THREE.Mesh(instG, instM);
-      instrument.position.set(0.1, 1.1, 0.25);
-      instrument.rotation.z = -Math.PI / 3;
-      hwangJiniGroup.add(instrument);
+      const instrument = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 0.08), new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3 }));
+      instrument.position.set(0.1, 1.1, 0.25); instrument.rotation.z = -Math.PI / 3; hwangJiniGroup.add(instrument);
 
       hwangJiniInstrumentTip = new THREE.Object3D();
       hwangJiniInstrumentTip.position.set(0.6, 1.5, 0.25);
       hwangJiniGroup.add(hwangJiniInstrumentTip);
 
-      const heroAuraG = new THREE.RingGeometry(0.4, 0.8, 24);
-      const heroAuraM = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-      const heroAura = new THREE.Mesh(heroAuraG, heroAuraM);
-      heroAura.rotation.x = Math.PI / 2;
-      heroAura.position.y = 0.04;
-      hwangJiniGroup.add(heroAura);
+      const heroAura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      heroAura.rotation.x = Math.PI / 2; heroAura.position.y = 0.04; hwangJiniGroup.add(heroAura);
 
-      hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.2, 0, 1.2));
+      hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.3, 0, 1.3));
       scene.add(hwangJiniGroup);
-
       createNametagElement('hero_hwangjini', '소환영웅', '황진이', false, true);
     }
 
@@ -638,32 +650,92 @@
       hwangJiniState.lastAttackTime = now;
 
       hwangJiniGroup.lookAt(target.group.position.x, hwangJiniGroup.position.y, target.group.position.z);
+      const startPos = new THREE.Vector3(); hwangJiniInstrumentTip.getWorldPosition(startPos);
 
-      const startPos = new THREE.Vector3();
-      hwangJiniInstrumentTip.getWorldPosition(startPos);
-
-      const boltG = new THREE.SphereGeometry(0.28, 12, 12);
-      const boltM = new THREE.MeshBasicMaterial({ color: 0xff4500 });
-      const boltMesh = new THREE.Mesh(boltG, boltM);
+      const boltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff4500 }));
       boltMesh.position.copy(startPos);
+      const corona = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 }));
+      boltMesh.add(corona); scene.add(boltMesh);
 
-      const coronaG = new THREE.SphereGeometry(0.4, 12, 12);
-      const coronaM = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 });
-      const corona = new THREE.Mesh(coronaG, coronaM);
-      boltMesh.add(corona);
+      projectiles.push({ mesh: boltMesh, target: target, speed: 22, damage: hwangJiniState.attackPower });
+    }
 
-      scene.add(boltMesh);
+    let janggeumGroup = null;
+    let janggeumHandTip = null;
+    const janggeumState = {
+      attackMin: 50, attackMax: 60, defensePower: 80, attackRange: 11, attackSpeed: 1200, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000
+    };
 
-      projectiles.push({
-        mesh: boltMesh,
-        target: target,
-        speed: 22,
-        damage: hwangJiniState.attackPower
-      });
+    function spawnJanggeumHero() {
+      if (janggeumGroup) return;
+      janggeumGroup = new THREE.Group();
+
+      const skirtM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, 1.0, 16), skirtM);
+      skirt.position.y = 0.5; skirt.castShadow = true; janggeumGroup.add(skirt);
+
+      const trimM = new THREE.MeshStandardMaterial({ color: 0x2563eb });
+      const skirtTrim = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.56, 0.15, 16), trimM);
+      skirtTrim.position.y = 0.15; janggeumGroup.add(skirtTrim);
+
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), skirtM);
+      top.position.y = 1.15; top.castShadow = true; janggeumGroup.add(top);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.31, 0.15, 16), trimM);
+      collar.position.y = 1.3; janggeumGroup.add(collar);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+      head.position.y = 1.6; head.castShadow = true; janggeumGroup.add(head);
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.22, 0.25, 16), skirtM); cap.position.y = 1.88; janggeumGroup.add(cap);
+      const capBadge = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.26, 16), trimM);
+      capBadge.position.set(0, 1.88, 0.08); janggeumGroup.add(capBadge);
+
+      const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xb45309 }));
+      pouch.position.set(0, 1.0, 0.3); janggeumGroup.add(pouch);
+
+      janggeumHandTip = new THREE.Object3D();
+      janggeumHandTip.position.set(0, 1.1, 0.4);
+      janggeumGroup.add(janggeumHandTip);
+
+      const aura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      aura.rotation.x = Math.PI / 2; aura.position.y = 0.04; janggeumGroup.add(aura);
+
+      janggeumGroup.position.copy(playerGroup.position).add(new THREE.Vector3(1.3, 0, 1.3));
+      scene.add(janggeumGroup);
+      createNametagElement('hero_janggeum', '소환영웅', '의녀장금', false, true);
+    }
+
+    function attackJanggeum(target) {
+      const now = Date.now();
+      if (now - janggeumState.lastAttackTime < janggeumState.attackSpeed) return;
+      janggeumState.lastAttackTime = now;
+
+      janggeumGroup.lookAt(target.group.position.x, janggeumGroup.position.y, target.group.position.z);
+      const startPos = new THREE.Vector3(); janggeumHandTip.getWorldPosition(startPos);
+
+      const needleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+      needleMesh.position.copy(startPos); needleMesh.rotation.x = Math.PI / 2; scene.add(needleMesh);
+
+      const randomAtk = Math.floor(Math.random() * (janggeumState.attackMax - janggeumState.attackMin + 1)) + janggeumState.attackMin;
+      projectiles.push({ mesh: needleMesh, target: target, speed: 25, damage: randomAtk });
+    }
+
+    function processJanggeumHealSkill(now) {
+      if (!janggeumGroup) return;
+
+      if (now - janggeumState.lastHealTime >= janggeumState.healInterval) {
+        janggeumState.lastHealTime = now;
+
+        const healAmount = Math.round(playerState.maxHp * 0.10);
+        playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmount);
+
+        showHealText(`+${healAmount} (의녀 힐)`, playerGroup.position);
+        updateUI();
+      }
     }
 
     /* ==========================================
-       6. MONSTER MODELS & GOLD 5X REWARDS
+       6. MONSTER MODELS & GOLD CHEST MESH
        ========================================== */
     const monsters = [];
     const projectiles = [];
@@ -792,7 +864,26 @@
       return group;
     }
 
-    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 100G)
+    // [신규] 금화상자 몬스터 메쉬 생성 함수
+    function createGoldChestMonsterMesh() {
+      const group = new THREE.Group();
+
+      const chestBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.6), new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.8, roughness: 0.2 }));
+      chestBody.position.y = 0.3;
+      chestBody.castShadow = true;
+      group.add(chestBody);
+
+      const chestLid = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.2, 0.64), new THREE.MeshStandardMaterial({ color: 0xfde047, metalness: 0.9, roughness: 0.1 }));
+      chestLid.position.y = 0.65;
+      group.add(chestLid);
+
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), new THREE.MeshStandardMaterial({ color: 0x713f12, metalness: 0.5 }));
+      lock.position.set(0, 0.45, 0.32);
+      group.add(lock);
+
+      return group;
+    }
+
     function spawnStage1Monsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼"];
@@ -814,7 +905,6 @@
       }
     }
 
-    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 600G)
     function spawnStage2Monsters() {
       clearMonsters();
       const types = ["웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
@@ -836,7 +926,6 @@
       }
     }
 
-    // [수정] 골드 획득량 5배 증가 적용 (goldReward: 250G)
     function spawnDungeonMonsters() {
       clearMonsters();
       const types = ["야옹이", "돼지", "버섯돌이", "토끼", "웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
@@ -858,10 +947,32 @@
       }
     }
 
+    // [신규] 금화 던전 50마리 금화상자 스폰 (HP:1, EXP:0, GOLD:200)
+    function spawnGoldDungeonMonsters() {
+      clearMonsters();
+
+      for (let i = 0; i < 50; i++) {
+        const angle = (i / 50) * Math.PI * 2;
+        const radius = 4 + Math.random() * 26;
+        const mGroup = createGoldChestMonsterMesh();
+        
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        mGroup.position.set(x, 0, z);
+        scene.add(mGroup);
+
+        const mObj = { group: mGroup, type: "금화상자", hp: 1, maxHp: 1, expReward: 0, goldReward: 200, alive: true, attackRange: 1.5, attackSpeed: 99999, lastAttackTime: 0 };
+        monsters.push(mObj);
+        createNametagElement(`monster_${i}`, '보물', `금화상자`, true);
+      }
+    }
+
     /* ==========================================
        7. MONSTER ATTACK & AI LOGIC
        ========================================== */
     function monsterAttackPlayer(m) {
+      if (m.type === "금화상자") return; // 금화상자는 공격하지 않음
+
       const baseDmgPercent = (currentStage === 1) ? 0.03 : 0.065;
       const rawDmg = playerState.maxHp * baseDmgPercent;
       const dmg = Math.max(1, Math.round(rawDmg - playerState.defensePower * 0.2));
@@ -876,7 +987,8 @@
         
         playerState.hp = playerState.maxHp;
         playerGroup.position.set(0, 0, 5);
-        if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 6.2);
+        if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 6.3);
+        if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 6.3);
       }
 
       updateUI();
@@ -886,7 +998,7 @@
       const now = Date.now();
 
       monsters.forEach(m => {
-        if (!m.alive) return;
+        if (!m.alive || m.type === "금화상자") return;
 
         const dist = m.group.position.distanceTo(playerGroup.position);
 
@@ -954,10 +1066,10 @@
     }
 
     /* ==========================================
-       8. EXP DUNGEON LOGIC
+       8. DUNGEONS LOGIC (경험치 던전 & 신규 금화 던전)
        ========================================== */
     function enterExpDungeon() {
-      if (inDungeon || dungeonCooldown > 0) return;
+      if (inDungeon || inGoldDungeon || dungeonCooldown > 0) return;
 
       inDungeon = true;
       dungeonTimer = 60;
@@ -970,7 +1082,8 @@
       spawnDungeonMonsters();
 
       playerGroup.position.set(0, 0, 0);
-      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 1.2);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 1.3);
+      if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 1.3);
     }
 
     function exitExpDungeon() {
@@ -989,11 +1102,51 @@
       }
 
       playerGroup.position.set(0, 0, 5);
-      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.2, 0, 6.2);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 6.3);
+      if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 6.3);
+    }
+
+    // [신규] 금화 던전 입장/퇴장 연산 (시간: 30초 / 쿨타임: 60초)
+    function enterGoldDungeon() {
+      if (inDungeon || inGoldDungeon || goldDungeonCooldown > 0) return;
+
+      inGoldDungeon = true;
+      goldDungeonTimer = 30;
+      previousStage = currentStage;
+      currentStage = 'gold_dungeon';
+
+      document.getElementById('stage-badge').innerText = "💰 금화 던전";
+
+      buildGoldDungeonStage();
+      spawnGoldDungeonMonsters();
+
+      playerGroup.position.set(0, 0, 0);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 1.3);
+      if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 1.3);
+    }
+
+    function exitGoldDungeon() {
+      inGoldDungeon = false;
+      goldDungeonCooldown = 60;
+
+      currentStage = previousStage;
+      document.getElementById('stage-badge').innerText = currentStage === 1 ? "초보자 사냥터" : "웅녀동굴";
+
+      if (currentStage === 1) {
+        buildStage1();
+        spawnStage1Monsters();
+      } else {
+        buildStage2();
+        spawnStage2Monsters();
+      }
+
+      playerGroup.position.set(0, 0, 5);
+      if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 6.3);
+      if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 6.3);
     }
 
     function updateDungeonTimer(delta) {
-      const btn = document.getElementById('btn-dungeon');
+      const btnExp = document.getElementById('btn-dungeon');
 
       if (inDungeon) {
         dungeonTimer -= delta;
@@ -1001,16 +1154,37 @@
           exitExpDungeon();
           return;
         }
-        btn.innerText = `🏰 던전 (${Math.ceil(dungeonTimer)}s)`;
-        btn.style.opacity = "0.9";
+        btnExp.innerText = `🏰 던전 (${Math.ceil(dungeonTimer)}s)`;
+        btnExp.style.opacity = "0.9";
       } else if (dungeonCooldown > 0) {
         dungeonCooldown -= delta;
         if (dungeonCooldown < 0) dungeonCooldown = 0;
-        btn.innerText = `🏰 쿨타임 (${Math.ceil(dungeonCooldown)}s)`;
-        btn.style.opacity = "0.5";
+        btnExp.innerText = `🏰 쿨타임 (${Math.ceil(dungeonCooldown)}s)`;
+        btnExp.style.opacity = "0.5";
       } else {
-        btn.innerText = `🏰 경험치 던전`;
-        btn.style.opacity = "1.0";
+        btnExp.innerText = `🏰 경험치 던전`;
+        btnExp.style.opacity = "1.0";
+      }
+
+      // 금화 던전 타이머 업데이트
+      const btnGold = document.getElementById('btn-gold-dungeon');
+
+      if (inGoldDungeon) {
+        goldDungeonTimer -= delta;
+        if (goldDungeonTimer <= 0) {
+          exitGoldDungeon();
+          return;
+        }
+        btnGold.innerText = `💰 던전 (${Math.ceil(goldDungeonTimer)}s)`;
+        btnGold.style.opacity = "0.9";
+      } else if (goldDungeonCooldown > 0) {
+        goldDungeonCooldown -= delta;
+        if (goldDungeonCooldown < 0) goldDungeonCooldown = 0;
+        btnGold.innerText = `💰 쿨타임 (${Math.ceil(goldDungeonCooldown)}s)`;
+        btnGold.style.opacity = "0.5";
+      } else {
+        btnGold.innerText = `💰 금화 던전`;
+        btnGold.style.opacity = "1.0";
       }
     }
 
@@ -1034,7 +1208,8 @@
         { id: 's2', name: '화염의 축복', desc: '공격력 +25 영구 상승', price: 20000, type: 'atk', val: 25 }
       ],
       hero: [
-        { id: 'h1', name: '황진이', desc: '캐릭터를 따라다니며 가야금 끝에서 불꽃 에너지 볼트를 발사하는 보조 영웅', price: 50000, type: 'hero' }
+        { id: 'h1', name: '황진이', desc: '가야금 불꽃 에너지 볼트 발사 (공격력 30)', price: 50000, type: 'hero' },
+        { id: 'h2', name: '의녀장금', desc: '공 50-60 / 방 80 / 공속 1.2s / 3초마다 본캐 Max HP 10% 힐 버프', price: 70000, type: 'hero' }
       ]
     };
 
@@ -1059,7 +1234,9 @@
 
       const items = shopCatalog[cat];
       items.forEach(item => {
-        const isBought = (item.id === 'h1' && playerState.hasHwangJini);
+        const isBoughtHwang = (item.id === 'h1' && playerState.hasHwangJini);
+        const isBoughtJang = (item.id === 'h2' && playerState.hasJanggeum);
+        const isBought = isBoughtHwang || isBoughtJang;
         const isMaxCrit = (item.id === 'crit_up' && playerState.critChance >= 0.80);
         
         const card = document.createElement('div');
@@ -1094,6 +1271,10 @@
         playerState.gold -= item.price;
         playerState.hasHwangJini = true;
         spawnHwangJiniHero();
+      } else if (id === 'h2') {
+        playerState.gold -= item.price;
+        playerState.hasJanggeum = true;
+        spawnJanggeumHero();
       } else if (item.type === 'atk') {
         playerState.gold -= item.price;
         playerState.attackPower += item.val;
@@ -1112,7 +1293,7 @@
        10. STAGE TRANSITION & NAMETAGS
        ========================================== */
     function goToNextStage() {
-      if (playerState.level < 20 || inDungeon) return;
+      if (playerState.level < 20 || inDungeon || inGoldDungeon) return;
 
       currentStage = 2;
       document.getElementById('stage-badge').innerText = "웅녀동굴";
@@ -1144,6 +1325,16 @@
         if (hEl) {
           hEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
           hEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
+        }
+      }
+
+      if (janggeumGroup) {
+        tempV.copy(janggeumGroup.position).add(new THREE.Vector3(0, 2.2, 0));
+        tempV.project(camera);
+        const jEl = nametags.get('hero_janggeum');
+        if (jEl) {
+          jEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
+          jEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
         }
       }
 
@@ -1293,7 +1484,7 @@
       const mapRadius = floorSize / 2;
 
       mCtx.clearRect(0, 0, w, h);
-      mCtx.fillStyle = inDungeon ? '#450a0a' : (currentStage === 1 ? '#1e293b' : '#132a20');
+      mCtx.fillStyle = inGoldDungeon ? '#3a2e05' : (inDungeon ? '#450a0a' : (currentStage === 1 ? '#1e293b' : '#132a20'));
       mCtx.fillRect(0, 0, w, h);
 
       const worldToMap = (wx, wz) => ({
@@ -1304,7 +1495,7 @@
       monsters.forEach(m => {
         if (m.alive) {
           const pos = worldToMap(m.group.position.x, m.group.position.z);
-          mCtx.fillStyle = '#ef4444';
+          mCtx.fillStyle = m.type === "금화상자" ? '#facc15' : '#ef4444';
           mCtx.beginPath(); mCtx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); mCtx.fill();
         }
       });
@@ -1318,10 +1509,16 @@
         mCtx.fillStyle = '#facc15';
         mCtx.beginPath(); mCtx.arc(hPos.x, hPos.y, 3, 0, Math.PI * 2); mCtx.fill();
       }
+
+      if (janggeumGroup) {
+        const jPos = worldToMap(janggeumGroup.position.x, janggeumGroup.position.z);
+        mCtx.fillStyle = '#34d399';
+        mCtx.beginPath(); mCtx.arc(jPos.x, jPos.y, 3, 0, Math.PI * 2); mCtx.fill();
+      }
     }
 
     /* ==========================================
-       13. COMBAT & DAMAGE 연산
+       13. COMBAT & DAMAGE 연산 (금화상자 초고속 리젠)
        ========================================== */
     function targetNearestMonster() {
       let nearest = null, minDist = Infinity;
@@ -1390,7 +1587,8 @@
         addReward(target.expReward, target.goldReward);
         if (selectedTargetMonster === target) selectedTargetMonster = null;
 
-        const respawnDelay = inDungeon ? 1500 : 3000;
+        // [수정] 금화 던전 몬스터 초고속 리젠 (100ms)
+        const respawnDelay = inGoldDungeon ? 100 : (inDungeon ? 1500 : 3000);
         setTimeout(() => {
           target.hp = target.maxHp;
           target.alive = true;
@@ -1463,7 +1661,7 @@
         jobBtn.style.display = "none";
       }
 
-      if (playerState.level >= 20 && currentStage === 1 && !inDungeon) {
+      if (playerState.level >= 20 && currentStage === 1 && !inDungeon && !inGoldDungeon) {
         document.getElementById('btn-next-stage').style.display = "block";
       }
     }
@@ -1497,6 +1695,7 @@
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
+      const now = Date.now();
 
       updateDungeonTimer(delta);
       processMonsterAI(delta);
@@ -1529,6 +1728,20 @@
           const distToM = hwangJiniGroup.position.distanceTo(selectedTargetMonster.group.position);
           if (distToM <= hwangJiniState.attackRange) {
             attackHwangJini(selectedTargetMonster);
+          }
+        }
+      }
+
+      if (janggeumGroup) {
+        const desiredPosJ = playerGroup.position.clone().add(new THREE.Vector3(1.3, 0, 1.3));
+        janggeumGroup.position.lerp(desiredPosJ, 0.08);
+
+        processJanggeumHealSkill(now);
+
+        if (selectedTargetMonster && selectedTargetMonster.alive) {
+          const distToM = janggeumGroup.position.distanceTo(selectedTargetMonster.group.position);
+          if (distToM <= janggeumState.attackRange) {
+            attackJanggeum(selectedTargetMonster);
           }
         }
       }
