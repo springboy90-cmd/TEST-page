@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 스킬버튼 재배치 & 렌더링 오류 수정 패치</title>
+  <title>군주의 길 3D - 리마스터 캐릭터 & 렌더링 수정</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -14,13 +14,13 @@
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
-    /* 슬림 캐릭터 상태 패널 */
+    /* 캐릭터 상태 패널 */
     .status-panel {
       background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
       border: 1px solid #a88a44;
       border-radius: 6px;
       padding: 6px 8px;
-      width: 170px;
+      width: 175px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.8);
     }
     .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: bold; font-size: 10px; }
@@ -34,7 +34,7 @@
     .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
     .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 10px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
 
-    /* 실시간 스탯 표시줄 */
+    /* 스탯 표시줄 */
     .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
     .stat-row-item { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
     .stat-atk { color: #f87171; }
@@ -66,7 +66,7 @@
     .btn-hp { border-color: #f87171; color: #fca5a5; }
     .btn-mp { border-color: #60a5fa; color: #93c5fd; }
 
-    /* 우측 상단 버튼 그룹 (재정열) */
+    /* 우측 상단 버튼 그룹 */
     .top-right-controls { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
     .btn-small {
       background: linear-gradient(180deg, #2a3852, #162238);
@@ -108,7 +108,7 @@
     .btn-zoom { width: 36px; height: 38px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 195px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 215px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
@@ -196,7 +196,7 @@
           <div class="bar-text" id="exp-text">0/38 (0%)</div>
         </div>
 
-        <!-- 실시간 스탯 표시줄 및 스테이지 표시 -->
+        <!-- 실시간 스탯 및 스테이지 표시/스킬 버튼 위치 재배치 -->
         <div class="stat-rows">
           <div class="stat-row-item">
             <span class="stat-atk">⚔️<span id="atk-val">12</span></span>
@@ -207,14 +207,13 @@
             <span class="stage-badge" id="stage-badge">초보자 사냥터</span>
             <span class="stat-gold"><span id="gold-val">100</span> G</span>
           </div>
-          <!-- [요청사항] 스테이지 표시 칸 바로 밑으로 스킬 버튼 이동 및 재배치 -->
           <div class="stat-row-item">
             <button class="btn-small btn-skill-inline" onclick="openSkillModal()">✨ 캐릭터 스킬</button>
           </div>
         </div>
       </div>
 
-      <!-- Top Right Controls (재정열) -->
+      <!-- Top Right Controls -->
       <div class="top-right-controls interactive">
         <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 (Lv.20+)</button>
         <button class="btn-small btn-tools" onclick="openToolsModal()">⚙️ 도구</button>
@@ -385,6 +384,16 @@
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
     scene.add(dirLight);
+
+    // [핵심 수정] 시야 절단 및 렌더링 깜빡임 완전 방지를 위한 재귀적 frustumCulled 해제 함수
+    function disableFrustumCulling(obj) {
+      obj.frustumCulled = false;
+      obj.traverse(child => {
+        if (child.isMesh) {
+          child.frustumCulled = false;
+        }
+      });
+    }
 
     /* ==========================================
        2. PROCEDURAL TEXTURES
@@ -579,7 +588,7 @@
     }
 
     /* ==========================================
-       4. HIGH-DETAIL PLAYER MESH & ANIMATION
+       4. REMASTERED PLAYER MESH & ANATOMY
        ========================================== */
     const playerState = {
       name: "조선유생",
@@ -607,132 +616,132 @@
       aoeCooldown: 4000
     };
 
+    // 캐릭터 관절 그룹 정밀 구조 (Rigged Hierarchy)
     const playerGroup = new THREE.Group();
-    playerGroup.renderOrder = 10; // 우선순위 렌더링 설정
+    playerGroup.renderOrder = 10;
+
+    // 관절 그룹 분리 (팔/다리 회전 피벗)
+    const pPelvis = new THREE.Group(); playerGroup.add(pPelvis);
+    
+    const pLeftLegGroup = new THREE.Group(); pLeftLegGroup.position.set(-0.18, 0.6, 0); pPelvis.add(pLeftLegGroup);
+    const pRightLegGroup = new THREE.Group(); pRightLegGroup.position.set(0.18, 0.6, 0); pPelvis.add(pRightLegGroup);
 
     const legM = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12), legM);
-    leftLeg.position.set(-0.2, 0.3, 0); playerGroup.add(leftLeg);
-    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12), legM);
-    rightLeg.position.set(0.2, 0.3, 0); playerGroup.add(rightLeg);
+    const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), legM); lLegMesh.position.y = -0.3; pLeftLegGroup.add(lLegMesh);
+    const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), legM); rLegMesh.position.y = -0.3; pRightLegGroup.add(rLegMesh);
 
     const bodyG = new THREE.CylinderGeometry(0.42, 0.52, 1.2, 16);
     const bodyM = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.4 });
     const playerBody = new THREE.Mesh(bodyG, bodyM);
-    playerBody.position.y = 1.1;
-    playerBody.castShadow = true;
-    playerGroup.add(playerBody);
+    playerBody.position.y = 1.1; playerBody.castShadow = true; pPelvis.add(playerBody);
 
     const beltM = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.3 });
     const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.15, 16), beltM);
-    belt.position.y = 0.95; playerGroup.add(belt);
+    belt.position.y = 0.95; pPelvis.add(belt);
 
-    const shoulderM = new THREE.MeshStandardMaterial({ color: 0x9a3412 });
-    const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shoulderM);
-    lShoulder.position.set(-0.48, 1.5, 0); playerGroup.add(lShoulder);
-    const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shoulderM);
-    rShoulder.position.set(0.48, 1.5, 0); playerGroup.add(rShoulder);
+    // 팔 피벗 그룹
+    const pLeftArmGroup = new THREE.Group(); pLeftArmGroup.position.set(-0.48, 1.5, 0); pPelvis.add(pLeftArmGroup);
+    const pRightArmGroup = new THREE.Group(); pRightArmGroup.position.set(0.48, 1.5, 0); pPelvis.add(pRightArmGroup);
 
-    const headG = new THREE.SphereGeometry(0.35, 16, 16);
-    const headM = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-    const playerHead = new THREE.Mesh(headG, headM);
-    playerHead.position.y = 1.95;
-    playerHead.castShadow = true;
-    playerGroup.add(playerHead);
+    const sleeveM = new THREE.MeshStandardMaterial({ color: 0xefefef });
+    const lArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), sleeveM); lArmMesh.position.y = -0.3; pLeftArmGroup.add(lArmMesh);
+    const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), sleeveM); rArmMesh.position.y = -0.3; pRightArmGroup.add(rArmMesh);
+
+    // 머리 & 이목구비
+    const headGroup = new THREE.Group(); headGroup.position.y = 1.95; pPelvis.add(headGroup);
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), skinMat); headMesh.castShadow = true; headGroup.add(headMesh);
+
+    const eyeG = new THREE.SphereGeometry(0.04, 8, 8); const eyeM = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const lEye = new THREE.Mesh(eyeG, eyeM); lEye.position.set(-0.11, 0.04, 0.31); headGroup.add(lEye);
+    const rEye = new THREE.Mesh(eyeG, eyeM); rEye.position.set(0.11, 0.04, 0.31); headGroup.add(rEye);
 
     const hatG = new THREE.CylinderGeometry(0.7, 0.7, 0.04, 16);
     const hatTopG = new THREE.CylinderGeometry(0.22, 0.22, 0.45, 16);
     const hatM = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 });
-    const hat = new THREE.Mesh(hatG, hatM); hat.position.y = 2.25;
-    const hatTop = new THREE.Mesh(hatTopG, hatM); hatTop.position.y = 2.45;
-    playerGroup.add(hat); playerGroup.add(hatTop);
+    const hat = new THREE.Mesh(hatG, hatM); hat.position.y = 0.3;
+    const hatTop = new THREE.Mesh(hatTopG, hatM); hatTop.position.y = 0.5;
+    headGroup.add(hat); headGroup.add(hatTop);
 
-    // [수정] 오라 메쉬에 depthWrite: false 적용하여 스킬 사용 시 투명 깊이 오류로 인한 캐릭터 가림 현상 방지
+    // 발밑 오라
     const auraG = new THREE.RingGeometry(0.6, 1.1, 32);
     const auraM = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthWrite: false });
     const auraMesh = new THREE.Mesh(auraG, auraM);
-    auraMesh.rotation.x = Math.PI / 2;
-    auraMesh.position.y = 0.05;
-    playerGroup.add(auraMesh);
+    auraMesh.rotation.x = Math.PI / 2; auraMesh.position.y = 0.05; playerGroup.add(auraMesh);
 
+    // 무기 부착용 소켓 (오른손 위치)
     const weaponGroup = new THREE.Group();
-    weaponGroup.position.set(0.55, 1.2, 0.2);
-    playerGroup.add(weaponGroup);
+    weaponGroup.position.set(0, -0.5, 0.1);
+    pRightArmGroup.add(weaponGroup);
 
     let currentWeaponMesh = null;
 
     function updateWeaponMesh() {
       if (currentWeaponMesh) weaponGroup.remove(currentWeaponMesh);
-      
       const weaponObj = new THREE.Group();
 
       if (playerState.job === "평민") {
         const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
-        weaponObj.add(stick);
+        stick.position.y = -0.4; weaponObj.add(stick);
       } 
       else if (playerState.job === "검사") {
         const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.9, 0.16), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 }));
-        blade.position.y = 0.7; weaponObj.add(blade);
-
+        blade.position.y = 0.6; weaponObj.add(blade);
         const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 12), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 }));
-        guard.position.y = -0.25; weaponObj.add(guard);
-
+        guard.position.y = -0.35; weaponObj.add(guard);
         const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x7f1d1d }));
-        hilt.position.y = -0.5; weaponObj.add(hilt);
-
-        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.9 }));
-        pommel.position.y = -0.75; weaponObj.add(pommel);
+        hilt.position.y = -0.6; weaponObj.add(hilt);
       } 
       else if (playerState.job === "총사") {
         const stock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.18), new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.4 }));
         stock.position.set(0, -0.2, 0); weaponObj.add(stock);
-
         const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 }));
         barrel.position.set(0, 0.6, 0.06); weaponObj.add(barrel);
-
-        const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 }));
-        muzzle.position.set(0, 1.5, 0.06); weaponObj.add(muzzle);
       } 
       else if (playerState.job === "주술사") {
         const staffRod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.3 }));
         weaponObj.add(staffRod);
-
         const orbHead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 2), new THREE.MeshStandardMaterial({ color: 0xc084fc, emissive: 0x9333ea, emissiveIntensity: 0.8 }));
         orbHead.position.y = 1.15; weaponObj.add(orbHead);
-
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.03, 8, 24), new THREE.MeshBasicMaterial({ color: 0xa855f7 }));
-        ring.position.y = 1.15; ring.rotation.x = Math.PI / 3; weaponObj.add(ring);
       }
 
       currentWeaponMesh = weaponObj;
-      currentWeaponMesh.rotation.x = Math.PI / 3;
       weaponGroup.add(currentWeaponMesh);
+      disableFrustumCulling(playerGroup);
     }
     updateWeaponMesh();
 
     playerGroup.position.set(0, 0, 5);
     scene.add(playerGroup);
+    disableFrustumCulling(playerGroup);
 
     function recalcAttackSpeed() {
       playerState.attackSpeed = playerState.baseAttackSpeed / (1 + playerState.atkSpeedLv * 0.10);
     }
 
-    function animateWalkingMotion(group, time) {
-      group.position.y = Math.abs(Math.sin(time * 12)) * 0.15;
-      group.rotation.z = Math.sin(time * 10) * 0.05;
+    // 관절 움직임 스윙 애니메이션
+    function animateHumanRig(leftLeg, rightLeg, leftArm, rightArm, time) {
+      const swing = Math.sin(time * 12) * 0.6;
+      leftLeg.rotation.x = swing;
+      rightLeg.rotation.x = -swing;
+      leftArm.rotation.x = -swing * 0.8;
+      rightArm.rotation.x = swing * 0.8;
     }
 
-    function resetWalkingMotion(group) {
-      group.position.y = 0;
-      group.rotation.z = 0;
+    function resetHumanRig(leftLeg, rightLeg, leftArm, rightArm) {
+      leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, 0, 0.2);
+      rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, 0, 0.2);
+      leftArm.rotation.x = THREE.MathUtils.lerp(leftArm.rotation.x, 0, 0.2);
+      rightArm.rotation.x = THREE.MathUtils.lerp(rightArm.rotation.x, 0, 0.2);
     }
 
     /* ==========================================
-       5. 3D VFX (depthWrite: false 보정)
+       5. 3D VFX
        ========================================== */
     const vfxList = [];
 
     function addVfx(mesh, updateFn) {
+      disableFrustumCulling(mesh);
       scene.add(mesh);
       vfxList.push({ mesh, updateFn, age: 0 });
     }
@@ -750,24 +759,29 @@
     }
 
     /* ==========================================
-       6. SUMMON HEROES (depthWrite: false 보정)
+       6. REMASTERED SUMMON HEROES (황진이 & 의녀장금 관절 모형)
        ========================================== */
-    let hwangJiniGroup = null;
+    let hwangJiniGroup = null, hwangJiniLeftLeg = null, hwangJiniRightLeg = null, hwangJiniLeftArm = null, hwangJiniRightArm = null;
     let hwangJiniInstrumentTip = null;
     const hwangJiniState = { attackPower: 30, attackRange: 12, attackSpeed: 1400, lastAttackTime: 0 };
 
     function spawnHwangJiniHero() {
       if (hwangJiniGroup) return;
-      hwangJiniGroup = new THREE.Group();
-      hwangJiniGroup.renderOrder = 10;
+      hwangJiniGroup = new THREE.Group(); hwangJiniGroup.renderOrder = 8;
 
+      hwangJiniLeftLeg = new THREE.Group(); hwangJiniLeftLeg.position.set(-0.15, 0.5, 0); hwangJiniGroup.add(hwangJiniLeftLeg);
+      hwangJiniRightLeg = new THREE.Group(); hwangJiniRightLeg.position.set(0.15, 0.5, 0); hwangJiniGroup.add(hwangJiniRightLeg);
+      
       const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 }));
       skirt.position.y = 0.5; skirt.castShadow = true; hwangJiniGroup.add(skirt);
 
       const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3 }));
       top.position.y = 1.15; top.castShadow = true; hwangJiniGroup.add(top);
 
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+      hwangJiniLeftArm = new THREE.Group(); hwangJiniLeftArm.position.set(-0.35, 1.3, 0); hwangJiniGroup.add(hwangJiniLeftArm);
+      hwangJiniRightArm = new THREE.Group(); hwangJiniRightArm.position.set(0.35, 1.3, 0); hwangJiniGroup.add(hwangJiniRightArm);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), skinMat);
       head.position.y = 1.6; head.castShadow = true; hwangJiniGroup.add(head);
 
       const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }));
@@ -784,6 +798,7 @@
       heroAura.rotation.x = Math.PI / 2; heroAura.position.y = 0.04; hwangJiniGroup.add(heroAura);
 
       hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.3, 0, 1.3));
+      disableFrustumCulling(hwangJiniGroup);
       scene.add(hwangJiniGroup);
       createNametagElement('hero_hwangjini', '소환영웅', '황진이', false, true);
     }
@@ -799,21 +814,22 @@
       const boltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff4500 }));
       boltMesh.position.copy(startPos);
       const corona = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5, depthWrite: false }));
-      boltMesh.add(corona); scene.add(boltMesh);
+      boltMesh.add(corona); 
+      disableFrustumCulling(boltMesh); scene.add(boltMesh);
 
       projectiles.push({ mesh: boltMesh, target: target, speed: 22, damage: hwangJiniState.attackPower });
     }
 
-    let janggeumGroup = null;
+    let janggeumGroup = null, janggeumLeftLeg = null, janggeumRightLeg = null, janggeumLeftArm = null, janggeumRightArm = null;
     let janggeumHandTip = null;
-    const janggeumState = {
-      attackMin: 50, attackMax: 60, defensePower: 80, attackRange: 11, attackSpeed: 1200, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000
-    };
+    const janggeumState = { attackMin: 50, attackMax: 60, defensePower: 80, attackRange: 11, attackSpeed: 1200, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000 };
 
     function spawnJanggeumHero() {
       if (janggeumGroup) return;
-      janggeumGroup = new THREE.Group();
-      janggeumGroup.renderOrder = 10;
+      janggeumGroup = new THREE.Group(); janggeumGroup.renderOrder = 8;
+
+      janggeumLeftLeg = new THREE.Group(); janggeumLeftLeg.position.set(-0.15, 0.5, 0); janggeumGroup.add(janggeumLeftLeg);
+      janggeumRightLeg = new THREE.Group(); janggeumRightLeg.position.set(0.15, 0.5, 0); janggeumGroup.add(janggeumRightLeg);
 
       const skirtM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
       const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, 1.0, 16), skirtM);
@@ -828,24 +844,23 @@
       const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.31, 0.15, 16), trimM);
       collar.position.y = 1.3; janggeumGroup.add(collar);
 
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+      janggeumLeftArm = new THREE.Group(); janggeumLeftArm.position.set(-0.35, 1.3, 0); janggeumGroup.add(janggeumLeftArm);
+      janggeumRightArm = new THREE.Group(); janggeumRightArm.position.set(0.35, 1.3, 0); janggeumGroup.add(janggeumRightArm);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), skinMat);
       head.position.y = 1.6; head.castShadow = true; janggeumGroup.add(head);
 
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.22, 0.25, 16), skirtM); cap.position.y = 1.88; janggeumGroup.add(cap);
       const capBadge = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.26, 16), trimM);
       capBadge.position.set(0, 1.88, 0.08); janggeumGroup.add(capBadge);
 
-      const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xb45309 }));
-      pouch.position.set(0, 1.0, 0.3); janggeumGroup.add(pouch);
-
-      janggeumHandTip = new THREE.Object3D();
-      janggeumHandTip.position.set(0, 1.1, 0.4);
-      janggeumGroup.add(janggeumHandTip);
+      janggeumHandTip = new THREE.Object3D(); janggeumHandTip.position.set(0, 1.1, 0.4); janggeumGroup.add(janggeumHandTip);
 
       const aura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
       aura.rotation.x = Math.PI / 2; aura.position.y = 0.04; janggeumGroup.add(aura);
 
       janggeumGroup.position.copy(playerGroup.position).add(new THREE.Vector3(1.3, 0, 1.3));
+      disableFrustumCulling(janggeumGroup);
       scene.add(janggeumGroup);
       createNametagElement('hero_janggeum', '소환영웅', '의녀장금', false, true);
     }
@@ -859,7 +874,8 @@
       const startPos = new THREE.Vector3(); janggeumHandTip.getWorldPosition(startPos);
 
       const needleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
-      needleMesh.position.copy(startPos); needleMesh.rotation.x = Math.PI / 2; scene.add(needleMesh);
+      needleMesh.position.copy(startPos); needleMesh.rotation.x = Math.PI / 2;
+      disableFrustumCulling(needleMesh); scene.add(needleMesh);
 
       const randomAtk = Math.floor(Math.random() * (janggeumState.attackMax - janggeumState.attackMin + 1)) + janggeumState.attackMin;
       projectiles.push({ mesh: needleMesh, target: target, speed: 25, damage: randomAtk });
@@ -918,54 +934,30 @@
 
       if (type === "야옹이") {
         const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
-        head.position.y = 0.6;
-        group.add(head);
-
-        const earG = new THREE.ConeGeometry(0.18, 0.4, 4);
-        const earM = new THREE.MeshStandardMaterial({ color: 0x92400e });
-        const leftEar = new THREE.Mesh(earG, earM);
-        leftEar.position.set(-0.25, 1.0, 0);
-        const rightEar = new THREE.Mesh(earG, earM);
-        rightEar.position.set(0.25, 1.0, 0);
+        head.position.y = 0.6; group.add(head);
+        const earG = new THREE.ConeGeometry(0.18, 0.4, 4); const earM = new THREE.MeshStandardMaterial({ color: 0x92400e });
+        const leftEar = new THREE.Mesh(earG, earM); leftEar.position.set(-0.25, 1.0, 0);
+        const rightEar = new THREE.Mesh(earG, earM); rightEar.position.set(0.25, 1.0, 0);
         group.add(leftEar); group.add(rightEar);
-
       } else if (type === "돼지") {
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
-        body.position.y = 0.6;
-        group.add(body);
-
+        body.position.y = 0.6; group.add(body);
         const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
-        snout.rotation.x = Math.PI / 2;
-        snout.position.set(0, 0.6, 0.55);
-        group.add(snout);
-
+        snout.rotation.x = Math.PI / 2; snout.position.set(0, 0.6, 0.55); group.add(snout);
       } else if (type === "버섯돌이") {
         const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.7, 12), new THREE.MeshStandardMaterial({ color: 0xfef08a }));
-        stem.position.y = 0.35;
-        group.add(stem);
-
+        stem.position.y = 0.35; group.add(stem);
         const cap = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
-        cap.position.y = 0.95;
-        group.add(cap);
-
+        cap.position.y = 0.95; group.add(cap);
       } else if (type === "토끼") {
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfce7f3 }));
-        body.position.y = 0.55;
-        group.add(body);
-
-        const earG = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 8);
-        const earM = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
-        const lEar = new THREE.Mesh(earG, earM);
-        lEar.position.set(-0.2, 1.0, 0);
-        const rEar = new THREE.Mesh(earG, earM);
-        rEar.position.set(0.2, 1.0, 0);
+        body.position.y = 0.55; group.add(body);
+        const earG = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 8); const earM = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
+        const lEar = new THREE.Mesh(earG, earM); lEar.position.set(-0.2, 1.0, 0);
+        const rEar = new THREE.Mesh(earG, earM); rEar.position.set(0.2, 1.0, 0);
         group.add(lEar); group.add(rEar);
-
-        const bow = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-        bow.position.set(0.25, 0.8, 0.2);
-        group.add(bow);
       }
-
+      disableFrustumCulling(group);
       return group;
     }
 
@@ -974,57 +966,36 @@
 
       if (type === "웅양") {
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
-        body.position.y = 0.7;
-        group.add(body);
+        body.position.y = 0.7; group.add(body);
         const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xffd700 }));
-        flower.position.set(0, 1.32, 0);
-        group.add(flower);
-
+        flower.position.set(0, 1.32, 0); group.add(flower);
       } else if (type === "마늘장갑차") {
         const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0x6e4a28 }));
-        barrel.position.y = 0.55;
-        group.add(barrel);
+        barrel.position.y = 0.55; group.add(barrel);
         const garlicHead = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshStandardMaterial({ color: 0xc084fc }));
-        garlicHead.position.set(0, 1.1, 0);
-        group.add(garlicHead);
-
+        garlicHead.position.set(0, 1.1, 0); group.add(garlicHead);
       } else if (type === "마늘대왕") {
         const garlicBody = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe879f9 }));
-        garlicBody.position.y = 0.7;
-        garlicBody.scale.set(1.1, 0.9, 1.1);
-        group.add(garlicBody);
+        garlicBody.position.y = 0.7; garlicBody.scale.set(1.1, 0.9, 1.1); group.add(garlicBody);
         const leafStem = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
-        leafStem.position.set(0, 1.4, 0);
-        group.add(leafStem);
-
+        leafStem.position.set(0, 1.4, 0); group.add(leafStem);
       } else if (type === "병자호랑") {
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
-        body.position.y = 0.7;
-        group.add(body);
+        body.position.y = 0.7; group.add(body);
         const bandage = new THREE.Mesh(new THREE.CylinderGeometry(0.67, 0.67, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-        bandage.position.set(0, 1.0, 0);
-        group.add(bandage);
+        bandage.position.set(0, 1.0, 0); group.add(bandage);
       }
-
+      disableFrustumCulling(group);
       return group;
     }
 
     function createGoldChestMonsterMesh() {
       const group = new THREE.Group();
-
       const chestBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.6), new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.8, roughness: 0.2 }));
-      chestBody.position.y = 0.3;
-      chestBody.castShadow = true;
-      group.add(chestBody);
-
+      chestBody.position.y = 0.3; chestBody.castShadow = true; group.add(chestBody);
       const chestLid = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.2, 0.64), new THREE.MeshStandardMaterial({ color: 0xfde047, metalness: 0.9, roughness: 0.1 }));
-      chestLid.position.y = 0.65;
-      group.add(chestLid);
-
-      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), new THREE.MeshStandardMaterial({ color: 0x713f12, metalness: 0.5 }));
-      lock.position.set(0, 0.45, 0.32);
-      group.add(lock);
-
+      chestLid.position.y = 0.65; group.add(chestLid);
+      disableFrustumCulling(group);
       return group;
     }
 
@@ -1033,19 +1004,14 @@
       const types = ["야옹이", "돼지", "버섯돌이", "토끼"];
 
       for (let i = 0; i < 12; i++) {
-        const angle = (i / 12) * Math.PI * 2;
-        const radius = 12 + Math.random() * 14;
-        const mType = types[i % types.length];
-        const mGroup = createBeginnerMonsterMesh(mType);
+        const angle = (i / 12) * Math.PI * 2; const radius = 12 + Math.random() * 14;
+        const mType = types[i % types.length]; const mGroup = createBeginnerMonsterMesh(mType);
         
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius - 2;
-        mGroup.position.set(x, 0, z);
+        mGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius - 2);
         scene.add(mGroup);
 
         const mObj = { group: mGroup, type: mType, hp: 20, maxHp: 20, expReward: 30, goldReward: 100, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
-        monsters.push(mObj);
-        createNametagElement(`monster_${i}`, '', `Lv.${(i%4)+1} ${mType}`, true);
+        monsters.push(mObj); createNametagElement(`monster_${i}`, '', `Lv.${(i%4)+1} ${mType}`, true);
       }
     }
 
@@ -1054,19 +1020,14 @@
       const types = ["웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
 
       for (let i = 0; i < 12; i++) {
-        const angle = (i / 12) * Math.PI * 2;
-        const radius = 12 + Math.random() * 15;
-        const mType = types[i % types.length];
-        const mGroup = createCaveMonsterMesh(mType);
+        const angle = (i / 12) * Math.PI * 2; const radius = 12 + Math.random() * 15;
+        const mType = types[i % types.length]; const mGroup = createCaveMonsterMesh(mType);
         
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        mGroup.position.set(x, 0, z);
+        mGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         scene.add(mGroup);
 
         const mObj = { group: mGroup, type: mType, hp: 320, maxHp: 320, expReward: 96, goldReward: 600, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
-        monsters.push(mObj);
-        createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
+        monsters.push(mObj); createNametagElement(`monster_${i}`, '', `Lv.35 ${mType}`, true);
       }
     }
 
@@ -1075,19 +1036,15 @@
       const types = ["야옹이", "돼지", "버섯돌이", "토끼", "웅양", "마늘장갑차", "마늘대왕", "병자호랑"];
 
       for (let i = 0; i < 24; i++) {
-        const angle = (i / 24) * Math.PI * 2;
-        const radius = 5 + Math.random() * 22;
+        const angle = (i / 24) * Math.PI * 2; const radius = 5 + Math.random() * 22;
         const mType = types[i % types.length];
         const mGroup = (i % 2 === 0) ? createBeginnerMonsterMesh(mType) : createCaveMonsterMesh(mType);
         
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        mGroup.position.set(x, 0, z);
+        mGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         scene.add(mGroup);
 
         const mObj = { group: mGroup, type: mType, hp: 80, maxHp: 80, expReward: 150, goldReward: 250, alive: true, attackRange: 2.2, attackSpeed: 1500, lastAttackTime: 0 };
-        monsters.push(mObj);
-        createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
+        monsters.push(mObj); createNametagElement(`monster_${i}`, '경험치', `Lv.50 ${mType}`, true);
       }
     }
 
@@ -1095,18 +1052,14 @@
       clearMonsters();
 
       for (let i = 0; i < 50; i++) {
-        const angle = (i / 50) * Math.PI * 2;
-        const radius = 4 + Math.random() * 26;
+        const angle = (i / 50) * Math.PI * 2; const radius = 4 + Math.random() * 26;
         const mGroup = createGoldChestMonsterMesh();
         
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        mGroup.position.set(x, 0, z);
+        mGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         scene.add(mGroup);
 
         const mObj = { group: mGroup, type: "금화상자", hp: 1, maxHp: 1, expReward: 0, goldReward: 200, alive: true, attackRange: 1.5, attackSpeed: 99999, lastAttackTime: 0 };
-        monsters.push(mObj);
-        createNametagElement(`monster_${i}`, '보물', `금화상자`, true);
+        monsters.push(mObj); createNametagElement(`monster_${i}`, '보물', `금화상자`, true);
       }
     }
 
@@ -1167,11 +1120,8 @@
       const y = (tempV.y * -.5 + .5) * window.innerHeight;
 
       const el = document.createElement('div');
-      el.className = 'damage-text';
-      el.style.color = '#ff9900';
-      el.innerText = `-${dmg}`;
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      el.className = 'damage-text'; el.style.color = '#ff9900'; el.innerText = `-${dmg}`;
+      el.style.left = `${x}px`; el.style.top = `${y}px`;
       document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
@@ -1183,11 +1133,8 @@
       const y = (tempV.y * -.5 + .5) * window.innerHeight;
 
       const el = document.createElement('div');
-      el.className = 'damage-text';
-      el.style.color = '#34d399';
-      el.innerText = text;
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      el.className = 'damage-text'; el.style.color = '#34d399'; el.innerText = text;
+      el.style.left = `${x}px`; el.style.top = `${y}px`;
       document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
@@ -1209,7 +1156,7 @@
     }
 
     /* ==========================================
-       9. AOE SKILLS & VFX EXECUTION (depthWrite: false 적용)
+       9. AOE SKILLS & VFX EXECUTION
        ========================================== */
     function triggerAoeSkill() {
       if (playerState.job === "평민") return;
@@ -1296,35 +1243,21 @@
     function enterExpDungeon() {
       if (inDungeon || inGoldDungeon || dungeonCooldown > 0) return;
 
-      inDungeon = true;
-      dungeonTimer = 60;
-      previousStage = currentStage;
-      currentStage = 'dungeon';
-
+      inDungeon = true; dungeonTimer = 60; previousStage = currentStage; currentStage = 'dungeon';
       document.getElementById('stage-badge').innerText = "경험치 던전";
 
-      buildDungeonStage();
-      spawnDungeonMonsters();
-
+      buildDungeonStage(); spawnDungeonMonsters();
       playerGroup.position.set(0, 0, 0);
       if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 1.3);
       if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 1.3);
     }
 
     function exitExpDungeon() {
-      inDungeon = false;
-      dungeonCooldown = 60;
-
-      currentStage = previousStage;
+      inDungeon = false; dungeonCooldown = 60; currentStage = previousStage;
       document.getElementById('stage-badge').innerText = currentStage === 1 ? "초보자 사냥터" : "웅녀동굴";
 
-      if (currentStage === 1) {
-        buildStage1();
-        spawnStage1Monsters();
-      } else {
-        buildStage2();
-        spawnStage2Monsters();
-      }
+      if (currentStage === 1) { buildStage1(); spawnStage1Monsters(); }
+      else { buildStage2(); spawnStage2Monsters(); }
 
       playerGroup.position.set(0, 0, 5);
       if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 6.3);
@@ -1334,35 +1267,21 @@
     function enterGoldDungeon() {
       if (inDungeon || inGoldDungeon || goldDungeonCooldown > 0) return;
 
-      inGoldDungeon = true;
-      goldDungeonTimer = 30;
-      previousStage = currentStage;
-      currentStage = 'gold_dungeon';
-
+      inGoldDungeon = true; goldDungeonTimer = 30; previousStage = currentStage; currentStage = 'gold_dungeon';
       document.getElementById('stage-badge').innerText = "💰 금화 던전";
 
-      buildGoldDungeonStage();
-      spawnGoldDungeonMonsters();
-
+      buildGoldDungeonStage(); spawnGoldDungeonMonsters();
       playerGroup.position.set(0, 0, 0);
       if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 1.3);
       if (janggeumGroup) janggeumGroup.position.set(1.3, 0, 1.3);
     }
 
     function exitGoldDungeon() {
-      inGoldDungeon = false;
-      goldDungeonCooldown = 60;
-
-      currentStage = previousStage;
+      inGoldDungeon = false; goldDungeonCooldown = 60; currentStage = previousStage;
       document.getElementById('stage-badge').innerText = currentStage === 1 ? "초보자 사냥터" : "웅녀동굴";
 
-      if (currentStage === 1) {
-        buildStage1();
-        spawnStage1Monsters();
-      } else {
-        buildStage2();
-        spawnStage2Monsters();
-      }
+      if (currentStage === 1) { buildStage1(); spawnStage1Monsters(); }
+      else { buildStage2(); spawnStage2Monsters(); }
 
       playerGroup.position.set(0, 0, 5);
       if (hwangJiniGroup) hwangJiniGroup.position.set(-1.3, 0, 6.3);
@@ -1374,58 +1293,37 @@
 
       if (inDungeon) {
         dungeonTimer -= delta;
-        if (dungeonTimer <= 0) {
-          exitExpDungeon();
-          return;
-        }
-        btnExp.innerText = `🏰 던전 (${Math.ceil(dungeonTimer)}s)`;
-        btnExp.style.opacity = "0.9";
+        if (dungeonTimer <= 0) { exitExpDungeon(); return; }
+        btnExp.innerText = `🏰 던전 (${Math.ceil(dungeonTimer)}s)`; btnExp.style.opacity = "0.9";
       } else if (dungeonCooldown > 0) {
-        dungeonCooldown -= delta;
-        if (dungeonCooldown < 0) dungeonCooldown = 0;
-        btnExp.innerText = `🏰 쿨타임 (${Math.ceil(dungeonCooldown)}s)`;
-        btnExp.style.opacity = "0.5";
+        dungeonCooldown -= delta; if (dungeonCooldown < 0) dungeonCooldown = 0;
+        btnExp.innerText = `🏰 쿨타임 (${Math.ceil(dungeonCooldown)}s)`; btnExp.style.opacity = "0.5";
       } else {
-        btnExp.innerText = `🏰 경험치 던전`;
-        btnExp.style.opacity = "1.0";
+        btnExp.innerText = `🏰 경험치 던전`; btnExp.style.opacity = "1.0";
       }
 
       const btnGold = document.getElementById('btn-gold-dungeon');
 
       if (inGoldDungeon) {
         goldDungeonTimer -= delta;
-        if (goldDungeonTimer <= 0) {
-          exitGoldDungeon();
-          return;
-        }
-        btnGold.innerText = `💰 던전 (${Math.ceil(goldDungeonTimer)}s)`;
-        btnGold.style.opacity = "0.9";
+        if (goldDungeonTimer <= 0) { exitGoldDungeon(); return; }
+        btnGold.innerText = `💰 던전 (${Math.ceil(goldDungeonTimer)}s)`; btnGold.style.opacity = "0.9";
       } else if (goldDungeonCooldown > 0) {
-        goldDungeonCooldown -= delta;
-        if (goldDungeonCooldown < 0) goldDungeonCooldown = 0;
-        btnGold.innerText = `💰 쿨타임 (${Math.ceil(goldDungeonCooldown)}s)`;
-        btnGold.style.opacity = "0.5";
+        goldDungeonCooldown -= delta; if (goldDungeonCooldown < 0) goldDungeonCooldown = 0;
+        btnGold.innerText = `💰 쿨타임 (${Math.ceil(goldDungeonCooldown)}s)`; btnGold.style.opacity = "0.5";
       } else {
-        btnGold.innerText = `💰 금화 던전`;
-        btnGold.style.opacity = "1.0";
+        btnGold.innerText = `💰 금화 던전`; btnGold.style.opacity = "1.0";
       }
     }
 
     /* ==========================================
        11. TOOLS & SKILL MODALS
        ========================================== */
-    function openToolsModal() {
-      document.getElementById('tools-modal').style.display = 'block';
-    }
-
-    function closeToolsModal() {
-      document.getElementById('tools-modal').style.display = 'none';
-    }
+    function openToolsModal() { document.getElementById('tools-modal').style.display = 'block'; }
+    function closeToolsModal() { document.getElementById('tools-modal').style.display = 'none'; }
 
     function setTargetFPS(fps) {
-      targetFPS = fps;
-      fpsInterval = 1000 / targetFPS;
-
+      targetFPS = fps; fpsInterval = 1000 / targetFPS;
       [25, 30, 60].forEach(f => {
         const btn = document.getElementById(`fps-btn-${f}`);
         if (btn) btn.classList.toggle('active', f === fps);
@@ -1435,7 +1333,6 @@
     function setPixelRatioScale(scale) {
       currentScaleSetting = scale;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, scale));
-
       ['low', 'mid', 'high'].forEach(key => {
         const btn = document.getElementById(`scale-btn-${key}`);
         if (btn) {
@@ -1445,26 +1342,16 @@
       });
     }
 
-    function openSkillModal() {
-      document.getElementById('skill-modal').style.display = 'block';
-      renderSkillItems();
-    }
-
-    function closeSkillModal() {
-      document.getElementById('skill-modal').style.display = 'none';
-    }
+    function openSkillModal() { document.getElementById('skill-modal').style.display = 'block'; renderSkillItems(); }
+    function closeSkillModal() { document.getElementById('skill-modal').style.display = 'none'; }
 
     function renderSkillItems() {
-      const container = document.getElementById('skill-items-container');
-      container.innerHTML = '';
+      const container = document.getElementById('skill-items-container'); container.innerHTML = '';
 
-      const autoHealCard = document.createElement('div');
-      autoHealCard.className = 'shop-item-card';
+      const autoHealCard = document.createElement('div'); autoHealCard.className = 'shop-item-card';
       autoHealCard.innerHTML = `
         <div>
-          <div class="item-header">
-            <span>✨ 자동회복 (Passive)</span>
-          </div>
+          <div class="item-header"><span>✨ 자동회복 (Passive)</span></div>
           <div class="item-desc">캐릭터가 가만히 멈춰 서서 사냥을 쉰 상태일 때 3초 간격으로 Max HP의 5%씩 자동 회복됩니다.</div>
         </div>
         <div class="item-footer">
@@ -1476,14 +1363,11 @@
       `;
       container.appendChild(autoHealCard);
 
-      const speedCard = document.createElement('div');
-      speedCard.className = 'shop-item-card';
+      const speedCard = document.createElement('div'); speedCard.className = 'shop-item-card';
       const isMaxSpeed = playerState.atkSpeedLv >= 5;
       speedCard.innerHTML = `
         <div>
-          <div class="item-header">
-            <span>⚡ 공격속도 강화 (${playerState.atkSpeedLv}/5 LV)</span>
-          </div>
+          <div class="item-header"><span>⚡ 공격속도 강화 (${playerState.atkSpeedLv}/5 LV)</span></div>
           <div class="item-desc">1레벨당 공격속도 +10%씩 증가합니다. (현재: +${playerState.atkSpeedLv * 10}% 가속)</div>
         </div>
         <div class="item-footer">
@@ -1499,17 +1383,12 @@
     function buySkill(skillType) {
       if (skillType === 'autoHeal') {
         if (playerState.hasAutoHeal || playerState.gold < 2000) return;
-        playerState.gold -= 2000;
-        playerState.hasAutoHeal = true;
+        playerState.gold -= 2000; playerState.hasAutoHeal = true;
       } else if (skillType === 'atkSpeed') {
         if (playerState.atkSpeedLv >= 5 || playerState.gold < 1000) return;
-        playerState.gold -= 1000;
-        playerState.atkSpeedLv++;
-        recalcAttackSpeed();
+        playerState.gold -= 1000; playerState.atkSpeedLv++; recalcAttackSpeed();
       }
-
-      updateUI();
-      renderSkillItems();
+      updateUI(); renderSkillItems();
     }
 
     let currentShopCategory = 'hero';
@@ -1534,14 +1413,8 @@
       ]
     };
 
-    function openShopModal() {
-      document.getElementById('shop-modal').style.display = 'block';
-      switchShopCategory(currentShopCategory);
-    }
-
-    function closeShopModal() {
-      document.getElementById('shop-modal').style.display = 'none';
-    }
+    function openShopModal() { document.getElementById('shop-modal').style.display = 'block'; switchShopCategory(currentShopCategory); }
+    function closeShopModal() { document.getElementById('shop-modal').style.display = 'none'; }
 
     function switchShopCategory(cat) {
       currentShopCategory = cat;
@@ -1550,9 +1423,7 @@
         if (el) el.classList.toggle('active', c === cat);
       });
 
-      const container = document.getElementById('shop-items-container');
-      container.innerHTML = '';
-
+      const container = document.getElementById('shop-items-container'); container.innerHTML = '';
       const items = shopCatalog[cat];
       items.forEach(item => {
         const isBoughtHwang = (item.id === 'h1' && playerState.hasHwangJini);
@@ -1560,15 +1431,9 @@
         const isBought = isBoughtHwang || isBoughtJang;
         const isMaxCrit = (item.id === 'crit_up' && playerState.critChance >= 0.80);
         
-        const card = document.createElement('div');
-        card.className = 'shop-item-card';
+        const card = document.createElement('div'); card.className = 'shop-item-card';
         card.innerHTML = `
-          <div>
-            <div class="item-header">
-              <span>${item.name}</span>
-            </div>
-            <div class="item-desc">${item.desc}</div>
-          </div>
+          <div><div class="item-header"><span>${item.name}</span></div><div class="item-desc">${item.desc}</div></div>
           <div class="item-footer">
             <span class="item-price">${item.price.toLocaleString()}냥</span>
             <button class="btn-buy" ${isBought || isMaxCrit || playerState.gold < item.price ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">
@@ -1586,28 +1451,18 @@
 
       if (id === 'crit_up') {
         if (playerState.critChance >= 0.80) return;
-        playerState.gold -= item.price;
-        playerState.critChance = Math.min(0.80, playerState.critChance + 0.03);
+        playerState.gold -= item.price; playerState.critChance = Math.min(0.80, playerState.critChance + 0.03);
       } else if (id === 'h1') {
-        playerState.gold -= item.price;
-        playerState.hasHwangJini = true;
-        spawnHwangJiniHero();
+        playerState.gold -= item.price; playerState.hasHwangJini = true; spawnHwangJiniHero();
       } else if (id === 'h2') {
-        playerState.gold -= item.price;
-        playerState.hasJanggeum = true;
-        spawnJanggeumHero();
+        playerState.gold -= item.price; playerState.hasJanggeum = true; spawnJanggeumHero();
       } else if (item.type === 'atk') {
-        playerState.gold -= item.price;
-        playerState.attackPower += item.val;
+        playerState.gold -= item.price; playerState.attackPower += item.val;
       } else if (item.type === 'armor') {
-        playerState.gold -= item.price;
-        playerState.maxHp += item.valHp;
-        playerState.hp += item.valHp;
-        playerState.defensePower += item.valDef;
+        playerState.gold -= item.price; playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef;
       }
 
-      updateUI();
-      switchShopCategory(cat);
+      updateUI(); switchShopCategory(cat);
     }
 
     /* ==========================================
@@ -1616,13 +1471,10 @@
     function goToNextStage() {
       if (playerState.level < 20 || inDungeon || inGoldDungeon) return;
 
-      currentStage = 2;
-      document.getElementById('stage-badge').innerText = "웅녀동굴";
+      currentStage = 2; document.getElementById('stage-badge').innerText = "웅녀동굴";
       document.getElementById('btn-next-stage').style.display = "none";
 
-      buildStage2();
-      spawnStage2Monsters();
-
+      buildStage2(); spawnStage2Monsters();
       playerGroup.position.set(0, 0, 10);
     }
 
@@ -1676,7 +1528,7 @@
     }
 
     /* ==========================================
-       13. AUTO-HUNT & JOYSTICK CONTROLS (전직 전 근접 이동 연동 수정)
+       13. AUTO-HUNT & JOYSTICK CONTROLS
        ========================================== */
     let isAutoHunt = false;
 
@@ -1688,7 +1540,6 @@
       if (isAutoHunt) targetNearestMonster();
     }
 
-    // [완벽 보정] 전직 전/후 모두 타깃이 멀리 있으면 근접 사거리까지 정밀 추적 이동
     function processTargetChaseAndAttack(delta) {
       if (!selectedTargetMonster || !selectedTargetMonster.alive) {
         if (isAutoHunt) targetNearestMonster();
@@ -1706,10 +1557,10 @@
           playerGroup.position.z += dir.z * playerState.moveSpeed * delta;
         }
         
-        animateWalkingMotion(playerGroup, performance.now() * 0.001);
+        animateHumanRig(pLeftLegGroup, pRightLegGroup, pLeftArmGroup, pRightArmGroup, performance.now() * 0.001);
         return true;
       } else {
-        resetWalkingMotion(playerGroup);
+        resetHumanRig(pLeftLegGroup, pRightLegGroup, pLeftArmGroup, pRightArmGroup);
         attackMonster(selectedTargetMonster);
         return false;
       }
@@ -1873,11 +1724,9 @@
       if (playerState.job === "총사" || playerState.job === "주술사") {
         createProjectile(playerGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0)), target);
       } else {
-        weaponGroup.rotation.y = Math.PI / 2;
-        weaponGroup.rotation.z = -Math.PI / 4;
+        pRightArmGroup.rotation.x = -Math.PI / 2;
         setTimeout(() => {
-          weaponGroup.rotation.y = 0;
-          weaponGroup.rotation.z = 0;
+          pRightArmGroup.rotation.x = 0;
         }, 180);
         applyDamage(target, playerState.attackPower);
       }
@@ -1889,6 +1738,7 @@
       const pMat = new THREE.MeshBasicMaterial({ color: isMagic ? 0x00ffff : 0xffaa00 });
       const pMesh = new THREE.Mesh(pGeo, pMat);
       pMesh.position.copy(startPos);
+      disableFrustumCulling(pMesh);
       scene.add(pMesh);
 
       projectiles.push({ mesh: pMesh, target: target, speed: isMagic ? 20 : 32, damage: playerState.attackPower });
@@ -1934,8 +1784,7 @@
       const el = document.createElement('div');
       el.className = `damage-text ${isCrit ? 'crit-text' : ''}`;
       el.innerText = isCrit ? `💥 CRIT -${dmg}` : `-${dmg}`;
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      el.style.left = `${x}px`; el.style.top = `${y}px`;
       document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
@@ -2055,7 +1904,7 @@
         const lookTarget = playerGroup.position.clone().add(new THREE.Vector3(normX, 0, normZ));
         playerGroup.lookAt(lookTarget);
 
-        animateWalkingMotion(playerGroup, timeSec);
+        animateHumanRig(pLeftLegGroup, pRightLegGroup, pLeftArmGroup, pRightArmGroup, timeSec);
         playerState.idleTimer = 0;
       } else {
         const isChasing = processTargetChaseAndAttack(delta);
@@ -2083,8 +1932,8 @@
         const heroDist = hwangJiniGroup.position.distanceTo(desiredPos);
         hwangJiniGroup.position.lerp(desiredPos, 0.08);
 
-        if (heroDist > 0.2) animateWalkingMotion(hwangJiniGroup, timeSec + 1);
-        else resetWalkingMotion(hwangJiniGroup);
+        if (heroDist > 0.2) animateHumanRig(hwangJiniLeftLeg, hwangJiniRightLeg, hwangJiniLeftArm, hwangJiniRightArm, timeSec + 1);
+        else resetHumanRig(hwangJiniLeftLeg, hwangJiniRightLeg, hwangJiniLeftArm, hwangJiniRightArm);
 
         if (selectedTargetMonster && selectedTargetMonster.alive) {
           const distToM = hwangJiniGroup.position.distanceTo(selectedTargetMonster.group.position);
@@ -2099,8 +1948,8 @@
         const heroDistJ = janggeumGroup.position.distanceTo(desiredPosJ);
         janggeumGroup.position.lerp(desiredPosJ, 0.08);
 
-        if (heroDistJ > 0.2) animateWalkingMotion(janggeumGroup, timeSec + 2);
-        else resetWalkingMotion(janggeumGroup);
+        if (heroDistJ > 0.2) animateHumanRig(janggeumLeftLeg, janggeumRightLeg, janggeumLeftArm, janggeumRightArm, timeSec + 2);
+        else resetHumanRig(janggeumLeftLeg, janggeumRightLeg, janggeumLeftArm, janggeumRightArm);
 
         processJanggeumHealSkill(now);
 
@@ -2114,7 +1963,6 @@
 
       auraMesh.rotation.z += delta * 1.5;
 
-      // [수정] 투사체 이동 연산 중 Vector zero 거리 안전 보정
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         if (!p.target.alive) { scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
