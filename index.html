@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 2.5D - FPS 설정 & 오로라 리마스터</title>
+  <title>군주의 길 2.5D - 난수 공격력 시스템 반영</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
@@ -34,9 +34,24 @@
     }
     .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-weight: bold; font-size: 11px; }
     #player-name { color: #d84315; }
-    .stage-badge { background: #ffe0b2; border: 1px solid #ffcc80; color: #e65100; padding: 2px 5px; border-radius: 6px; font-size: 8px; font-weight: bold; display: inline-block; text-align: center; }
+    
+    .stage-badge { 
+      background: #ffe0b2; border: 1px solid #ffb74d; color: #e65100; 
+      padding: 2px 6px; border-radius: 6px; font-size: 8px; font-weight: bold; 
+      display: inline-block; text-align: center; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .stage-badge:active { transform: scale(0.95); }
+
     .job-badge { background: #e1f5fe; border: 1px solid #b3e5fc; padding: 2px 6px; border-radius: 6px; color: #0277bd; font-size: 8px; font-weight: bold; }
     
+    .btn-dev-exp {
+      background: #fff59d; border: 1px solid #fbc02d; color: #f57f17;
+      padding: 0 4px; border-radius: 4px; font-size: 10px; font-weight: bold;
+      cursor: pointer; margin-left: 2px; display: inline-block;
+    }
+    .btn-dev-exp:active { transform: scale(0.9); }
+
     .bar-container { background: #efebe9; height: 12px; border-radius: 6px; margin-bottom: 4px; overflow: hidden; border: 1px solid #d7ccc8; position: relative; }
     .bar-fill { height: 100%; transition: width 0.2s ease; }
     .hp-bar { background: linear-gradient(90deg, #ff8a80, #ff5252); }
@@ -66,13 +81,17 @@
     .btn-skill-badge:active { transform: scale(0.95); }
 
     #quick-potions { position: absolute; bottom: 140px; left: 15px; display: flex; gap: 6px; z-index: 20; pointer-events: auto; }
-    .btn-potion { background: var(--panel-bg); border: 2px solid var(--panel-border); font-size: 10px; font-weight: bold; padding: 5px 9px; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 0 var(--panel-border); color: var(--text-main); }
+    .btn-potion { 
+      background: var(--panel-bg); border: 2px solid var(--panel-border); 
+      font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 12px; 
+      cursor: pointer; box-shadow: 0 2px 0 var(--panel-border); color: var(--text-main); 
+      display: flex; align-items: center; justify-content: center; gap: 2px;
+    }
     .btn-potion:active { transform: translateY(2px); box-shadow: none; }
 
     .top-right-controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
     .btn-small { background: var(--panel-bg); border: 2px solid var(--panel-border); color: var(--text-main); padding: 6px 12px; font-size: 10px; font-weight: bold; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 0 var(--panel-border); }
     .btn-small:active { transform: translateY(2px); box-shadow: none; }
-    .btn-stage { background: #ffe0b2; border-color: #ffb74d; color: #e65100; animation: stagePulse 1.5s infinite; }
     .btn-job { background: linear-gradient(135deg, #ffd54f, #ffb74d); border-color: #f57f17; color: #5d4037; font-weight: bold; animation: stagePulse 1.2s infinite; }
 
     @keyframes stagePulse {
@@ -175,7 +194,11 @@
     <div style="display: flex; justify-content: space-between; width: 100%;">
       <div class="status-panel interactive">
         <div class="character-info">
-          <span><strong id="player-name">조선유생</strong> <span style="color:#8d6e63;" id="player-lv">Lv.1</span></span>
+          <span>
+            <strong id="player-name">조선유생</strong> 
+            <span style="color:#8d6e63;" id="player-lv">Lv.1</span>
+            <button class="btn-dev-exp" title="레벨업 지원 (+5000 EXP)" onclick="addExpDev()">⚡</button>
+          </span>
           <span class="job-badge" id="player-job">평민</span>
         </div>
         <div class="bar-container">
@@ -192,12 +215,12 @@
         </div>
         <div class="stat-rows">
           <div class="stat-row-item">
-            <span class="stat-atk">⚔️<span id="atk-val">12</span></span>
+            <span class="stat-atk">⚔️<span id="atk-val">15</span></span>
             <span class="stat-def">🛡️<span id="def-val">5</span></span>
             <span class="stat-crit">💥<span id="crit-val">5</span>%</span>
           </div>
           <div class="stat-row-item">
-            <span class="stage-badge" id="stage-badge">초보자 사냥터</span>
+            <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">초보자 사냥터 ▾</span>
             <button class="btn-skill-badge" onclick="openSkillModal()">✨ 스킬</button>
             <span class="stat-gold"><span id="gold-val">10000</span> G</span>
           </div>
@@ -208,11 +231,9 @@
         <button class="btn-small btn-job" id="btn-job-modal" style="display: none;" onclick="openJobModal()">📜 1차 전직하기 (Lv.20)</button>
         <button class="btn-small btn-job" id="btn-job2-modal" style="display: none;" onclick="openJob2Modal()">📜 2차 전직하기 (Lv.40)</button>
         <button class="btn-small" style="background: #e1f5fe; border-color: #81d4fa; color: #0288d1;" onclick="openShopModal()">🛒 저자거리 상점</button>
-        <button class="btn-small btn-stage" id="btn-next-stage" onclick="openStageModal()">🏔️ 스테이지 선택</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
         <button class="btn-small" id="btn-fps-toggle" onclick="toggleFpsLimit()" style="background: #e8f5e9; border-color: #81c784; color: #2e7d32;">⚙️ 60 FPS</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵 토글</button>
-        <button class="btn-small" onclick="addExpDev()">⚡ 레벨업 지원 (+5000 EXP)</button>
       </div>
     </div>
 
@@ -226,8 +247,8 @@
     </div>
 
     <div id="quick-potions" class="interactive">
-      <button class="btn-potion btn-hp" onclick="buyQuickPotion('hp')">🧪 HP (100G)</button>
-      <button class="btn-potion btn-mp" onclick="buyQuickPotion('mp')">🧪 MP (100G)</button>
+      <button class="btn-potion btn-hp" onclick="buyQuickPotion('hp')" title="HP 50 회복 (100G)">🔴 HP</button>
+      <button class="btn-potion btn-mp" onclick="buyQuickPotion('mp')" title="MP 30 회복 (100G)">🔵 MP</button>
     </div>
 
     <div id="joystick-zone">
@@ -435,20 +456,17 @@
       return tex;
     }
 
-    /* 부채꼴 형태의 오로라 텍스처 (검성 핑크 / 대도사 연노랑) */
     function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
       const grad = ctx.createRadialGradient(128, 220, 10, 128, 220, 200);
 
       if (colorType === 'yellow') {
-        // 대도사 연노랑빛 오로라
         grad.addColorStop(0, 'rgba(255, 245, 157, 0.95)');
         grad.addColorStop(0.5, 'rgba(255, 238, 88, 0.6)');
         grad.addColorStop(0.85, 'rgba(253, 216, 53, 0.3)');
         grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
       } else {
-        // 검성 핑크빛 오로라
         grad.addColorStop(0, 'rgba(255, 64, 129, 0.95)');
         grad.addColorStop(0.5, 'rgba(245, 0, 87, 0.6)');
         grad.addColorStop(0.85, 'rgba(255, 128, 171, 0.3)');
@@ -893,7 +911,7 @@
     }
 
     /* ==========================================
-       3. EXP FORMULA & PLAYER SYSTEM
+       3. EXP FORMULA & PLAYER SYSTEM (난수 공격력 공식 반영)
        ========================================== */
     function getRequiredExp(level) {
       return 50 + (level * level * 8);
@@ -905,7 +923,8 @@
       maxExp: getRequiredExp(1),
       gold: 10000,
       baseAttackSpeed: 1000, attackSpeed: 1000,
-      attackPower: 12, defensePower: 5, critChance: 0.05,
+      weaponAtk: 0, // 상점/전직 무기 공격력 가산치
+      defensePower: 5, critChance: 0.05,
       lastAttackTime: 0, moveSpeed: 9, attackRange: 2.5,
       hasHwangJini: false, hasJanggeum: false,
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
@@ -913,25 +932,36 @@
       skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
     };
 
+    // 난수 공격력 수식 함수
+    function getPlayerAvgAtk() {
+      const baseAvgAtk = 15 + (playerState.level - 1) * 3;
+      return baseAvgAtk + playerState.weaponAtk;
+    }
+
+    function getPlayerActualDmg(multiplier = 1.0) {
+      const avgAtk = getPlayerAvgAtk();
+      const randomFactor = 0.9 + (Math.random() * 0.2); // 0.9 ~ 1.1 난수
+      return Math.max(1, Math.round(avgAtk * multiplier * randomFactor));
+    }
+
     let playerFacing = 'front';
     let playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('player_beginner', false) }));
     playerSprite.scale.set(3.2, 3.2, 1);
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
 
-    // 부채꼴 오로라 오라 3D 메시 (캐릭터 바닥부터 머리까지 감싸는 스타일 / 투명도 45%)
     let fanAuraMesh = null;
     function initFanAuraMesh() {
       const geom = new THREE.PlaneGeometry(3.6, 3.6);
       const mat = new THREE.MeshBasicMaterial({
         map: createFanAuraTexture('pink'),
         transparent: true,
-        opacity: 0.45, // 투명도 45% 지정
+        opacity: 0.45,
         depthWrite: false,
         side: THREE.DoubleSide
       });
       fanAuraMesh = new THREE.Mesh(geom, mat);
-      fanAuraMesh.position.set(0, 1.8, -0.05); // 바닥부터 머리 높이 위치
+      fanAuraMesh.position.set(0, 1.8, -0.05);
       fanAuraMesh.visible = false;
       scene.add(fanAuraMesh);
     }
@@ -944,11 +974,11 @@
 
     let hwangJiniSprite = null;
     let hwangJiniFacing = 'front';
-    const hwangJiniState = { attackPower: 30, attackRange: 8, attackSpeed: 1400, lastAttackTime: 0 };
+    const hwangJiniState = { attackPowerMin: 40, attackPowerMax: 60, attackRange: 8, attackSpeed: 1400, lastAttackTime: 0 };
 
     let janggeumSprite = null;
     let janggeumFacing = 'front';
-    const janggeumState = { attackPower: 20, attackRange: 8, attackSpeed: 1500, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000 };
+    const janggeumState = { attackPowerMin: 30, attackPowerMax: 40, attackRange: 8, attackSpeed: 1500, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000 };
 
     let heroAutoHunt = false;
     function toggleHeroAutoHunt() {
@@ -958,7 +988,6 @@
       btn.style.background = heroAutoHunt ? "#ffe082" : "#fff9c4";
     }
 
-    /* 프레임 조절 제한 제어 시스템 (25 / 30 / 60 FPS) */
     let fpsLimitList = [60, 30, 25];
     let fpsLimitIndex = 0;
     let targetFps = 60;
@@ -1028,7 +1057,7 @@
     function buildStage1Field() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#dca86b';
-      document.getElementById('stage-badge').innerText = "초보자 사냥터";
+      document.getElementById('stage-badge').innerText = "초보자 사냥터 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createBeginnerFieldTexture() });
@@ -1067,7 +1096,7 @@
     function buildStage2Cave() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#c5a065';
-      document.getElementById('stage-badge').innerText = "🏔️ 웅녀동굴";
+      document.getElementById('stage-badge').innerText = "🏔️ 웅녀동굴 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createCaveFloorTexture() });
@@ -1116,7 +1145,7 @@
     function buildStage3Baduk() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#2e7d32';
-      document.getElementById('stage-badge').innerText = "🎋 바둑골 산길";
+      document.getElementById('stage-badge').innerText = "🎋 바둑골 산길 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createBadukFloorTexture() });
@@ -1253,7 +1282,7 @@
       `;
       container.appendChild(speedCard);
 
-      const j1Title = document.createElement('div'); j1Title.className = 'skill-section-title'; j1Title.innerText = '⚔️ 1차 전직 전용 스킬 (단일 공격 2개)';
+      const j1Title = document.createElement('div'); j1Title.className = 'skill-section-title'; j1Title.innerText = '⚔️ 1차 전직 전용 스킬';
       container.appendChild(j1Title);
 
       const j1Skills = [
@@ -1280,7 +1309,7 @@
         container.appendChild(card);
       });
 
-      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬 (단일 1개 / 범위 2개)';
+      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬';
       container.appendChild(j2Title);
 
       const j2Skills = [
@@ -1360,14 +1389,14 @@
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         if (selectedTarget && selectedTarget.alive) {
           spawnHitVfx(selectedTarget.sprite.position, 'lightning', 3.5);
-          applyDamage(selectedTarget, Math.round(playerState.attackPower * 3.0));
+          applyDamage(selectedTarget, getPlayerActualDmg(3.0));
         }
       } else if (skillId === 's2_2') {
         spawnHitVfx(playerSprite.position, 'whirlwind', 5.0);
         monsters.forEach(m => {
           if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= 6.0) {
             spawnHitVfx(m.sprite.position, 'slash', 2.2);
-            applyDamage(m, Math.round(playerState.attackPower * 2.0));
+            applyDamage(m, getPlayerActualDmg(2.0));
           }
         });
       } else if (skillId === 's2_3') {
@@ -1376,7 +1405,7 @@
         spawnHitVfx(centerPos, 'explosion', 6.0);
         monsters.forEach(m => {
           if (m.alive && m.sprite.position.distanceTo(centerPos) <= 8.0) {
-            applyDamage(m, Math.round(playerState.attackPower * 2.5));
+            applyDamage(m, getPlayerActualDmg(2.5));
           }
         });
       }
@@ -1397,15 +1426,15 @@
       if (jobName === '검사') {
         playerState.title = '무관';
         playerState.maxHp += 150; playerState.hp = playerState.maxHp;
-        playerState.attackPower += 25; playerState.defensePower += 20; playerState.attackRange = 3.0;
+        playerState.weaponAtk += 25; playerState.defensePower += 20; playerState.attackRange = 3.0;
         spriteType = 'player_sword';
       } else if (jobName === '총사') {
         playerState.title = '포수';
-        playerState.attackPower += 35; playerState.defensePower += 10; playerState.attackRange = 10.0;
+        playerState.weaponAtk += 35; playerState.defensePower += 10; playerState.attackRange = 10.0;
         spriteType = 'player_gun';
       } else if (jobName === '주술사') {
         playerState.title = '도사';
-        playerState.attackPower += 45; playerState.defensePower += 5; playerState.attackRange = 9.0;
+        playerState.weaponAtk += 45; playerState.defensePower += 5; playerState.attackRange = 9.0;
         spriteType = 'player_mage';
       }
 
@@ -1453,7 +1482,7 @@
       playerState.tier = 3;
       playerState.title = '대장군';
       playerState.maxHp += 300; playerState.hp = playerState.maxHp;
-      playerState.attackPower += 80; playerState.defensePower += 40;
+      playerState.weaponAtk += 80; playerState.defensePower += 40;
 
       if (job2Name === '대도사' || playerState.job.includes('도사')) {
         playerState.attackRange = 11.0;
@@ -1515,22 +1544,22 @@
     }
 
     /* ==========================================
-       6. SHOP SYSTEM (크리티컬 +3% 업그레이드 아이템 추가)
+       6. SHOP SYSTEM
        ========================================== */
     let currentShopCategory = 'weapon';
     const shopCatalog = {
       weapon: [
         { id: 'w1', name: '일반환도', desc: '공격력 +3 영구 증가', price: 500, type: 'atk', val: 3 },
         { id: 'w2', name: '고급환도', desc: '공격력 +10 영구 증가', price: 1500, type: 'atk', val: 10 },
-        { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 확률 +3% 영구 증가 (5,000G)', price: 5000, type: 'crit', val: 0.03 } // 요구사항 연동
+        { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 확률 +3% 영구 증가 ', price: 5000, type: 'crit', val: 0.03 }
       ],
       armor: [
         { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8', price: 500, type: 'armor', valHp: 100, valDef: 8 },
         { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, type: 'armor', valHp: 250, valDef: 20 }
       ],
       hero: [
-        { id: 'h1', name: '황진이', desc: '가야금 노란색 반타원 에너지 볼트 사격 (공격력 30)', price: 10000, type: 'hero' },
-        { id: 'h2', name: '의녀장금', desc: '연두색 반타원 에너지 볼트 사격 & 3초마다 힐 버프', price: 20000, type: 'hero' }
+        { id: 'h1', name: '황진이', desc: '원거리 공격 (공격력 40~60)', price: 10000, type: 'hero' },
+        { id: 'h2', name: '의녀장금', desc: '원거리 공격 (공격력 30~40) & 힐', price: 20000, type: 'hero' }
       ]
     };
 
@@ -1568,8 +1597,8 @@
       playerState.gold -= item.price;
       if (id === 'h1') { playerState.hasHwangJini = true; spawnHwangJiniHero(); }
       else if (id === 'h2') { playerState.hasJanggeum = true; spawnJanggeumHero(); }
-      else if (item.type === 'atk') playerState.attackPower += item.val;
-      else if (item.type === 'crit') playerState.critChance += item.val; // 크리티컬 +3% 업그레이드
+      else if (item.type === 'atk') playerState.weaponAtk += item.val;
+      else if (item.type === 'crit') playerState.critChance += item.val;
       else if (item.type === 'armor') { playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef; }
 
       updateUI(); switchShopCategory(cat);
@@ -1635,7 +1664,8 @@
           if (dist <= hwangJiniState.attackRange) {
             if (now - hwangJiniState.lastAttackTime >= hwangJiniState.attackSpeed) {
               hwangJiniState.lastAttackTime = now;
-              spawnHeroEnergyProjectile(hwangJiniSprite.position, target, hwangJiniState.attackPower, 'hwangjini');
+              const hDmg = Math.floor(Math.random() * (hwangJiniState.attackPowerMax - hwangJiniState.attackPowerMin + 1)) + hwangJiniState.attackPowerMin;
+              spawnHeroEnergyProjectile(hwangJiniSprite.position, target, hDmg, 'hwangjini');
             }
           } else if (heroAutoHunt) {
             const dir = target.sprite.position.clone().sub(hwangJiniSprite.position).normalize();
@@ -1693,7 +1723,8 @@
           if (dist <= janggeumState.attackRange) {
             if (now - janggeumState.lastAttackTime >= janggeumState.attackSpeed) {
               janggeumState.lastAttackTime = now;
-              spawnHeroEnergyProjectile(janggeumSprite.position, target, janggeumState.attackPower, 'janggeum');
+              const jDmg = Math.floor(Math.random() * (janggeumState.attackPowerMax - janggeumState.attackPowerMin + 1)) + janggeumState.attackPowerMin;
+              spawnHeroEnergyProjectile(janggeumSprite.position, target, jDmg, 'janggeum');
             }
           } else if (heroAutoHunt) {
             const dir = target.sprite.position.clone().sub(janggeumSprite.position).normalize();
@@ -1840,7 +1871,6 @@
         playerState.exp -= playerState.maxExp;
         playerState.level++;
 
-        playerState.attackPower += 10;
         playerState.defensePower += 5;
         playerState.maxHp += 30;
         playerState.hp = playerState.maxHp;
@@ -1887,7 +1917,7 @@
         document.getElementById('exp-text').innerText = `${playerState.exp}/${playerState.maxExp} (${expPct}%)`;
       }
 
-      document.getElementById('atk-val').innerText = playerState.attackPower;
+      document.getElementById('atk-val').innerText = Math.round(getPlayerAvgAtk());
       document.getElementById('def-val').innerText = playerState.defensePower;
       document.getElementById('crit-val').innerText = Math.round(playerState.critChance * 100);
       document.getElementById('gold-val').innerText = playerState.gold.toLocaleString();
@@ -2006,10 +2036,10 @@
       if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
       if (selectedTarget && playerSprite.position.distanceTo(selectedTarget.sprite.position) <= playerState.attackRange) {
         if (playerState.job.includes('주술사') || playerState.job.includes('도사') || playerState.job === '대도사') {
-          spawnMageOrbProjectile(playerSprite.position, selectedTarget, playerState.attackPower);
+          spawnMageOrbProjectile(playerSprite.position, selectedTarget, getPlayerActualDmg(1.0));
         } else {
           spawnHitVfx(selectedTarget.sprite.position, 'slash', 2.5);
-          applyDamage(selectedTarget, playerState.attackPower);
+          applyDamage(selectedTarget, getPlayerActualDmg(1.0));
         }
       }
     }
@@ -2017,7 +2047,6 @@
     function applyDamage(target, amount) {
       if (!target.alive) return;
 
-      // 크리티컬 확률 판정
       let finalDmg = amount;
       let isCrit = Math.random() < playerState.critChance;
       if (isCrit) {
@@ -2097,7 +2126,7 @@
     function addExpDev() { addReward(5000, 5000); }
 
     /* ==========================================
-       10. MAIN ANIMATION LOOP (FPS 제어 제한 루프)
+       10. MAIN ANIMATION LOOP
        ========================================== */
     const clock = new THREE.Clock();
 
@@ -2107,7 +2136,6 @@
       const now = Date.now();
       const delta = clock.getDelta();
 
-      // 프레임 제어 (발열 완화)
       if (targetFps < 60) {
         const frameInterval = 1000 / targetFps;
         if (now - lastRenderFrameTime < frameInterval) {
@@ -2175,14 +2203,15 @@
         }
       }
 
-      // 2차 전직 검성(핑크 오로라) / 대도사(연노랑 오로라) 부채꼴 빛 연출 (바닥~머리 수직 감싸기 / 투명도 45%)
       if (playerState.tier === 3) {
         if (playerState.job === '검성') {
           fanAuraMesh.material.map = createFanAuraTexture('pink');
+          fanAuraMesh.material.opacity = 0.45;
           fanAuraMesh.visible = true;
           fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
         } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
           fanAuraMesh.material.map = createFanAuraTexture('yellow');
+          fanAuraMesh.material.opacity = 0.45;
           fanAuraMesh.visible = true;
           fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
         } else {
