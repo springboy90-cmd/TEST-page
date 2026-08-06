@@ -3,10 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 리마스터 캐릭터 & 렌더링 수정</title>
+  <title>군주의 길 3D - 리마스터</title>
+  <meta name="theme-color" content="#3a2413">
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
+
+    /* 군주온라인풍 공용 금장/목재 텍스처 변수 */
+    :root {
+      --gz-gold: #e8c04a;
+      --gz-gold-bright: #ffe9a8;
+      --gz-gold-dark: #8a6416;
+      --gz-wood: #3a2413;
+      --gz-wood-light: #5c3a1e;
+      --gz-red: #8a1c1c;
+      --gz-parchment: #ecd9b0;
+    }
     
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
     
@@ -14,33 +26,44 @@
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
-    /* 캐릭터 상태 패널 */
+    /* 캐릭터 상태 패널 - 군주온라인풍 목재+금장 족자 */
     .status-panel {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
-      border: 1px solid #a88a44;
-      border-radius: 6px;
-      padding: 6px 8px;
-      width: 175px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      background:
+        linear-gradient(180deg, rgba(58, 36, 19, 0.97), rgba(20, 12, 7, 0.97));
+      border: 2px solid var(--gz-gold-dark);
+      outline: 1px solid var(--gz-gold);
+      outline-offset: -4px;
+      border-radius: 8px;
+      padding: 7px 9px;
+      width: 182px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.85), inset 0 0 12px rgba(232,192,74,0.12);
+      position: relative;
     }
+    .status-panel::before, .status-panel::after {
+      content: ''; position: absolute; width: 8px; height: 8px; border: 2px solid var(--gz-gold);
+      opacity: 0.9;
+    }
+    .status-panel::before { top: 2px; left: 2px; border-right: none; border-bottom: none; }
+    .status-panel::after { bottom: 2px; right: 2px; border-left: none; border-top: none; }
     .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: bold; font-size: 10px; }
-    .stage-badge { background: #1e3a8a; border: 1px solid #60a5fa; color: #93c5fd; padding: 1px 4px; border-radius: 3px; font-size: 8px; }
-    .job-badge { background: #3d2c1d; border: 1px solid #d4af37; padding: 1px 4px; border-radius: 3px; color: #ffd700; font-size: 8px; }
+    #player-name { color: var(--gz-gold-bright); text-shadow: 0 0 4px rgba(232,192,74,0.5); letter-spacing: 0.5px; }
+    .stage-badge { background: linear-gradient(180deg, #2d1c0f, #1a0f08); border: 1px solid var(--gz-gold); color: #f5deae; padding: 1px 4px; border-radius: 3px; font-size: 8px; }
+    .job-badge { background: linear-gradient(180deg, #4a2f14, #2a1a0a); border: 1px solid var(--gz-gold); padding: 1px 5px; border-radius: 3px; color: var(--gz-gold-bright); font-size: 8px; box-shadow: 0 0 4px rgba(232,192,74,0.4); }
     
-    .bar-container { background: #111827; height: 10px; border-radius: 3px; margin-bottom: 3px; overflow: hidden; border: 1px solid #374151; position: relative; }
+    .bar-container { background: #0d0704; height: 11px; border-radius: 3px; margin-bottom: 3px; overflow: hidden; border: 1px solid var(--gz-gold-dark); position: relative; }
     .bar-fill { height: 100%; transition: width 0.2s ease; }
-    .hp-bar { background: linear-gradient(90deg, #b31212, #ff4d4d); }
-    .mp-bar { background: linear-gradient(90deg, #1251b3, #4d88ff); }
-    .exp-bar { background: linear-gradient(90deg, #10b981, #34d399); }
-    .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 10px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
+    .hp-bar { background: linear-gradient(90deg, #6e0f0f, #d1362e, #ff6b52); }
+    .mp-bar { background: linear-gradient(90deg, #0d3a6e, #2f6fd1, #5aa8ff); }
+    .exp-bar { background: linear-gradient(90deg, #0d6e4a, #22b573, #6ee7a8); }
+    .bar-text { position: absolute; width: 100%; text-align: center; font-size: 8px; line-height: 11px; top: 0; left: 0; text-shadow: 1px 1px 1px #000; font-weight: bold; }
 
     /* 스탯 표시줄 */
-    .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
+    .stat-rows { border-top: 1px solid rgba(232,192,74,0.35); margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
     .stat-row-item { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
-    .stat-atk { color: #f87171; }
-    .stat-def { color: #60a5fa; }
-    .stat-crit { color: #fde047; }
-    .stat-gold { color: #facc15; }
+    .stat-atk { color: #ff8a70; }
+    .stat-def { color: #7db8ff; }
+    .stat-crit { color: #ffe9a8; }
+    .stat-gold { color: var(--gz-gold-bright); text-shadow: 0 0 3px rgba(232,192,74,0.6); }
 
     /* 조이스틱 상단 퀵 포션 구매 UI */
     #quick-potions {
@@ -53,8 +76,8 @@
       pointer-events: auto;
     }
     .btn-potion {
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid #a88a44;
+      background: linear-gradient(180deg, #3a2413, #1a0f08);
+      border: 1px solid var(--gz-gold-dark);
       font-size: 10px;
       font-weight: bold;
       padding: 5px 8px;
@@ -63,107 +86,113 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.6);
     }
     .btn-potion:active { transform: scale(0.92); }
-    .btn-hp { border-color: #f87171; color: #fca5a5; }
-    .btn-mp { border-color: #60a5fa; color: #93c5fd; }
+    .btn-hp { border-color: #d1362e; color: #ff9a8a; }
+    .btn-mp { border-color: #2f6fd1; color: #8ac2ff; }
 
     /* 우측 상단 버튼 그룹 */
     .top-right-controls { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
     .btn-small {
-      background: linear-gradient(180deg, #2a3852, #162238);
-      border: 1px solid #a88a44; color: #ffd700;
+      background: linear-gradient(180deg, #4a2f14, #241407);
+      border: 1px solid var(--gz-gold-dark); outline: 1px solid rgba(232,192,74,0.5); outline-offset: -3px;
+      color: var(--gz-gold-bright);
       padding: 5px 10px; font-size: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      text-shadow: 0 0 3px rgba(232,192,74,0.5);
     }
     .btn-tools {
-      background: linear-gradient(180deg, #475569, #1e293b);
+      background: linear-gradient(180deg, #4b5563, #1e293b);
       border: 1px solid #94a3b8; color: #f8fafc;
     }
     .btn-skill-inline {
-      background: linear-gradient(180deg, #6d28d9, #4c1d95);
-      border: 1px solid #a78bfa; color: #f3e8ff;
+      background: linear-gradient(180deg, #6b2fa8, #3d1a63);
+      border: 1px solid #c9a3f5; color: #f3e8ff;
       width: 100%; text-align: center; padding: 4px 0; font-size: 10px; margin-top: 3px;
     }
     .btn-dungeon {
-      background: linear-gradient(180deg, #7c3aed, #4c1d95);
-      border: 1px solid #c084fc; color: #fff;
+      background: linear-gradient(180deg, #8a2fbf, #4c1d95);
+      border: 1px solid #d8b4fe; color: #fff;
     }
     .btn-gold-dungeon {
-      background: linear-gradient(180deg, #d97706, #78350f);
-      border: 1px solid #fde047; color: #fff;
+      background: linear-gradient(180deg, #e8a934, #78350f);
+      border: 1px solid #ffe9a8; color: #fff;
     }
     .btn-stage {
-      background: linear-gradient(180deg, #1e40af, #1e1b4b);
-      border: 2px solid #60a5fa; color: #fff; font-size: 11px;
+      background: linear-gradient(180deg, #b3241c, #4a0d0d);
+      border: 2px solid var(--gz-gold); color: #fff; font-size: 11px;
       animation: stagePulse 1.5s infinite;
     }
 
     @keyframes stagePulse {
-      0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
-      70% { box-shadow: 0 0 0 8px rgba(96, 165, 250, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(232, 192, 74, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(232, 192, 74, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(232, 192, 74, 0); }
     }
 
     /* Zoom Controls */
     .zoom-controls { position: absolute; right: 10px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 15; }
-    .btn-zoom { width: 36px; height: 38px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+    .btn-zoom { width: 36px; height: 38px; background: linear-gradient(180deg, #3a2413, #1a0f08); border: 2px solid var(--gz-gold-dark); color: var(--gz-gold-bright); font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 215px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 225px; right: 10px; width: 110px; height: 110px; background: rgba(10, 6, 3, 0.95); border: 2px solid var(--gz-gold-dark); outline: 1px solid rgba(232,192,74,0.5); outline-offset: -3px; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
     #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px; z-index: 20; pointer-events: auto; }
-    .joystick-base { width: 100%; height: 100%; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; position: relative; }
-    .joystick-knob { width: 42px; height: 42px; background: rgba(212, 175, 55, 0.85); border: 2px solid #fff; border-radius: 50%; position: absolute; top: 34px; left: 34px; transform: translate(0, 0); }
+    .joystick-base { width: 100%; height: 100%; background: rgba(232, 192, 74, 0.12); border: 2px solid rgba(232, 192, 74, 0.45); border-radius: 50%; position: relative; }
+    .joystick-knob { width: 42px; height: 42px; background: radial-gradient(circle at 35% 30%, #ffe9a8, #b3861f); border: 2px solid #fff8e0; border-radius: 50%; position: absolute; top: 34px; left: 34px; transform: translate(0, 0); box-shadow: 0 0 8px rgba(232,192,74,0.6); }
 
     #action-zone { position: absolute; bottom: 20px; right: 15px; display: flex; gap: 8px; align-items: flex-end; z-index: 20; pointer-events: auto; }
     .action-btn { border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer; }
     .action-btn:active { transform: scale(0.92); }
     
-    .btn-attack { width: 64px; height: 64px; background: linear-gradient(135deg, #e63946, #900c3f); border: 3px solid #ffccd5; font-size: 22px; }
-    .btn-aoe { width: 52px; height: 52px; background: linear-gradient(135deg, #f59e0b, #b45309); border: 2px solid #fef08a; font-size: 11px; text-align: center; line-height: 1.1; }
-    .btn-auto { width: 50px; height: 50px; background: linear-gradient(135deg, #059669, #047857); border: 2px solid #a7f3d0; font-size: 11px; }
-    .btn-auto.active { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fef08a; }
-    .btn-target { width: 42px; height: 42px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 16px; }
+    .btn-attack { width: 66px; height: 66px; background: radial-gradient(circle at 35% 30%, #ff6b52, #8a1c1c 70%); border: 3px solid var(--gz-gold-bright); font-size: 24px; }
+    .btn-aoe { width: 54px; height: 54px; background: radial-gradient(circle at 35% 30%, #ffcf5c, #b3620f 70%); border: 2px solid var(--gz-gold-bright); font-size: 11px; text-align: center; line-height: 1.1; }
+    .btn-auto { width: 50px; height: 50px; background: radial-gradient(circle at 35% 30%, #4ade80, #05603f 70%); border: 2px solid #d5ffe6; font-size: 11px; }
+    .btn-auto.active { background: radial-gradient(circle at 35% 30%, #ffcf5c, #8a5a0f 70%); border-color: var(--gz-gold-bright); }
+    .btn-target { width: 42px; height: 42px; background: radial-gradient(circle at 35% 30%, #5aa8ff, #163a8a 70%); border: 2px solid #cfe4ff; font-size: 16px; }
 
     /* Nametags Layer */
     #nametag-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
     .goonzu-nametag {
       position: absolute; transform: translate(-50%, -100%); text-align: center; font-size: 11px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
     }
-    .tag-title { color: #ff99ff; font-weight: bold; font-size: 10px; }
-    .tag-hero { color: #fde047; font-weight: bold; font-size: 10px; }
+    .tag-title { color: #e29aff; font-weight: bold; font-size: 10px; text-shadow: 0 0 4px rgba(226,154,255,0.6), 1px 1px 2px #000; }
+    .tag-hero { color: var(--gz-gold-bright); font-weight: bold; font-size: 10px; text-shadow: 0 0 5px rgba(232,192,74,0.7), 1px 1px 2px #000; }
     .tag-name { color: #ffffff; font-weight: bold; }
-    .tag-monster { color: #ff5555; font-weight: bold; }
+    .tag-monster { color: #ff6a5a; font-weight: bold; }
 
-    /* Modals */
-    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.96); border: 2px solid #a88a44; border-radius: 12px; padding: 18px; width: 92%; max-width: 500px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-    .modal-title { text-align: center; color: #ffd700; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #374151; padding-bottom: 6px; }
+    /* Modals - 고서/족자 스타일 */
+    .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: linear-gradient(180deg, rgba(42, 26, 14, 0.97), rgba(18, 10, 5, 0.97));
+      border: 3px solid var(--gz-gold-dark); outline: 1px solid var(--gz-gold); outline-offset: -6px;
+      border-radius: 14px; padding: 18px; width: 92%; max-width: 500px; display: none; z-index: 100;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(232,192,74,0.08); }
+    .modal-title { text-align: center; color: var(--gz-gold-bright); font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(232,192,74,0.4); padding-bottom: 6px; text-shadow: 0 0 6px rgba(232,192,74,0.5); letter-spacing: 1px; }
     
     .opt-group { margin-bottom: 14px; }
-    .opt-label { font-size: 12px; color: #ffd700; font-weight: bold; margin-bottom: 6px; display: block; }
+    .opt-label { font-size: 12px; color: var(--gz-gold-bright); font-weight: bold; margin-bottom: 6px; display: block; }
     .opt-btn-row { display: flex; gap: 6px; }
-    .btn-opt { flex: 1; padding: 8px 0; font-size: 11px; font-weight: bold; border-radius: 6px; background: #1e293b; border: 1px solid #475569; color: #94a3b8; cursor: pointer; text-align: center; }
-    .btn-opt.active { background: linear-gradient(180deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff; }
+    .btn-opt { flex: 1; padding: 8px 0; font-size: 11px; font-weight: bold; border-radius: 6px; background: #1e1410; border: 1px solid #5c3a1e; color: #c9ab7a; cursor: pointer; text-align: center; }
+    .btn-opt.active { background: linear-gradient(180deg, #b3861f, #6b4a10); border-color: var(--gz-gold-bright); color: #fff; }
 
-    .shop-tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid #4b5563; padding-bottom: 6px; }
-    .shop-tab { flex: 1; background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 0; font-size: 11px; font-weight: bold; border-radius: 5px; cursor: pointer; text-align: center; }
-    .shop-tab.active { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-color: #60a5fa; color: #fff; }
+    .shop-tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid #5c3a1e; padding-bottom: 6px; }
+    .shop-tab { flex: 1; background: #1e1410; border: 1px solid #5c3a1e; color: #c9ab7a; padding: 6px 0; font-size: 11px; font-weight: bold; border-radius: 5px; cursor: pointer; text-align: center; }
+    .shop-tab.active { background: linear-gradient(180deg, #b3861f, #6b4a10); border-color: var(--gz-gold-bright); color: #fff; }
     
     .shop-items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
-    .shop-item-card { background: rgba(255,255,255,0.04); border: 1px solid #475569; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
-    .item-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; color: #f8fafc; margin-bottom: 3px; }
-    .item-desc { font-size: 10px; color: #94a3b8; line-height: 1.2; margin-bottom: 6px; }
+    .shop-item-card { background: rgba(232,192,74,0.05); border: 1px solid #5c3a1e; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
+    .item-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; color: #f5deae; margin-bottom: 3px; }
+    .item-desc { font-size: 10px; color: #b09572; line-height: 1.2; margin-bottom: 6px; }
     .item-footer { display: flex; justify-content: space-between; align-items: center; }
-    .item-price { font-size: 10px; font-weight: bold; color: #facc15; }
-    .btn-buy { background: linear-gradient(180deg, #16a34a, #15803d); border: 1px solid #4ade80; color: #fff; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
-    .btn-buy:disabled { background: #475569; border-color: #64748b; color: #94a3b8; cursor: not-allowed; }
+    .item-price { font-size: 10px; font-weight: bold; color: var(--gz-gold-bright); }
+    .btn-buy { background: linear-gradient(180deg, #2f8a4a, #15803d); border: 1px solid #7ee6a0; color: #fff; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-buy:disabled { background: #4b3d2a; border-color: #6b5a3f; color: #8a7a5f; cursor: not-allowed; }
 
     .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-    .job-card { background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 6px; padding: 8px 4px; text-align: center; cursor: pointer; }
+    .job-card { background: rgba(232,192,74,0.06); border: 1px solid #5c3a1e; border-radius: 6px; padding: 8px 4px; text-align: center; cursor: pointer; }
 
-    .damage-text { position: absolute; color: #ff3333; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
-    .crit-text { font-size: 20px; color: #facc15 !important; text-shadow: 2px 2px 0px #854d0e; }
+    .damage-text { position: absolute; color: #ff4433; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 2px 2px 0px #000; animation: floatUp 0.8s ease-out forwards; z-index: 30; }
+    .crit-text { font-size: 20px; color: var(--gz-gold-bright) !important; text-shadow: 2px 2px 0px #854d0e; }
     @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -626,26 +655,55 @@
     const pLeftLegGroup = new THREE.Group(); pLeftLegGroup.position.set(-0.18, 0.6, 0); pPelvis.add(pLeftLegGroup);
     const pRightLegGroup = new THREE.Group(); pRightLegGroup.position.set(0.18, 0.6, 0); pPelvis.add(pRightLegGroup);
 
-    const legM = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), legM); lLegMesh.position.y = -0.3; pLeftLegGroup.add(lLegMesh);
-    const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), legM); rLegMesh.position.y = -0.3; pRightLegGroup.add(rLegMesh);
+    const legM = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 });
+    const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 12), legM); lLegMesh.position.y = -0.3; pLeftLegGroup.add(lLegMesh);
+    const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 12), legM); rLegMesh.position.y = -0.3; pRightLegGroup.add(rLegMesh);
+    // 정강이 금장 각반
+    const greaveM = new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.7, roughness: 0.3 });
+    const lGreave = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.16, 12), greaveM); lGreave.position.y = -0.1; pLeftLegGroup.add(lGreave);
+    const rGreave = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.16, 12), greaveM); rGreave.position.y = -0.1; pRightLegGroup.add(rGreave);
 
-    const bodyG = new THREE.CylinderGeometry(0.42, 0.52, 1.2, 16);
-    const bodyM = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.4 });
+    const bodyG = new THREE.CylinderGeometry(0.42, 0.53, 1.2, 16);
+    const bodyM = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.45 });
     const playerBody = new THREE.Mesh(bodyG, bodyM);
     playerBody.position.y = 1.1; playerBody.castShadow = true; pPelvis.add(playerBody);
 
-    const beltM = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.3 });
-    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.15, 16), beltM);
+    // 흉갑 (금장 갑주판)
+    const chestPlateM = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75, roughness: 0.25 });
+    const chestPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.55, 16, 1, true, -0.9, 1.8), chestPlateM);
+    chestPlate.position.y = 1.42; chestPlate.castShadow = true; pPelvis.add(chestPlate);
+    const chestGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0x8a1c1c, emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.2 }));
+    chestGem.position.set(0, 1.42, 0.4); pPelvis.add(chestGem);
+
+    // 어깨갑 (좌우 견갑)
+    const shoulderM = new THREE.MeshStandardMaterial({ color: 0xc9971f, metalness: 0.7, roughness: 0.3 });
+    const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), shoulderM);
+    lShoulder.position.set(-0.5, 1.62, 0); lShoulder.rotation.z = 0.15; lShoulder.castShadow = true; pPelvis.add(lShoulder);
+    const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), shoulderM);
+    rShoulder.position.set(0.5, 1.62, 0); rShoulder.rotation.z = -0.15; rShoulder.castShadow = true; pPelvis.add(rShoulder);
+
+    const beltM = new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.65, roughness: 0.3 });
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.17, 16), beltM);
     belt.position.y = 0.95; pPelvis.add(belt);
+    const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.06), new THREE.MeshStandardMaterial({ color: 0xffe9a8, metalness: 0.8, roughness: 0.15 }));
+    beltBuckle.position.set(0, 0.95, 0.48); pPelvis.add(beltBuckle);
+
+    // 망토
+    const capeM = new THREE.MeshStandardMaterial({ color: 0x8a1c1c, roughness: 0.55, side: THREE.DoubleSide });
+    const cape = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, 1.1, 12, 1, true, Math.PI * 0.65, Math.PI * 0.7), capeM);
+    cape.position.set(0, 1.05, -0.15); cape.castShadow = true; pPelvis.add(cape);
 
     // 팔 피벗 그룹
     const pLeftArmGroup = new THREE.Group(); pLeftArmGroup.position.set(-0.48, 1.5, 0); pPelvis.add(pLeftArmGroup);
     const pRightArmGroup = new THREE.Group(); pRightArmGroup.position.set(0.48, 1.5, 0); pPelvis.add(pRightArmGroup);
 
-    const sleeveM = new THREE.MeshStandardMaterial({ color: 0xefefef });
-    const lArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), sleeveM); lArmMesh.position.y = -0.3; pLeftArmGroup.add(lArmMesh);
-    const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.6, 12), sleeveM); rArmMesh.position.y = -0.3; pRightArmGroup.add(rArmMesh);
+    const sleeveM = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.45 });
+    const lArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 12), sleeveM); lArmMesh.position.y = -0.3; pLeftArmGroup.add(lArmMesh);
+    const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 12), sleeveM); rArmMesh.position.y = -0.3; pRightArmGroup.add(rArmMesh);
+    // 손목 금장 완갑
+    const braceM = new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.7, roughness: 0.3 });
+    const lBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.12, 12), braceM); lBrace.position.y = -0.5; pLeftArmGroup.add(lBrace);
+    const rBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.12, 12), braceM); rBrace.position.y = -0.5; pRightArmGroup.add(rBrace);
 
     // 머리 & 이목구비
     const headGroup = new THREE.Group(); headGroup.position.y = 1.95; pPelvis.add(headGroup);
@@ -655,19 +713,30 @@
     const eyeG = new THREE.SphereGeometry(0.04, 8, 8); const eyeM = new THREE.MeshBasicMaterial({ color: 0x111111 });
     const lEye = new THREE.Mesh(eyeG, eyeM); lEye.position.set(-0.11, 0.04, 0.31); headGroup.add(lEye);
     const rEye = new THREE.Mesh(eyeG, eyeM); rEye.position.set(0.11, 0.04, 0.31); headGroup.add(rEye);
+    // 눈썹
+    const browM = new THREE.MeshStandardMaterial({ color: 0x2a1a10 });
+    const lBrow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.02), browM); lBrow.position.set(-0.11, 0.11, 0.31); lBrow.rotation.z = 0.1; headGroup.add(lBrow);
+    const rBrow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.02), browM); rBrow.position.set(0.11, 0.11, 0.31); rBrow.rotation.z = -0.1; headGroup.add(rBrow);
 
-    const hatG = new THREE.CylinderGeometry(0.7, 0.7, 0.04, 16);
-    const hatTopG = new THREE.CylinderGeometry(0.22, 0.22, 0.45, 16);
-    const hatM = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 });
-    const hat = new THREE.Mesh(hatG, hatM); hat.position.y = 0.3;
-    const hatTop = new THREE.Mesh(hatTopG, hatM); hatTop.position.y = 0.5;
+    // 조선 사대부풍 갓 (챙 넓은 흑립 + 금장 띠)
+    const hatG = new THREE.CylinderGeometry(0.72, 0.72, 0.05, 20);
+    const hatTopG = new THREE.CylinderGeometry(0.23, 0.26, 0.48, 16);
+    const hatM = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.25 });
+    const hat = new THREE.Mesh(hatG, hatM); hat.position.y = 0.3; hat.castShadow = true;
+    const hatTop = new THREE.Mesh(hatTopG, hatM); hatTop.position.y = 0.5; hatTop.castShadow = true;
     headGroup.add(hat); headGroup.add(hatTop);
+    const hatBand = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.07, 16), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75, roughness: 0.25 }));
+    hatBand.position.y = 0.34; headGroup.add(hatBand);
+    const hatGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0x8a1c1c, emissiveIntensity: 0.7 }));
+    hatGem.position.set(0, 0.72, 0.05); headGroup.add(hatGem);
 
-    // 발밑 오라
-    const auraG = new THREE.RingGeometry(0.6, 1.1, 32);
-    const auraM = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthWrite: false });
+    // 발밑 오라 (금빛 군주 오라)
+    const auraG = new THREE.RingGeometry(0.6, 1.15, 32);
+    const auraM = new THREE.MeshBasicMaterial({ color: 0xe8c04a, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false });
     const auraMesh = new THREE.Mesh(auraG, auraM);
     auraMesh.rotation.x = Math.PI / 2; auraMesh.position.y = 0.05; playerGroup.add(auraMesh);
+    const auraRing2 = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.3, 32), new THREE.MeshBasicMaterial({ color: 0xffe9a8, side: THREE.DoubleSide, transparent: true, opacity: 0.35, depthWrite: false }));
+    auraRing2.rotation.x = Math.PI / 2; auraRing2.position.y = 0.04; playerGroup.add(auraRing2);
 
     // 무기 부착용 소켓 (오른손 위치)
     const weaponGroup = new THREE.Group();
@@ -681,27 +750,48 @@
       const weaponObj = new THREE.Group();
 
       if (playerState.job === "평민") {
-        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 }));
         stick.position.y = -0.4; weaponObj.add(stick);
+        const stickCap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.6 }));
+        stickCap.position.y = 0.4; weaponObj.add(stickCap);
       } 
       else if (playerState.job === "검사") {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.9, 0.16), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 }));
-        blade.position.y = 0.6; weaponObj.add(blade);
-        const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 12), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 }));
+        // 화려한 장식 대검: 금장 코등이 + 보석 + 붉은 술
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.09, 1.95, 0.18), new THREE.MeshStandardMaterial({ color: 0xeef2f7, metalness: 0.95, roughness: 0.08 }));
+        blade.position.y = 0.65; weaponObj.add(blade);
+        const bladeEdge = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.9, 0.19), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.15 }));
+        bladeEdge.position.y = 0.65; weaponObj.add(bladeEdge);
+        const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.07, 12), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.15 }));
         guard.position.y = -0.35; weaponObj.add(guard);
-        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x7f1d1d }));
+        const guardGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0x8a1c1c, emissiveIntensity: 0.6 }));
+        guardGem.position.y = -0.35; guardGem.position.z = 0.12; weaponObj.add(guardGem);
+        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x5c1010, roughness: 0.5 }));
         hilt.position.y = -0.6; weaponObj.add(hilt);
+        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.15 }));
+        pommel.position.y = -0.86; weaponObj.add(pommel);
+        const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0x8a1c1c, roughness: 0.6 }));
+        tassel.position.y = -1.05; tassel.rotation.x = Math.PI; weaponObj.add(tassel);
       } 
       else if (playerState.job === "총사") {
-        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.18), new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.4 }));
+        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.13, 1.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x3d2412, roughness: 0.35 }));
         stock.position.set(0, -0.2, 0); weaponObj.add(stock);
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 }));
+        const stockTrim = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.1, 0.22), new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.6, roughness: 0.3 }));
+        stockTrim.position.set(0.07, -0.2, 0); weaponObj.add(stockTrim);
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 1.85, 12), new THREE.MeshStandardMaterial({ color: 0x2b2f3a, metalness: 0.92, roughness: 0.18 }));
         barrel.position.set(0, 0.6, 0.06); weaponObj.add(barrel);
+        const barrelRing = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.15 }));
+        barrelRing.position.set(0, 1.3, 0.06); weaponObj.add(barrelRing);
       } 
       else if (playerState.job === "주술사") {
-        const staffRod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.3 }));
+        const staffRod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x2a1f5e, roughness: 0.3, metalness: 0.3 }));
         weaponObj.add(staffRod);
-        const orbHead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 2), new THREE.MeshStandardMaterial({ color: 0xc084fc, emissive: 0x9333ea, emissiveIntensity: 0.8 }));
+        const staffWrap1 = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 16), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75 }));
+        staffWrap1.position.y = 0.4; staffWrap1.rotation.x = Math.PI / 2; weaponObj.add(staffWrap1);
+        const staffWrap2 = staffWrap1.clone(); staffWrap2.position.y = -0.4; weaponObj.add(staffWrap2);
+        const orbCage = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.02, 8, 20), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 }));
+        orbCage.position.y = 1.15; weaponObj.add(orbCage);
+        const orbCage2 = orbCage.clone(); orbCage2.rotation.x = Math.PI / 2; weaponObj.add(orbCage2);
+        const orbHead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 2), new THREE.MeshStandardMaterial({ color: 0xc084fc, emissive: 0x9333ea, emissiveIntensity: 0.9 }));
         orbHead.position.y = 1.15; weaponObj.add(orbHead);
       }
 
@@ -772,11 +862,18 @@
       hwangJiniLeftLeg = new THREE.Group(); hwangJiniLeftLeg.position.set(-0.15, 0.5, 0); hwangJiniGroup.add(hwangJiniLeftLeg);
       hwangJiniRightLeg = new THREE.Group(); hwangJiniRightLeg.position.set(0.15, 0.5, 0); hwangJiniGroup.add(hwangJiniRightLeg);
       
-      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 }));
+      // 화려한 남색 치마 + 금박 단
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.52, 1.0, 16), new THREE.MeshStandardMaterial({ color: 0x1d3fd6, roughness: 0.35 }));
       skirt.position.y = 0.5; skirt.castShadow = true; hwangJiniGroup.add(skirt);
+      const skirtHem = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.55, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.65, roughness: 0.3 }));
+      skirtHem.position.y = 0.05; hwangJiniGroup.add(skirtHem);
 
-      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3 }));
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.28 }));
       top.position.y = 1.15; top.castShadow = true; hwangJiniGroup.add(top);
+      const norigae = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.7 }));
+      norigae.position.set(0.12, 0.85, 0.22); hwangJiniGroup.add(norigae);
+      const collarTrim = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.31, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0xfff5db, roughness: 0.3 }));
+      collarTrim.position.y = 1.38; hwangJiniGroup.add(collarTrim);
 
       hwangJiniLeftArm = new THREE.Group(); hwangJiniLeftArm.position.set(-0.35, 1.3, 0); hwangJiniGroup.add(hwangJiniLeftArm);
       hwangJiniRightArm = new THREE.Group(); hwangJiniRightArm.position.set(0.35, 1.3, 0); hwangJiniGroup.add(hwangJiniRightArm);
@@ -784,11 +881,19 @@
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), skinMat);
       head.position.y = 1.6; head.castShadow = true; hwangJiniGroup.add(head);
 
-      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }));
+      // 화관 (금박 장식 가체)
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.45 }));
       hat.position.y = 1.85; hat.rotation.z = 0.1; hwangJiniGroup.add(hat);
+      const hatOrnament = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 8, 16), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75, roughness: 0.2 }));
+      hatOrnament.position.y = 1.9; hatOrnament.rotation.x = Math.PI / 2; hwangJiniGroup.add(hatOrnament);
+      const hatGemJ = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x0d6e4a, emissiveIntensity: 0.6 }));
+      hatGemJ.position.set(0, 2.0, 0.15); hwangJiniGroup.add(hatGemJ);
 
-      const instrument = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 0.08), new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3 }));
+      // 화려한 장식 가야금
+      const instrument = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.4, 0.09), new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.28 }));
       instrument.position.set(0.1, 1.1, 0.25); instrument.rotation.z = -Math.PI / 3; hwangJiniGroup.add(instrument);
+      const instrumentTrim = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.7, roughness: 0.25 }));
+      instrumentTrim.position.set(0.32, 1.65, 0.25); instrumentTrim.rotation.z = -Math.PI / 3; hwangJiniGroup.add(instrumentTrim);
 
       hwangJiniInstrumentTip = new THREE.Object3D();
       hwangJiniInstrumentTip.position.set(0.6, 1.5, 0.25);
@@ -796,6 +901,8 @@
 
       const heroAura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
       heroAura.rotation.x = Math.PI / 2; heroAura.position.y = 0.04; hwangJiniGroup.add(heroAura);
+      const heroAura2 = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.95, 24), new THREE.MeshBasicMaterial({ color: 0xffe9a8, side: THREE.DoubleSide, transparent: true, opacity: 0.4, depthWrite: false }));
+      heroAura2.rotation.x = Math.PI / 2; heroAura2.position.y = 0.03; hwangJiniGroup.add(heroAura2);
 
       hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.3, 0, 1.3));
       disableFrustumCulling(hwangJiniGroup);
@@ -831,18 +938,25 @@
       janggeumLeftLeg = new THREE.Group(); janggeumLeftLeg.position.set(-0.15, 0.5, 0); janggeumGroup.add(janggeumLeftLeg);
       janggeumRightLeg = new THREE.Group(); janggeumRightLeg.position.set(0.15, 0.5, 0); janggeumGroup.add(janggeumRightLeg);
 
-      const skirtM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+      const skirtM = new THREE.MeshStandardMaterial({ color: 0xfff8ea, roughness: 0.3 });
       const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, 1.0, 16), skirtM);
       skirt.position.y = 0.5; skirt.castShadow = true; janggeumGroup.add(skirt);
 
-      const trimM = new THREE.MeshStandardMaterial({ color: 0x2563eb });
+      const trimM = new THREE.MeshStandardMaterial({ color: 0x1d5fd6 });
+      const goldTrimM = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.7, roughness: 0.25 });
       const skirtTrim = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.56, 0.15, 16), trimM);
       skirtTrim.position.y = 0.15; janggeumGroup.add(skirtTrim);
+      const skirtGoldLine = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.57, 0.04, 16), goldTrimM);
+      skirtGoldLine.position.y = 0.23; janggeumGroup.add(skirtGoldLine);
 
       const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), skirtM);
       top.position.y = 1.15; top.castShadow = true; janggeumGroup.add(top);
       const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.31, 0.15, 16), trimM);
       collar.position.y = 1.3; janggeumGroup.add(collar);
+      const medicPouch = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.08), new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4 }));
+      medicPouch.position.set(-0.28, 0.85, 0.15); janggeumGroup.add(medicPouch);
+      const pouchTrim = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.09), goldTrimM);
+      pouchTrim.position.set(-0.28, 0.95, 0.15); janggeumGroup.add(pouchTrim);
 
       janggeumLeftArm = new THREE.Group(); janggeumLeftArm.position.set(-0.35, 1.3, 0); janggeumGroup.add(janggeumLeftArm);
       janggeumRightArm = new THREE.Group(); janggeumRightArm.position.set(0.35, 1.3, 0); janggeumGroup.add(janggeumRightArm);
@@ -853,11 +967,15 @@
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.22, 0.25, 16), skirtM); cap.position.y = 1.88; janggeumGroup.add(cap);
       const capBadge = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.26, 16), trimM);
       capBadge.position.set(0, 1.88, 0.08); janggeumGroup.add(capBadge);
+      const capGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x0d6e4a, emissiveIntensity: 0.7 }));
+      capGem.position.set(0, 2.02, 0.05); janggeumGroup.add(capGem);
 
       janggeumHandTip = new THREE.Object3D(); janggeumHandTip.position.set(0, 1.1, 0.4); janggeumGroup.add(janggeumHandTip);
 
       const aura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
       aura.rotation.x = Math.PI / 2; aura.position.y = 0.04; janggeumGroup.add(aura);
+      const aura2 = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.95, 24), new THREE.MeshBasicMaterial({ color: 0xd1fae5, side: THREE.DoubleSide, transparent: true, opacity: 0.4, depthWrite: false }));
+      aura2.rotation.x = Math.PI / 2; aura2.position.y = 0.03; janggeumGroup.add(aura2);
 
       janggeumGroup.position.copy(playerGroup.position).add(new THREE.Vector3(1.3, 0, 1.3));
       disableFrustumCulling(janggeumGroup);
@@ -933,29 +1051,76 @@
       const group = new THREE.Group();
 
       if (type === "야옹이") {
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
-        head.position.y = 0.6; group.add(head);
-        const earG = new THREE.ConeGeometry(0.18, 0.4, 4); const earM = new THREE.MeshStandardMaterial({ color: 0x92400e });
-        const leftEar = new THREE.Mesh(earG, earM); leftEar.position.set(-0.25, 1.0, 0);
-        const rightEar = new THREE.Mesh(earG, earM); rightEar.position.set(0.25, 1.0, 0);
+        // 요괴 고양이: 몸통+머리+송곳니+발톱+긴 꼬리
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), new THREE.MeshStandardMaterial({ color: 0xb8590a, roughness: 0.55 }));
+        body.scale.set(1, 0.85, 1.15); body.position.y = 0.42; body.castShadow = true; group.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }));
+        head.position.set(0, 0.75, 0.3); head.castShadow = true; group.add(head);
+        const earG = new THREE.ConeGeometry(0.16, 0.42, 4); const earM = new THREE.MeshStandardMaterial({ color: 0x7a3308 });
+        const leftEar = new THREE.Mesh(earG, earM); leftEar.position.set(-0.24, 1.12, 0.28); leftEar.rotation.z = -0.15;
+        const rightEar = new THREE.Mesh(earG, earM); rightEar.position.set(0.24, 1.12, 0.28); rightEar.rotation.z = 0.15;
         group.add(leftEar); group.add(rightEar);
+        // 송곳니
+        const fangM = new THREE.MeshStandardMaterial({ color: 0xfff8ea });
+        const lFang = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 6), fangM); lFang.position.set(-0.1, 0.58, 0.62); lFang.rotation.x = Math.PI; group.add(lFang);
+        const rFang = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 6), fangM); rFang.position.set(0.1, 0.58, 0.62); rFang.rotation.x = Math.PI; group.add(rFang);
+        // 눈 (붉게 빛남)
+        const eyeM2 = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+        const eyeG2 = new THREE.SphereGeometry(0.05, 8, 8);
+        const lEye2 = new THREE.Mesh(eyeG2, eyeM2); lEye2.position.set(-0.16, 0.82, 0.65); group.add(lEye2);
+        const rEye2 = new THREE.Mesh(eyeG2, eyeM2); rEye2.position.set(0.16, 0.82, 0.65); group.add(rEye2);
+        // 꼬리
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0xb8590a }));
+        tail.position.set(0, 0.55, -0.5); tail.rotation.x = -0.9; group.add(tail);
       } else if (type === "돼지") {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
-        body.position.y = 0.6; group.add(body);
-        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
-        snout.rotation.x = Math.PI / 2; snout.position.set(0, 0.6, 0.55); group.add(snout);
+        // 산돼지 요괴: 상아 + 갈기 + 뭉툭한 다리
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe85d8a, roughness: 0.55 }));
+        body.scale.set(1.1, 0.95, 1.3); body.position.y = 0.55; body.castShadow = true; group.add(body);
+        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.22, 12), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+        snout.rotation.x = Math.PI / 2; snout.position.set(0, 0.48, 0.75); group.add(snout);
+        const nostrilM = new THREE.MeshBasicMaterial({ color: 0x4a0d1c });
+        const lNostril = new THREE.Mesh(new THREE.CircleGeometry(0.03, 8), nostrilM); lNostril.position.set(-0.08, 0.48, 0.86); group.add(lNostril);
+        const rNostril = new THREE.Mesh(new THREE.CircleGeometry(0.03, 8), nostrilM); rNostril.position.set(0.08, 0.48, 0.86); group.add(rNostril);
+        // 상아
+        const tuskM = new THREE.MeshStandardMaterial({ color: 0xfff8ea, roughness: 0.3 });
+        const lTusk = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.28, 8), tuskM); lTusk.position.set(-0.18, 0.32, 0.78); lTusk.rotation.set(1.9, 0, -0.4); group.add(lTusk);
+        const rTusk = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.28, 8), tuskM); rTusk.position.set(0.18, 0.32, 0.78); rTusk.rotation.set(1.9, 0, 0.4); group.add(rTusk);
+        // 등갈기
+        const maneM = new THREE.MeshStandardMaterial({ color: 0x8a1c1c, roughness: 0.6 });
+        for (let mi = 0; mi < 4; mi++) {
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 6), maneM);
+          spike.position.set(0, 0.95, 0.35 - mi * 0.28); group.add(spike);
+        }
       } else if (type === "버섯돌이") {
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.7, 12), new THREE.MeshStandardMaterial({ color: 0xfef08a }));
-        stem.position.y = 0.35; group.add(stem);
-        const cap = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
-        cap.position.y = 0.95; group.add(cap);
+        // 정령 버섯: 반점 갓 + 뿌리 다리 + 표정
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 0.7, 12), new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.5 }));
+        stem.position.y = 0.35; stem.castShadow = true; group.add(stem);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.5 }));
+        cap.position.y = 0.75; cap.castShadow = true; group.add(cap);
+        const capRim = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.06, 8, 20), new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.4 }));
+        capRim.position.y = 0.62; capRim.rotation.x = Math.PI / 2; group.add(capRim);
+        // 반점
+        const spotM = new THREE.MeshStandardMaterial({ color: 0xfff8ea });
+        for (let si = 0; si < 5; si++) {
+          const ang = (si / 5) * Math.PI * 2;
+          const spot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), spotM);
+          spot.position.set(Math.cos(ang) * 0.5, 1.05, Math.sin(ang) * 0.5); group.add(spot);
+        }
+        const eyeG3 = new THREE.SphereGeometry(0.045, 8, 8); const eyeM3 = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const lEye3 = new THREE.Mesh(eyeG3, eyeM3); lEye3.position.set(-0.1, 0.42, 0.32); group.add(lEye3);
+        const rEye3 = new THREE.Mesh(eyeG3, eyeM3); rEye3.position.set(0.1, 0.42, 0.32); group.add(rEye3);
       } else if (type === "토끼") {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfce7f3 }));
-        body.position.y = 0.55; group.add(body);
-        const earG = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 8); const earM = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
-        const lEar = new THREE.Mesh(earG, earM); lEar.position.set(-0.2, 1.0, 0);
-        const rEar = new THREE.Mesh(earG, earM); rEar.position.set(0.2, 1.0, 0);
-        group.add(lEar); group.add(rEar);
+        // 월영 요토끼: 긴 귀 + 보석 이마 + 발광 눈
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf7d7e8, roughness: 0.45 }));
+        body.position.y = 0.52; body.castShadow = true; group.add(body);
+        const earG = new THREE.CylinderGeometry(0.09, 0.12, 0.85, 8); const earM = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 });
+        const lEar = new THREE.Mesh(earG, earM); lEar.position.set(-0.2, 1.15, 0); lEar.rotation.z = 0.12; group.add(lEar);
+        const rEar = new THREE.Mesh(earG, earM); rEar.position.set(0.2, 1.15, 0); rEar.rotation.z = -0.12; group.add(rEar);
+        const earInnerM = new THREE.MeshStandardMaterial({ color: 0xffe4ef });
+        const lEarInner = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.7, 8), earInnerM); lEarInner.position.copy(lEar.position); lEarInner.rotation.copy(lEar.rotation); group.add(lEarInner);
+        const rEarInner = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.7, 8), earInnerM); rEarInner.position.copy(rEar.position); rEarInner.rotation.copy(rEar.rotation); group.add(rEarInner);
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), new THREE.MeshStandardMaterial({ color: 0x60d4ff, emissive: 0x1a7fb3, emissiveIntensity: 0.8 }));
+        gem.position.set(0, 0.68, 0.4); group.add(gem);
       }
       disableFrustumCulling(group);
       return group;
@@ -965,25 +1130,76 @@
       const group = new THREE.Group();
 
       if (type === "웅양") {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
-        body.position.y = 0.7; group.add(body);
-        const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xffd700 }));
-        flower.position.set(0, 1.32, 0); group.add(flower);
+        // 반인반수 웅족 전사: 뿔 + 갑주 조각 + 팔뚝
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 16), new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 }));
+        body.scale.set(1.1, 1.15, 1); body.position.y = 0.75; body.castShadow = true; group.add(body);
+        const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.4, 12), new THREE.MeshStandardMaterial({ color: 0x4a3016, roughness: 0.55 }));
+        chest.position.y = 0.6; group.add(chest);
+        const hornM = new THREE.MeshStandardMaterial({ color: 0xe8d9c0, roughness: 0.35 });
+        const lHorn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 8), hornM); lHorn.position.set(-0.28, 1.35, 0.05); lHorn.rotation.z = 0.35; group.add(lHorn);
+        const rHorn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 8), hornM); rHorn.position.set(0.28, 1.35, 0.05); rHorn.rotation.z = -0.35; group.add(rHorn);
+        const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.5 }));
+        flower.position.set(0, 1.3, 0.3); flower.rotation.x = 0.3; group.add(flower);
+        const eyeG4 = new THREE.SphereGeometry(0.05, 8, 8); const eyeM4 = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        const lEye4 = new THREE.Mesh(eyeG4, eyeM4); lEye4.position.set(-0.15, 0.9, 0.55); group.add(lEye4);
+        const rEye4 = new THREE.Mesh(eyeG4, eyeM4); rEye4.position.set(0.15, 0.9, 0.55); group.add(rEye4);
       } else if (type === "마늘장갑차") {
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0x6e4a28 }));
-        barrel.position.y = 0.55; group.add(barrel);
-        const garlicHead = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshStandardMaterial({ color: 0xc084fc }));
-        garlicHead.position.set(0, 1.1, 0); group.add(garlicHead);
+        // 마늘 골렘 전차: 장갑판 + 포탑형 마늘머리
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.75, 0.85, 12), new THREE.MeshStandardMaterial({ color: 0x5a3d1f, roughness: 0.5 }));
+        barrel.position.y = 0.5; barrel.castShadow = true; group.add(barrel);
+        const plateM = new THREE.MeshStandardMaterial({ color: 0x9c7a4a, metalness: 0.5, roughness: 0.4 });
+        for (let pi = 0; pi < 6; pi++) {
+          const ang = (pi / 6) * Math.PI * 2;
+          const plate = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.06), plateM);
+          plate.position.set(Math.cos(ang) * 0.74, 0.5, Math.sin(ang) * 0.74);
+          plate.rotation.y = ang; group.add(plate);
+        }
+        const garlicHead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 12), new THREE.MeshStandardMaterial({ color: 0xd8b4fe, roughness: 0.35 }));
+        garlicHead.position.set(0, 1.15, 0); garlicHead.castShadow = true; group.add(garlicHead);
+        const garlicTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 8), new THREE.MeshStandardMaterial({ color: 0xa78bfa }));
+        garlicTip.position.set(0, 1.55, 0); group.add(garlicTip);
+        const barrelGun = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 10), new THREE.MeshStandardMaterial({ color: 0x3d2817, metalness: 0.6 }));
+        barrelGun.rotation.z = Math.PI / 2; barrelGun.position.set(0.6, 1.15, 0); group.add(barrelGun);
       } else if (type === "마늘대왕") {
-        const garlicBody = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe879f9 }));
-        garlicBody.position.y = 0.7; garlicBody.scale.set(1.1, 0.9, 1.1); group.add(garlicBody);
-        const leafStem = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
-        leafStem.position.set(0, 1.4, 0); group.add(leafStem);
+        // 거대 마늘 군주: 왕관 + 잎사귀 + 뿌리수염
+        const garlicBody = new THREE.Mesh(new THREE.SphereGeometry(0.72, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf0abfc, roughness: 0.35 }));
+        garlicBody.position.y = 0.72; garlicBody.scale.set(1.15, 0.95, 1.15); garlicBody.castShadow = true; group.add(garlicBody);
+        const bodySeg = new THREE.MeshStandardMaterial({ color: 0xe879f9, roughness: 0.4 });
+        for (let gi = 0; gi < 6; gi++) {
+          const ang = (gi / 6) * Math.PI * 2;
+          const seg = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), bodySeg);
+          seg.position.set(Math.cos(ang) * 0.65, 0.55, Math.sin(ang) * 0.65); group.add(seg);
+        }
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.22, 8), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75, roughness: 0.2 }));
+        crown.position.y = 1.42; group.add(crown);
+        for (let ci = 0; ci < 5; ci++) {
+          const ang = (ci / 5) * Math.PI * 2;
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 6), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75 }));
+          spike.position.set(Math.cos(ang) * 0.26, 1.58, Math.sin(ang) * 0.26); group.add(spike);
+        }
+        const leafStem = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4 }));
+        leafStem.position.set(0.15, 1.65, 0); leafStem.rotation.z = 0.2; group.add(leafStem);
+        const leafStem2 = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4 }));
+        leafStem2.position.set(-0.2, 1.55, 0); leafStem2.rotation.z = -0.35; group.add(leafStem2);
       } else if (type === "병자호랑") {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
-        body.position.y = 0.7; group.add(body);
-        const bandage = new THREE.Mesh(new THREE.CylinderGeometry(0.67, 0.67, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-        bandage.position.set(0, 1.0, 0); group.add(bandage);
+        // 붕대 감은 요호랑이: 줄무늬 + 붕대 + 이빨
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 16), new THREE.MeshStandardMaterial({ color: 0xea8a17, roughness: 0.55 }));
+        body.scale.set(1.05, 1, 1.2); body.position.y = 0.7; body.castShadow = true; group.add(body);
+        const stripeM = new THREE.MeshStandardMaterial({ color: 0x2a1a10 });
+        for (let ti = 0; ti < 4; ti++) {
+          const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.4 - ti * 0.02, 0.035, 6, 16, Math.PI), stripeM);
+          stripe.position.set(0, 0.5 + ti * 0.18, 0.15); stripe.rotation.set(0, Math.PI / 2, Math.PI / 2); group.add(stripe);
+        }
+        const bandage = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 0.22, 16), new THREE.MeshStandardMaterial({ color: 0xf5ecd8, roughness: 0.6 }));
+        bandage.position.set(0, 0.95, 0); bandage.rotation.z = 0.15; group.add(bandage);
+        const bandageStain = new THREE.Mesh(new THREE.CircleGeometry(0.08, 8), new THREE.MeshBasicMaterial({ color: 0x8a1c1c }));
+        bandageStain.position.set(0.2, 0.95, 0.58); group.add(bandageStain);
+        const fangM2 = new THREE.MeshStandardMaterial({ color: 0xfff8ea });
+        const lFang2 = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.18, 6), fangM2); lFang2.position.set(-0.13, 0.55, 0.58); lFang2.rotation.x = Math.PI; group.add(lFang2);
+        const rFang2 = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.18, 6), fangM2); rFang2.position.set(0.13, 0.55, 0.58); rFang2.rotation.x = Math.PI; group.add(rFang2);
+        const eyeM5 = new THREE.MeshBasicMaterial({ color: 0xffee00 });
+        const lEye5 = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeM5); lEye5.position.set(-0.18, 0.82, 0.6); group.add(lEye5);
+        const rEye5 = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeM5); rEye5.position.set(0.18, 0.82, 0.6); group.add(rEye5);
       }
       disableFrustumCulling(group);
       return group;
@@ -995,6 +1211,22 @@
       chestBody.position.y = 0.3; chestBody.castShadow = true; group.add(chestBody);
       const chestLid = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.2, 0.64), new THREE.MeshStandardMaterial({ color: 0xfde047, metalness: 0.9, roughness: 0.1 }));
       chestLid.position.y = 0.65; group.add(chestLid);
+      // 금장 테두리 장식
+      const trimM = new THREE.MeshStandardMaterial({ color: 0xffe9a8, metalness: 0.95, roughness: 0.08 });
+      const frontTrim = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.55, 0.62), trimM);
+      frontTrim.position.set(0, 0.3, 0); group.add(frontTrim);
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.1), trimM);
+      lock.position.set(0.42, 0.42, 0); group.add(lock);
+      const lockGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0x8a1c1c, emissiveIntensity: 0.7 }));
+      lockGem.position.set(0.47, 0.42, 0); group.add(lockGem);
+      // 모서리 금장 장식
+      const cornerM = new THREE.MeshStandardMaterial({ color: 0xb3861f, metalness: 0.85, roughness: 0.15 });
+      [[-0.4,-0.3],[0.4,-0.3],[-0.4,0.3],[0.4,0.3]].forEach(([x,z]) => {
+        const corner = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.58, 8), cornerM);
+        corner.position.set(x, 0.3, z); group.add(corner);
+      });
+      const glow = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.65, 24), new THREE.MeshBasicMaterial({ color: 0xffe9a8, side: THREE.DoubleSide, transparent: true, opacity: 0.5, depthWrite: false }));
+      glow.rotation.x = Math.PI / 2; glow.position.y = 0.03; group.add(glow);
       disableFrustumCulling(group);
       return group;
     }
