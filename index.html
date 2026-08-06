@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 2.5D - 리마스터</title>
+  <title>군주의 길 2.5D - FPS 설정 & 오로라 리마스터</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
@@ -210,6 +210,7 @@
         <button class="btn-small" style="background: #e1f5fe; border-color: #81d4fa; color: #0288d1;" onclick="openShopModal()">🛒 저자거리 상점</button>
         <button class="btn-small btn-stage" id="btn-next-stage" onclick="openStageModal()">🏔️ 스테이지 선택</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
+        <button class="btn-small" id="btn-fps-toggle" onclick="toggleFpsLimit()" style="background: #e8f5e9; border-color: #81c784; color: #2e7d32;">⚙️ 60 FPS</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵 토글</button>
         <button class="btn-small" onclick="addExpDev()">⚡ 레벨업 지원 (+5000 EXP)</button>
       </div>
@@ -324,9 +325,9 @@
   <div class="modal interactive" id="shop-modal">
     <div class="modal-title">🛒 조선 저자거리 상점</div>
     <div class="shop-tabs">
-      <div class="shop-tab" id="tab-weapon" onclick="switchShopCategory('weapon')">무기</div>
+      <div class="shop-tab active" id="tab-weapon" onclick="switchShopCategory('weapon')">무기/부적</div>
       <div class="shop-tab" id="tab-armor" onclick="switchShopCategory('armor')">방어구</div>
-      <div class="shop-tab active" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
+      <div class="shop-tab" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
     </div>
     <div class="shop-items-grid" id="shop-items-container"></div>
     <div style="text-align: center; margin-top: 12px;">
@@ -434,16 +435,33 @@
       return tex;
     }
 
-    function createPinkAuraTexture() {
+    /* 부채꼴 형태의 오로라 텍스처 (검성 핑크 / 대도사 연노랑) */
+    function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
-      const grad = ctx.createRadialGradient(128, 128, 20, 128, 128, 120);
-      grad.addColorStop(0, 'rgba(255, 64, 129, 0.9)');
-      grad.addColorStop(0.5, 'rgba(245, 0, 87, 0.6)');
-      grad.addColorStop(0.8, 'rgba(255, 128, 171, 0.3)');
-      grad.addColorStop(1, 'rgba(255, 128, 171, 0)');
+      const grad = ctx.createRadialGradient(128, 220, 10, 128, 220, 200);
+
+      if (colorType === 'yellow') {
+        // 대도사 연노랑빛 오로라
+        grad.addColorStop(0, 'rgba(255, 245, 157, 0.95)');
+        grad.addColorStop(0.5, 'rgba(255, 238, 88, 0.6)');
+        grad.addColorStop(0.85, 'rgba(253, 216, 53, 0.3)');
+        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
+      } else {
+        // 검성 핑크빛 오로라
+        grad.addColorStop(0, 'rgba(255, 64, 129, 0.95)');
+        grad.addColorStop(0.5, 'rgba(245, 0, 87, 0.6)');
+        grad.addColorStop(0.85, 'rgba(255, 128, 171, 0.3)');
+        grad.addColorStop(1, 'rgba(255, 128, 171, 0)');
+      }
+
       ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(128, 128, 120, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(128, 220);
+      ctx.arc(128, 220, 210, -Math.PI * 0.85, -Math.PI * 0.15, false);
+      ctx.closePath();
+      ctx.fill();
+
       const tex = new THREE.CanvasTexture(cvs);
       return tex;
     }
@@ -475,12 +493,10 @@
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
-    /* 주술사/대도사 청백빛 에너지 구체 및 꼬리 잔상 텍스처 (첨부 스크린샷 이미지 완벽 구현) */
     function createMageEnergyOrbTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
       const ctx = cvs.getContext('2d');
 
-      // 청백빛 핵심 커다란 오라 구체
       const grad = ctx.createRadialGradient(40, 64, 4, 40, 64, 32);
       grad.addColorStop(0, '#ffffff');
       grad.addColorStop(0.3, '#80d8ff');
@@ -490,30 +506,16 @@
       ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(40, 64, 32, 0, Math.PI * 2); ctx.fill();
 
-      // 뒤로 뻗어나가는 청백빛 에너지 파동 잔상 꼬리 (첨부 이미지 형태)
-      ctx.strokeStyle = 'rgba(128, 216, 255, 0.8)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(40, 64);
-      ctx.quadraticCurveTo(70, 30, 115, 25);
-      ctx.moveTo(40, 64);
-      ctx.quadraticCurveTo(70, 98, 115, 103);
-      ctx.moveTo(40, 64);
-      ctx.lineTo(120, 64);
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(128, 216, 255, 0.8)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(40, 64); ctx.quadraticCurveTo(70, 30, 115, 25);
+      ctx.moveTo(40, 64); ctx.quadraticCurveTo(70, 98, 115, 103);
+      ctx.moveTo(40, 64); ctx.lineTo(120, 64); ctx.stroke();
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(40, 64);
-      ctx.quadraticCurveTo(68, 34, 110, 30);
-      ctx.moveTo(40, 64);
-      ctx.quadraticCurveTo(68, 94, 110, 98);
-      ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(40, 64); ctx.quadraticCurveTo(68, 34, 110, 30);
+      ctx.moveTo(40, 64); ctx.quadraticCurveTo(68, 94, 110, 98); ctx.stroke();
 
-      const tex = new THREE.CanvasTexture(cvs);
-      tex.magFilter = THREE.NearestFilter;
-      return tex;
+      const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
     function createHitVfxTexture(vfxType) {
@@ -917,16 +919,23 @@
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
 
-    const pinkAuraMat = new THREE.SpriteMaterial({
-      map: createPinkAuraTexture(),
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false
-    });
-    const pinkAuraSprite = new THREE.Sprite(pinkAuraMat);
-    pinkAuraSprite.scale.set(2.75, 1.6, 1);
-    pinkAuraSprite.visible = false;
-    scene.add(pinkAuraSprite);
+    // 부채꼴 오로라 오라 3D 메시 (캐릭터 바닥부터 머리까지 감싸는 스타일 / 투명도 45%)
+    let fanAuraMesh = null;
+    function initFanAuraMesh() {
+      const geom = new THREE.PlaneGeometry(3.6, 3.6);
+      const mat = new THREE.MeshBasicMaterial({
+        map: createFanAuraTexture('pink'),
+        transparent: true,
+        opacity: 0.45, // 투명도 45% 지정
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      fanAuraMesh = new THREE.Mesh(geom, mat);
+      fanAuraMesh.position.set(0, 1.8, -0.05); // 바닥부터 머리 높이 위치
+      fanAuraMesh.visible = false;
+      scene.add(fanAuraMesh);
+    }
+    initFanAuraMesh();
 
     const targetArrowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createTargetArrowTexture() }));
     targetArrowSprite.scale.set(1.5, 1.5, 1);
@@ -947,6 +956,19 @@
       const btn = document.getElementById('btn-hero-auto');
       btn.innerText = heroAutoHunt ? "영웅 자율사냥: ON" : "영웅 자율사냥: OFF";
       btn.style.background = heroAutoHunt ? "#ffe082" : "#fff9c4";
+    }
+
+    /* 프레임 조절 제한 제어 시스템 (25 / 30 / 60 FPS) */
+    let fpsLimitList = [60, 30, 25];
+    let fpsLimitIndex = 0;
+    let targetFps = 60;
+    let lastRenderFrameTime = 0;
+
+    function toggleFpsLimit() {
+      fpsLimitIndex = (fpsLimitIndex + 1) % fpsLimitList.length;
+      targetFps = fpsLimitList[fpsLimitIndex];
+      const btn = document.getElementById('btn-fps-toggle');
+      btn.innerText = `⚙️ ${targetFps} FPS`;
     }
 
     let hwangJiniTarget = null;
@@ -1433,7 +1455,6 @@
       playerState.maxHp += 300; playerState.hp = playerState.maxHp;
       playerState.attackPower += 80; playerState.defensePower += 40;
 
-      // 주술사 / 대도사 원거리 사거리 설정
       if (job2Name === '대도사' || playerState.job.includes('도사')) {
         playerState.attackRange = 11.0;
       }
@@ -1494,13 +1515,14 @@
     }
 
     /* ==========================================
-       6. SHOP SYSTEM
+       6. SHOP SYSTEM (크리티컬 +3% 업그레이드 아이템 추가)
        ========================================== */
-    let currentShopCategory = 'hero';
+    let currentShopCategory = 'weapon';
     const shopCatalog = {
       weapon: [
         { id: 'w1', name: '일반환도', desc: '공격력 +3 영구 증가', price: 500, type: 'atk', val: 3 },
-        { id: 'w2', name: '고급환도', desc: '공격력 +10 영구 증가', price: 1500, type: 'atk', val: 10 }
+        { id: 'w2', name: '고급환도', desc: '공격력 +10 영구 증가', price: 1500, type: 'atk', val: 10 },
+        { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 확률 +3% 영구 증가 (5,000G)', price: 5000, type: 'crit', val: 0.03 } // 요구사항 연동
       ],
       armor: [
         { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8', price: 500, type: 'armor', valHp: 100, valDef: 8 },
@@ -1547,13 +1569,14 @@
       if (id === 'h1') { playerState.hasHwangJini = true; spawnHwangJiniHero(); }
       else if (id === 'h2') { playerState.hasJanggeum = true; spawnJanggeumHero(); }
       else if (item.type === 'atk') playerState.attackPower += item.val;
+      else if (item.type === 'crit') playerState.critChance += item.val; // 크리티컬 +3% 업그레이드
       else if (item.type === 'armor') { playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef; }
 
       updateUI(); switchShopCategory(cat);
     }
 
     /* ==========================================
-       7. HERO & MONSTER AI (주술사/대도사 유저 투사체 연동)
+       7. HERO & MONSTER AI
        ========================================== */
     function spawnHeroEnergyProjectile(startPos, target, damageVal, heroType) {
       const tex = heroType === 'janggeum' ? createJanggeumEnergyBoltTexture() : createHeroEnergyBoltTexture();
@@ -1571,12 +1594,10 @@
       });
     }
 
-    // [주술사/대도사 기본 공격] 스태프 상단 끝에서 출발하는 청백빛 구체 에너지 볼트 생성
     function spawnMageOrbProjectile(startPos, target, damageVal) {
       const orbMat = new THREE.SpriteMaterial({ map: createMageEnergyOrbTexture(), transparent: true });
       const orbSprite = new THREE.Sprite(orbMat);
       orbSprite.scale.set(1.8, 1.2, 1);
-      // 무기 지팡이 상단 머리 위치(오른쪽 위 +1.0, 높이 +2.2)에서 투사체 발사 시작
       orbSprite.position.copy(startPos).add(new THREE.Vector3(0.8, 2.2, 0));
       scene.add(orbSprite);
 
@@ -1984,7 +2005,6 @@
 
       if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
       if (selectedTarget && playerSprite.position.distanceTo(selectedTarget.sprite.position) <= playerState.attackRange) {
-        // 주술사 / 대도사 기본 공격 원거리 사격 처리
         if (playerState.job.includes('주술사') || playerState.job.includes('도사') || playerState.job === '대도사') {
           spawnMageOrbProjectile(playerSprite.position, selectedTarget, playerState.attackPower);
         } else {
@@ -1997,9 +2017,16 @@
     function applyDamage(target, amount) {
       if (!target.alive) return;
 
-      target.hp -= amount;
+      // 크리티컬 확률 판정
+      let finalDmg = amount;
+      let isCrit = Math.random() < playerState.critChance;
+      if (isCrit) {
+        finalDmg = Math.round(amount * 1.5);
+      }
+
+      target.hp -= finalDmg;
       target.showHpTimer = Date.now() + 3000;
-      showDamageText(amount, target.sprite.position);
+      showDamageText(finalDmg, target.sprite.position, isCrit);
 
       if (target.hp <= 0) {
         target.alive = false;
@@ -2029,11 +2056,19 @@
       }
     }
 
-    function showDamageText(dmg, worldPos) {
+    function showDamageText(dmg, worldPos, isCrit = false) {
       const tempV = worldPos.clone().add(new THREE.Vector3(0, 1.5, 0)).project(camera);
-      const el = document.createElement('div'); el.className = 'damage-text'; el.innerText = `-${dmg}`;
-      el.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; el.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
-      document.getElementById('nametag-layer').appendChild(el); setTimeout(() => el.remove(), 800);
+      const el = document.createElement('div');
+      el.className = 'damage-text';
+      el.innerText = isCrit ? `💥 -${dmg}` : `-${dmg}`;
+      if (isCrit) {
+        el.style.color = '#ffeb3b';
+        el.style.fontSize = '20px';
+      }
+      el.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
+      el.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
+      document.getElementById('nametag-layer').appendChild(el);
+      setTimeout(() => el.remove(), 800);
     }
 
     function showPlayerDamageText(dmg, worldPos) {
@@ -2062,14 +2097,24 @@
     function addExpDev() { addReward(5000, 5000); }
 
     /* ==========================================
-       10. MAIN ANIMATION LOOP
+       10. MAIN ANIMATION LOOP (FPS 제어 제한 루프)
        ========================================== */
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+
       const now = Date.now();
+      const delta = clock.getDelta();
+
+      // 프레임 제어 (발열 완화)
+      if (targetFps < 60) {
+        const frameInterval = 1000 / targetFps;
+        if (now - lastRenderFrameTime < frameInterval) {
+          return;
+        }
+        lastRenderFrameTime = now - ((now - lastRenderFrameTime) % frameInterval);
+      }
 
       processMonsterAI(delta);
       processHeroAI(delta, now);
@@ -2130,11 +2175,21 @@
         }
       }
 
-      if (playerState.tier === 3 && (playerState.job === '검성' || playerState.job === '대장군')) {
-        pinkAuraSprite.visible = true;
-        pinkAuraSprite.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
+      // 2차 전직 검성(핑크 오로라) / 대도사(연노랑 오로라) 부채꼴 빛 연출 (바닥~머리 수직 감싸기 / 투명도 45%)
+      if (playerState.tier === 3) {
+        if (playerState.job === '검성') {
+          fanAuraMesh.material.map = createFanAuraTexture('pink');
+          fanAuraMesh.visible = true;
+          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
+        } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
+          fanAuraMesh.material.map = createFanAuraTexture('yellow');
+          fanAuraMesh.visible = true;
+          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
+        } else {
+          fanAuraMesh.visible = false;
+        }
       } else {
-        pinkAuraSprite.visible = false;
+        fanAuraMesh.visible = false;
       }
 
       if (selectedTarget && selectedTarget.alive) {
