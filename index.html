@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 3D - 디테일 모형 & 직업별 무기 패치</title>
+  <title>군주의 길 3D - 스킬버튼 재배치 & 렌더링 오류 수정 패치</title>
   <style>
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; touch-action: none; }
     body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #0b0f19; color: #fff; }
@@ -20,7 +20,7 @@
       border: 1px solid #a88a44;
       border-radius: 6px;
       padding: 6px 8px;
-      width: 165px;
+      width: 170px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.8);
     }
     .character-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: bold; font-size: 10px; }
@@ -36,7 +36,7 @@
 
     /* 실시간 스탯 표시줄 */
     .stat-rows { border-top: 1px rgba(255,255,255,0.15) solid; margin-top: 4px; padding-top: 3px; font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
-    .stat-row-item { display: flex; justify-content: space-between; font-weight: bold; }
+    .stat-row-item { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
     .stat-atk { color: #f87171; }
     .stat-def { color: #60a5fa; }
     .stat-crit { color: #fde047; }
@@ -66,7 +66,7 @@
     .btn-hp { border-color: #f87171; color: #fca5a5; }
     .btn-mp { border-color: #60a5fa; color: #93c5fd; }
 
-    /* 우측 상단 버튼 */
+    /* 우측 상단 버튼 그룹 (재정열) */
     .top-right-controls { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
     .btn-small {
       background: linear-gradient(180deg, #2a3852, #162238);
@@ -78,9 +78,10 @@
       background: linear-gradient(180deg, #475569, #1e293b);
       border: 1px solid #94a3b8; color: #f8fafc;
     }
-    .btn-skill {
+    .btn-skill-inline {
       background: linear-gradient(180deg, #6d28d9, #4c1d95);
       border: 1px solid #a78bfa; color: #f3e8ff;
+      width: 100%; text-align: center; padding: 4px 0; font-size: 10px; margin-top: 3px;
     }
     .btn-dungeon {
       background: linear-gradient(180deg, #7c3aed, #4c1d95);
@@ -107,7 +108,7 @@
     .btn-zoom { width: 36px; height: 38px; background: rgba(15, 23, 42, 0.9); border: 2px solid #a88a44; color: #fff; font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
 
     /* Minimap Box */
-    #minimap-box { position: absolute; top: 215px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
+    #minimap-box { position: absolute; top: 195px; right: 10px; width: 110px; height: 110px; background: rgba(10, 15, 25, 0.95); border: 2px solid #a88a44; border-radius: 6px; display: block; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 15; }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     /* Joystick & Action Buttons */
@@ -126,8 +127,9 @@
     .btn-target { width: 42px; height: 42px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 2px solid #bfdbfe; font-size: 16px; }
 
     /* Nametags Layer */
+    #nametag-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
     .goonzu-nametag {
-      position: absolute; transform: translate(-50%, -100%); pointer-events: none; text-align: center; font-size: 11px; z-index: 25; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+      position: absolute; transform: translate(-50%, -100%); text-align: center; font-size: 11px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
     }
     .tag-title { color: #ff99ff; font-weight: bold; font-size: 10px; }
     .tag-hero { color: #fde047; font-weight: bold; font-size: 10px; }
@@ -194,7 +196,7 @@
           <div class="bar-text" id="exp-text">0/38 (0%)</div>
         </div>
 
-        <!-- 실시간 스탯 표시줄 -->
+        <!-- 실시간 스탯 표시줄 및 스테이지 표시 -->
         <div class="stat-rows">
           <div class="stat-row-item">
             <span class="stat-atk">⚔️<span id="atk-val">12</span></span>
@@ -205,14 +207,17 @@
             <span class="stage-badge" id="stage-badge">초보자 사냥터</span>
             <span class="stat-gold"><span id="gold-val">100</span> G</span>
           </div>
+          <!-- [요청사항] 스테이지 표시 칸 바로 밑으로 스킬 버튼 이동 및 재배치 -->
+          <div class="stat-row-item">
+            <button class="btn-small btn-skill-inline" onclick="openSkillModal()">✨ 캐릭터 스킬</button>
+          </div>
         </div>
       </div>
 
-      <!-- Top Right Controls -->
+      <!-- Top Right Controls (재정열) -->
       <div class="top-right-controls interactive">
         <button class="btn-small btn-stage" id="btn-next-stage" style="display: none;" onclick="goToNextStage()">🏔️ 웅녀동굴 (Lv.20+)</button>
         <button class="btn-small btn-tools" onclick="openToolsModal()">⚙️ 도구</button>
-        <button class="btn-small btn-skill" onclick="openSkillModal()">✨ 스킬</button>
         <button class="btn-small btn-dungeon" id="btn-dungeon" onclick="enterExpDungeon()">🏰 경험치 던전</button>
         <button class="btn-small btn-gold-dungeon" id="btn-gold-dungeon" onclick="enterGoldDungeon()">💰 금화 던전</button>
         <button class="btn-small" style="background: linear-gradient(180deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff;" onclick="openShopModal()">🛒 상점</button>
@@ -592,7 +597,7 @@
       attackSpeed: 1200,
       lastAttackTime: 0,
       moveSpeed: 9,
-      attackRange: 2.5, // 평민 기본 근접 사거리
+      attackRange: 2.5,
       hasHwangJini: false,
       hasJanggeum: false,
       hasAutoHeal: false,
@@ -603,15 +608,14 @@
     };
 
     const playerGroup = new THREE.Group();
+    playerGroup.renderOrder = 10; // 우선순위 렌더링 설정
 
-    // 디테일 캐릭터 하체/다리
     const legM = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12), legM);
     leftLeg.position.set(-0.2, 0.3, 0); playerGroup.add(leftLeg);
     const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12), legM);
     rightLeg.position.set(0.2, 0.3, 0); playerGroup.add(rightLeg);
 
-    // 디테일 상체 (포도대장/유생 도포 복장)
     const bodyG = new THREE.CylinderGeometry(0.42, 0.52, 1.2, 16);
     const bodyM = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.4 });
     const playerBody = new THREE.Mesh(bodyG, bodyM);
@@ -619,19 +623,16 @@
     playerBody.castShadow = true;
     playerGroup.add(playerBody);
 
-    // 허리 띠 / 벨트
     const beltM = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.3 });
     const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.15, 16), beltM);
     belt.position.y = 0.95; playerGroup.add(belt);
 
-    // 어깨 파츠
     const shoulderM = new THREE.MeshStandardMaterial({ color: 0x9a3412 });
     const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shoulderM);
     lShoulder.position.set(-0.48, 1.5, 0); playerGroup.add(lShoulder);
     const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shoulderM);
     rShoulder.position.set(0.48, 1.5, 0); playerGroup.add(rShoulder);
 
-    // 디테일 머리 및 갓/머리끈
     const headG = new THREE.SphereGeometry(0.35, 16, 16);
     const headM = new THREE.MeshStandardMaterial({ color: 0xffdbac });
     const playerHead = new THREE.Mesh(headG, headM);
@@ -646,8 +647,9 @@
     const hatTop = new THREE.Mesh(hatTopG, hatM); hatTop.position.y = 2.45;
     playerGroup.add(hat); playerGroup.add(hatTop);
 
+    // [수정] 오라 메쉬에 depthWrite: false 적용하여 스킬 사용 시 투명 깊이 오류로 인한 캐릭터 가림 현상 방지
     const auraG = new THREE.RingGeometry(0.6, 1.1, 32);
-    const auraM = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const auraM = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthWrite: false });
     const auraMesh = new THREE.Mesh(auraG, auraM);
     auraMesh.rotation.x = Math.PI / 2;
     auraMesh.position.y = 0.05;
@@ -659,19 +661,16 @@
 
     let currentWeaponMesh = null;
 
-    // [신규] 전직 직업별 고유 3D 무기 정밀 렌더링
     function updateWeaponMesh() {
       if (currentWeaponMesh) weaponGroup.remove(currentWeaponMesh);
       
       const weaponObj = new THREE.Group();
 
       if (playerState.job === "평민") {
-        // [평민]: 단단한 나무 곤봉
         const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
         weaponObj.add(stick);
       } 
       else if (playerState.job === "검사") {
-        // [검사]: 세련된 은빛 장검 (날, 코등이/가드, 손잡이, 검집 장식)
         const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.9, 0.16), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 }));
         blade.position.y = 0.7; weaponObj.add(blade);
 
@@ -685,7 +684,6 @@
         pommel.position.y = -0.75; weaponObj.add(pommel);
       } 
       else if (playerState.job === "총사") {
-        // [총사]: 조선 화승총/장총 (나무 개머리판, 긴 정밀 개머리 강철 총열, 가늠자)
         const stock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.18), new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.4 }));
         stock.position.set(0, -0.2, 0); weaponObj.add(stock);
 
@@ -696,7 +694,6 @@
         muzzle.position.set(0, 1.5, 0.06); weaponObj.add(muzzle);
       } 
       else if (playerState.job === "주술사") {
-        // [주술사]: 신비로운 주술 지팡이 (고풍스러운 나무 봉, 보라빛 발광 옥 구체, 회전하는 부적)
         const staffRod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.3 }));
         weaponObj.add(staffRod);
 
@@ -720,7 +717,6 @@
       playerState.attackSpeed = playerState.baseAttackSpeed / (1 + playerState.atkSpeedLv * 0.10);
     }
 
-    // [신규] 보행/이동 애니메이션 (Procedural Motion)
     function animateWalkingMotion(group, time) {
       group.position.y = Math.abs(Math.sin(time * 12)) * 0.15;
       group.rotation.z = Math.sin(time * 10) * 0.05;
@@ -732,7 +728,7 @@
     }
 
     /* ==========================================
-       5. 3D VFX
+       5. 3D VFX (depthWrite: false 보정)
        ========================================== */
     const vfxList = [];
 
@@ -754,7 +750,7 @@
     }
 
     /* ==========================================
-       6. SUMMON HEROES
+       6. SUMMON HEROES (depthWrite: false 보정)
        ========================================== */
     let hwangJiniGroup = null;
     let hwangJiniInstrumentTip = null;
@@ -763,6 +759,7 @@
     function spawnHwangJiniHero() {
       if (hwangJiniGroup) return;
       hwangJiniGroup = new THREE.Group();
+      hwangJiniGroup.renderOrder = 10;
 
       const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.5, 1.0, 16), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 }));
       skirt.position.y = 0.5; skirt.castShadow = true; hwangJiniGroup.add(skirt);
@@ -783,7 +780,7 @@
       hwangJiniInstrumentTip.position.set(0.6, 1.5, 0.25);
       hwangJiniGroup.add(hwangJiniInstrumentTip);
 
-      const heroAura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      const heroAura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
       heroAura.rotation.x = Math.PI / 2; heroAura.position.y = 0.04; hwangJiniGroup.add(heroAura);
 
       hwangJiniGroup.position.copy(playerGroup.position).add(new THREE.Vector3(-1.3, 0, 1.3));
@@ -801,7 +798,7 @@
 
       const boltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff4500 }));
       boltMesh.position.copy(startPos);
-      const corona = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 }));
+      const corona = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5, depthWrite: false }));
       boltMesh.add(corona); scene.add(boltMesh);
 
       projectiles.push({ mesh: boltMesh, target: target, speed: 22, damage: hwangJiniState.attackPower });
@@ -816,6 +813,7 @@
     function spawnJanggeumHero() {
       if (janggeumGroup) return;
       janggeumGroup = new THREE.Group();
+      janggeumGroup.renderOrder = 10;
 
       const skirtM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
       const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, 1.0, 16), skirtM);
@@ -844,7 +842,7 @@
       janggeumHandTip.position.set(0, 1.1, 0.4);
       janggeumGroup.add(janggeumHandTip);
 
-      const aura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      const aura = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
       aura.rotation.x = Math.PI / 2; aura.position.y = 0.04; janggeumGroup.add(aura);
 
       janggeumGroup.position.copy(playerGroup.position).add(new THREE.Vector3(1.3, 0, 1.3));
@@ -1174,7 +1172,7 @@
       el.innerText = `-${dmg}`;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
-      document.body.appendChild(el);
+      document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
 
@@ -1190,7 +1188,7 @@
       el.innerText = text;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
-      document.body.appendChild(el);
+      document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
 
@@ -1208,6 +1206,88 @@
         showHealText(`+${manaAmt} MP`, playerGroup.position);
       }
       updateUI();
+    }
+
+    /* ==========================================
+       9. AOE SKILLS & VFX EXECUTION (depthWrite: false 적용)
+       ========================================== */
+    function triggerAoeSkill() {
+      if (playerState.job === "평민") return;
+
+      const now = Date.now();
+      if (now - playerState.lastAoeTime < playerState.aoeCooldown) return;
+      playerState.lastAoeTime = now;
+
+      const btn = document.getElementById('btn-aoe');
+      btn.style.opacity = "0.5";
+      setTimeout(() => btn.style.opacity = "1.0", playerState.aoeCooldown);
+
+      if (playerState.job === "검사") {
+        const ringG = new THREE.RingGeometry(0.5, 1.2, 32);
+        const ringM = new THREE.MeshBasicMaterial({ color: 0xff2222, side: THREE.DoubleSide, transparent: true, opacity: 0.9, depthWrite: false });
+        const ringMesh = new THREE.Mesh(ringG, ringM);
+        ringMesh.rotation.x = Math.PI / 2;
+        ringMesh.position.copy(playerGroup.position).add(new THREE.Vector3(0, 0.3, 0));
+
+        addVfx(ringMesh, (mesh, age) => {
+          mesh.scale.addScalar(0.4);
+          mesh.material.opacity = Math.max(0, 0.9 - age * 2.0);
+          mesh.rotation.z += 0.3;
+          return age >= 0.5;
+        });
+
+        const radius = 5.5;
+        monsters.forEach(m => {
+          if (m.alive && playerGroup.position.distanceTo(m.group.position) <= radius) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.0));
+          }
+        });
+
+      } else if (playerState.job === "총사") {
+        let targetPos = playerGroup.position.clone().add(new THREE.Vector3(0, 0, -6).applyQuaternion(playerGroup.quaternion));
+        if (selectedTargetMonster && selectedTargetMonster.alive) {
+          targetPos = selectedTargetMonster.group.position.clone();
+        }
+
+        const expG = new THREE.SphereGeometry(0.5, 16, 16);
+        const expM = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9, depthWrite: false });
+        const expMesh = new THREE.Mesh(expG, expM);
+        expMesh.position.copy(targetPos).add(new THREE.Vector3(0, 0.8, 0));
+
+        addVfx(expMesh, (mesh, age) => {
+          mesh.scale.addScalar(0.35);
+          mesh.material.opacity = Math.max(0, 0.9 - age * 1.8);
+          return age >= 0.5;
+        });
+
+        monsters.forEach(m => {
+          if (m.alive && m.group.position.distanceTo(targetPos) <= 5.0) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.2));
+          }
+        });
+
+      } else if (playerState.job === "주술사") {
+        let targetPos = playerGroup.position.clone().add(new THREE.Vector3(0, 0, -6).applyQuaternion(playerGroup.quaternion));
+        if (selectedTargetMonster && selectedTargetMonster.alive) {
+          targetPos = selectedTargetMonster.group.position.clone();
+        }
+
+        const lightningG = new THREE.CylinderGeometry(1.5, 1.5, 16, 16);
+        const lightningM = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8, depthWrite: false });
+        const lightningMesh = new THREE.Mesh(lightningG, lightningM);
+        lightningMesh.position.copy(targetPos).add(new THREE.Vector3(0, 8, 0));
+
+        addVfx(lightningMesh, (mesh, age) => {
+          mesh.material.opacity = Math.max(0, 0.8 - age * 2.0);
+          return age >= 0.4;
+        });
+
+        monsters.forEach(m => {
+          if (m.alive && m.group.position.distanceTo(targetPos) <= 5.0) {
+            applyDamage(m, Math.round(playerState.attackPower * 2.5));
+          }
+        });
+      }
     }
 
     /* ==========================================
@@ -1596,7 +1676,7 @@
     }
 
     /* ==========================================
-       13. AUTO-HUNT & JOYSTICK CONTROLS (전직 전 근접 이동 공격 수정)
+       13. AUTO-HUNT & JOYSTICK CONTROLS (전직 전 근접 이동 연동 수정)
        ========================================== */
     let isAutoHunt = false;
 
@@ -1608,7 +1688,7 @@
       if (isAutoHunt) targetNearestMonster();
     }
 
-    // [완벽 수정] 타깃 몬스터 추적 및 공격 연동 알고리즘
+    // [완벽 보정] 전직 전/후 모두 타깃이 멀리 있으면 근접 사거리까지 정밀 추적 이동
     function processTargetChaseAndAttack(delta) {
       if (!selectedTargetMonster || !selectedTargetMonster.alive) {
         if (isAutoHunt) targetNearestMonster();
@@ -1618,16 +1698,17 @@
       const dist = playerGroup.position.distanceTo(selectedTargetMonster.group.position);
       playerGroup.lookAt(selectedTargetMonster.group.position.x, playerGroup.position.y, selectedTargetMonster.group.position.z);
 
-      // 사거리 밖인 경우: 몬스터 위치로 이동하며 보행 모션
       if (dist > playerState.attackRange) {
-        const dir = selectedTargetMonster.group.position.clone().sub(playerGroup.position).normalize();
-        playerGroup.position.x += dir.x * playerState.moveSpeed * delta;
-        playerGroup.position.z += dir.z * playerState.moveSpeed * delta;
+        const dir = selectedTargetMonster.group.position.clone().sub(playerGroup.position);
+        if (dir.lengthSq() > 0.0001) {
+          dir.normalize();
+          playerGroup.position.x += dir.x * playerState.moveSpeed * delta;
+          playerGroup.position.z += dir.z * playerState.moveSpeed * delta;
+        }
         
         animateWalkingMotion(playerGroup, performance.now() * 0.001);
         return true;
       } else {
-        // 사거리 진입 시: 정지 후 공격 수행
         resetWalkingMotion(playerGroup);
         attackMonster(selectedTargetMonster);
         return false;
@@ -1792,7 +1873,6 @@
       if (playerState.job === "총사" || playerState.job === "주술사") {
         createProjectile(playerGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0)), target);
       } else {
-        // [평민/검사] 휘두르기 모션
         weaponGroup.rotation.y = Math.PI / 2;
         weaponGroup.rotation.z = -Math.PI / 4;
         setTimeout(() => {
@@ -1856,7 +1936,7 @@
       el.innerText = isCrit ? `💥 CRIT -${dmg}` : `-${dmg}`;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
-      document.body.appendChild(el);
+      document.getElementById('nametag-layer').appendChild(el);
       setTimeout(() => el.remove(), 800);
     }
 
@@ -1978,7 +2058,6 @@
         animateWalkingMotion(playerGroup, timeSec);
         playerState.idleTimer = 0;
       } else {
-        // [완벽 연동] 타깃 몬스터 추적 및 이동 사거리 공격
         const isChasing = processTargetChaseAndAttack(delta);
 
         if (!isChasing) {
@@ -1999,7 +2078,6 @@
         }
       }
 
-      // [소환영웅 황진이 보행 모션]
       if (hwangJiniGroup) {
         const desiredPos = playerGroup.position.clone().add(new THREE.Vector3(-1.3, 0, 1.3));
         const heroDist = hwangJiniGroup.position.distanceTo(desiredPos);
@@ -2016,7 +2094,6 @@
         }
       }
 
-      // [소환영웅 의녀장금 보행 모션]
       if (janggeumGroup) {
         const desiredPosJ = playerGroup.position.clone().add(new THREE.Vector3(1.3, 0, 1.3));
         const heroDistJ = janggeumGroup.position.distanceTo(desiredPosJ);
@@ -2037,12 +2114,17 @@
 
       auraMesh.rotation.z += delta * 1.5;
 
+      // [수정] 투사체 이동 연산 중 Vector zero 거리 안전 보정
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         if (!p.target.alive) { scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
         const targetPos = p.target.group.position.clone().add(new THREE.Vector3(0, 0.7, 0));
-        const dir = targetPos.sub(p.mesh.position).normalize();
-        p.mesh.position.addScaledVector(dir, p.speed * delta);
+        
+        const distToTarget = p.mesh.position.distanceTo(targetPos);
+        if (distToTarget > 0.001) {
+          const dir = targetPos.clone().sub(p.mesh.position).normalize();
+          p.mesh.position.addScaledVector(dir, p.speed * delta);
+        }
 
         if (p.mesh.position.distanceTo(p.target.group.position) < 1.0) {
           applyDamage(p.target, p.damage);
