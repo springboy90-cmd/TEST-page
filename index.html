@@ -1117,7 +1117,7 @@
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
       maxExp: getRequiredExp(1),
       gold: 200, 
-      talismanLoot: 0, // BOSS 전리품 수량
+      talismanLoot: 0, // 전리품 수량
       talismanLevel: 0, // 부적 강화 단계 (+0 ~ +10)
       baseAttackSpeed: 1000, attackSpeed: 1000,
       weaponAtk: 0, defensePower: 5,
@@ -2421,10 +2421,27 @@
             rewardGold += 100000;
             showHealText('+100,000 G (보스 보너스!)', target.sprite.position);
           }
-          // BOSS 몹 처치 시 50% 확률로 "부적:필살의 기운" 강화 재료(전리품) 1개 획득
-          if (Math.random() < 0.5) {
-            playerState.talismanLoot += 1;
-            showHealText('+1 전리품 획득!', target.sprite.position);
+
+          // BOSS 몹 드롭 확률 로직:
+          // 25% 확률로 10개 획득, 50% 확률로 2~5개 랜덤 획득
+          const rand = Math.random();
+          let lootCount = 0;
+          if (rand < 0.25) {
+            lootCount = 10;
+          } else if (rand < 0.75) { // 0.25 ~ 0.75 (50% 확률)
+            lootCount = Math.floor(Math.random() * 4) + 2; // 2 ~ 5개
+          }
+
+          if (lootCount > 0) {
+            playerState.talismanLoot += lootCount;
+            showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
+          }
+        } else {
+          // 일반 몬스터: 40% 확률로 1~3개 랜덤 획득
+          if (Math.random() < 0.4) {
+            const normalLootCount = Math.floor(Math.random() * 3) + 1; // 1 ~ 3개
+            playerState.talismanLoot += normalLootCount;
+            showHealText(`+${normalLootCount} 전리품 획득!`, target.sprite.position);
           }
         }
 
