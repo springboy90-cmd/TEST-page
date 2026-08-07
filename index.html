@@ -18,7 +18,7 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       overflow: hidden; 
       font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
-      background: #388e3c; color: #5d4037; 
+      background: #23301f; color: #5d4037; 
     }
 
     :root {
@@ -389,6 +389,8 @@
     const nametagLayer = document.getElementById('nametag-layer');
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2b241c);
+    scene.fog = new THREE.Fog(0x2b241c, 34, 95);
     let currentStage = 1;
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
@@ -406,8 +408,16 @@
     }
     window.addEventListener('resize', onWindowResize);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    const ambientLight = new THREE.AmbientLight(0x6b7a8f, 0.85);
     scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffe3b0, 1.25);
+    sunLight.position.set(-18, 26, 12);
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x4a6fa5, 0.45);
+    rimLight.position.set(15, 10, -20);
+    scene.add(rimLight);
 
     /* ==========================================
        1. STAGE & BACKGROUND TEXTURES
@@ -415,47 +425,156 @@
     function createBeginnerFieldTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d'); ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#dca86b'; ctx.fillRect(0, 0, 512, 512);
-      ctx.fillStyle = '#cc9759'; for(let i=0; i<1500; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-      ctx.fillStyle = '#2fbfae'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(160,0); ctx.quadraticCurveTo(100,70,0,110); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#ebd1a0'; ctx.lineWidth = 6; ctx.stroke();
-      ctx.fillStyle = '#c7964b';
-      for (let x = 250; x < 512; x += 32) {
-        for (let y = 250; y < 512; y += 32) { ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill(); }
+
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0, '#dfe8ea');
+      grad.addColorStop(0.32, '#a9b6ab');
+      grad.addColorStop(0.48, '#5c6e52');
+      grad.addColorStop(1, '#3a5c34');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, 512, 512);
+
+      for (let i = 0; i < 900; i++) {
+        const x = Math.random() * 512, y = Math.random() * 230;
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.55)' : 'rgba(120,135,140,0.3)';
+        ctx.fillRect(x, y, 2, 2);
       }
-      const tex = new THREE.CanvasTexture(cvs); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let i = 0; i < 20; i++) { ctx.beginPath(); ctx.ellipse(Math.random()*512, Math.random()*200, 22+Math.random()*22, 10+Math.random()*10, 0, 0, Math.PI*2); ctx.fill(); }
+
+      for (let i = 0; i < 1400; i++) {
+        const x = Math.random() * 512, y = 260 + Math.random() * 252;
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(70,105,55,0.6)' : 'rgba(30,55,25,0.4)';
+        ctx.fillRect(x, y, 2, 2);
+      }
+      ctx.fillStyle = 'rgba(20,40,18,0.22)';
+      for (let i = 0; i < 30; i++) { ctx.beginPath(); ctx.ellipse(Math.random()*512, 270+Math.random()*230, 18+Math.random()*20, 8+Math.random()*10, 0, 0, Math.PI*2); ctx.fill(); }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, 210);
+      ctx.bezierCurveTo(140, 230, 180, 260, 150, 300);
+      ctx.bezierCurveTo(120, 340, 200, 370, 260, 400);
+      ctx.bezierCurveTo(320, 430, 300, 470, 340, 512);
+      ctx.lineTo(512, 512);
+      ctx.bezierCurveTo(460, 460, 480, 420, 420, 380);
+      ctx.bezierCurveTo(360, 340, 380, 300, 420, 260);
+      ctx.bezierCurveTo(460, 230, 420, 200, 380, 170);
+      ctx.bezierCurveTo(320, 150, 260, 190, 220, 170);
+      ctx.bezierCurveTo(180, 150, 100, 190, 0, 175);
+      ctx.closePath();
+      ctx.clip();
+
+      const streamGrad = ctx.createLinearGradient(0, 0, 0, 512);
+      streamGrad.addColorStop(0, '#c7dde3');
+      streamGrad.addColorStop(0.45, '#9fc3cc');
+      streamGrad.addColorStop(0.55, '#2e6f78');
+      streamGrad.addColorStop(1, '#1c5a68');
+      ctx.fillStyle = streamGrad; ctx.fillRect(0, 0, 512, 512);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 10; i++) {
+        const sx = Math.random()*512, sy = Math.random()*230;
+        ctx.beginPath(); ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + (Math.random()*30-15), sy + (Math.random()*30-15));
+        ctx.lineTo(sx + (Math.random()*40-20), sy + (Math.random()*20-10));
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(210,240,245,0.55)';
+      for (let i = 0; i < 26; i++) { ctx.fillRect(Math.random()*512, 270+Math.random()*242, 6, 1.5); }
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(60,70,60,0.35)'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 210);
+      ctx.bezierCurveTo(140, 230, 180, 260, 150, 300);
+      ctx.bezierCurveTo(120, 340, 200, 370, 260, 400);
+      ctx.bezierCurveTo(320, 430, 300, 470, 340, 512);
+      ctx.stroke();
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.wrapS = THREE.ClampToEdgeWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
       return tex;
+    }
+
+    function createSummerTreeTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 160;
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#4a3626'; ctx.fillRect(58, 90, 12, 60);
+      ctx.fillStyle = '#3a2a1c'; ctx.fillRect(58, 90, 4, 60);
+      ctx.fillStyle = '#2e4a24'; ctx.beginPath(); ctx.ellipse(64, 60, 46, 42, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#3d6030'; ctx.beginPath(); ctx.ellipse(48, 46, 26, 24, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(82, 50, 24, 22, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(64, 34, 22, 20, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(90,130,70,0.5)';
+      ctx.beginPath(); ctx.ellipse(46, 38, 12, 10, 0, 0, Math.PI*2); ctx.fill();
+      const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
+    }
+
+    function createWinterTreeTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 160;
+      const ctx = cvs.getContext('2d');
+      ctx.strokeStyle = '#332a24'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(64, 150); ctx.lineTo(62, 95); ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(62, 120); ctx.lineTo(32, 90); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(60, 110); ctx.lineTo(90, 80); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(62, 95); ctx.lineTo(44, 55); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(63, 98); ctx.lineTo(84, 60); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(62, 90); ctx.lineTo(62, 40); ctx.stroke();
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(44, 55); ctx.lineTo(28, 40); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(44, 55); ctx.lineTo(38, 30); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(84, 60); ctx.lineTo(100, 44); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(62, 40); ctx.lineTo(62, 18); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(62, 40); ctx.lineTo(48, 20); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      [[62,95],[32,90],[90,80],[44,55],[84,60],[62,40],[28,40],[100,44],[62,18]].forEach(([x,y]) => {
+        ctx.beginPath(); ctx.ellipse(x, y-3, 7, 3.5, 0, 0, Math.PI*2); ctx.fill();
+      });
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.ellipse(64, 148, 22, 8, 0, 0, Math.PI*2); ctx.fill();
+      const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
+    }
+
+    function createSnowflakeTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 16; cvs.height = 16;
+      const ctx = cvs.getContext('2d');
+      const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+      grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(8, 8, 8, 0, Math.PI*2); ctx.fill();
+      const tex = new THREE.CanvasTexture(cvs); return tex;
     }
 
     function createRoofTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
-      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#3faab1'; ctx.fillRect(0, 0, 128, 128);
-      ctx.fillStyle = '#227278'; for(let y=10; y<128; y+=24) ctx.fillRect(0, y, 128, 8);
-      ctx.fillStyle = '#f5ebd7'; ctx.fillRect(0, 0, 128, 12);
+      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#2c4d52'; ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = '#1a3438'; for(let y=10; y<128; y+=24) ctx.fillRect(0, y, 128, 8);
+      ctx.fillStyle = '#4a3526'; ctx.fillRect(0, 0, 128, 12);
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
     function createFlowerPatchTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
-      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#4a7c29'; for(let i=0; i<8; i++) ctx.fillRect(20 + i*12, 50, 4, 40);
-      ctx.fillStyle = '#e53935'; ctx.beginPath(); ctx.arc(30, 42, 10, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(55, 38, 11, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#ab47bc'; ctx.beginPath(); ctx.arc(102, 40, 8, 0, Math.PI*2); ctx.fill();
+      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#33502a'; for(let i=0; i<8; i++) ctx.fillRect(20 + i*12, 50, 4, 40);
+      ctx.fillStyle = '#8e2b28'; ctx.beginPath(); ctx.arc(30, 42, 10, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(55, 38, 11, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#5e2f70'; ctx.beginPath(); ctx.arc(102, 40, 8, 0, Math.PI*2); ctx.fill();
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
     function createRockHillTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
-      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#9e8c6c'; ctx.beginPath(); ctx.ellipse(64, 70, 50, 40, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#bcae93'; ctx.beginPath(); ctx.ellipse(50, 55, 25, 20, 0, 0, Math.PI*2); ctx.fill();
+      const ctx = cvs.getContext('2d'); ctx.fillStyle = '#5c5142'; ctx.beginPath(); ctx.ellipse(64, 70, 50, 40, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#726352'; ctx.beginPath(); ctx.ellipse(50, 55, 25, 20, 0, 0, Math.PI*2); ctx.fill();
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
     function createCaveFloorTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d'); ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#c8a265'; ctx.fillRect(0, 0, 512, 512);
-      ctx.fillStyle = '#b79154'; for(let i=0; i<1200; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-      ctx.strokeStyle = 'rgba(110, 80, 40, 0.45)'; ctx.lineWidth = 4;
+      ctx.fillStyle = '#4a3d2c'; ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = '#3a3024'; for(let i=0; i<1200; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+      ctx.strokeStyle = 'rgba(20, 15, 8, 0.5)'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(140, 360, 90, 0, Math.PI * 2); ctx.stroke();
       const tex = new THREE.CanvasTexture(cvs); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 3);
       return tex;
@@ -464,7 +583,7 @@
     function createBearStatueTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
-      ctx.fillStyle = '#838186'; ctx.beginPath(); ctx.ellipse(128, 150, 55, 70, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4d4b4f'; ctx.beginPath(); ctx.ellipse(128, 150, 55, 70, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(128, 75, 42, 0, Math.PI * 2); ctx.fill();
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
@@ -472,11 +591,11 @@
     function createBadukFloorTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d'); ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#2e7d32'; ctx.fillRect(0, 0, 512, 512);
-      ctx.fillStyle = '#1b5e20'; for(let i=0; i<1800; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+      ctx.fillStyle = '#1b3a1e'; ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = '#122812'; for(let i=0; i<1800; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
 
-      ctx.fillStyle = '#d7ccc8'; ctx.fillRect(100, 100, 312, 312);
-      ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 3;
+      ctx.fillStyle = '#a89a86'; ctx.fillRect(100, 100, 312, 312);
+      ctx.strokeStyle = '#3a2c20'; ctx.lineWidth = 3;
       for (let i = 0; i <= 10; i++) {
         ctx.beginPath(); ctx.moveTo(100 + i * 31.2, 100); ctx.lineTo(100 + i * 31.2, 412); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(100, 100 + i * 31.2); ctx.lineTo(412, 100 + i * 31.2); ctx.stroke();
@@ -485,7 +604,6 @@
       return tex;
     }
 
-    /* 부채꼴 오로라 텍스처 (검성 핑크 / 대도사 연노랑) */
     function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
@@ -604,9 +722,9 @@
       if (type === 'player_beginner') {
         if (isBack) {
           ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 38, 24, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#42a5f5'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
-          ctx.fillStyle = '#fbc02d'; ctx.fillRect(48, 72, 32, 5);
-          ctx.fillStyle = '#80deea'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
+          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
+          ctx.fillStyle = '#8f7326'; ctx.fillRect(48, 72, 32, 5);
+          ctx.fillStyle = '#4a8088'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
           ctx.fillStyle = '#5d4037'; ctx.fillRect(40, 114, 20, 8); ctx.fillRect(68, 114, 20, 8);
           ctx.fillStyle = '#8d6e63'; ctx.fillRect(38, 65, 25, 8);
         } else {
@@ -614,13 +732,13 @@
           ctx.beginPath(); ctx.arc(64, 35, 24, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 42, 17, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#3e2723'; ctx.fillRect(52, 40, 5, 7); ctx.fillRect(71, 40, 5, 7);
-          ctx.fillStyle = '#d84315'; ctx.fillRect(60, 51, 8, 2);
-          ctx.fillStyle = '#42a5f5'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
-          ctx.fillStyle = '#e53935'; ctx.fillRect(58, 58, 12, 30);
-          ctx.fillStyle = '#fbc02d'; ctx.fillRect(48, 72, 32, 5); ctx.fillRect(58, 66, 12, 4);
-          ctx.fillStyle = '#80deea'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
+          ctx.fillStyle = '#6b3018'; ctx.fillRect(60, 51, 8, 2);
+          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
+          ctx.fillStyle = '#7a2a28'; ctx.fillRect(58, 58, 12, 30);
+          ctx.fillStyle = '#8f7326'; ctx.fillRect(48, 72, 32, 5); ctx.fillRect(58, 66, 12, 4);
+          ctx.fillStyle = '#4a8088'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
           ctx.fillStyle = '#5d4037'; ctx.fillRect(40, 114, 20, 8); ctx.fillRect(68, 114, 20, 8);
-          ctx.fillStyle = '#e0e0e0'; ctx.fillRect(36, 62, 8, 20);
+          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(36, 62, 8, 20);
           ctx.fillStyle = '#8d6e63'; ctx.fillRect(86, 75, 25, 8);
         }
       }
@@ -628,33 +746,33 @@
         if (isBack) {
           ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#212121'; ctx.fillRect(72, 24, 25, 6);
-          ctx.fillStyle = '#ffca28'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#a3822f'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#6d2828'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
           ctx.fillStyle = '#212121'; ctx.fillRect(44, 75, 40, 25);
-          ctx.fillStyle = '#ffd54f'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
+          ctx.fillStyle = '#a68a3a'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
           ctx.fillStyle = '#212121'; ctx.fillRect(44, 100, 16, 20); ctx.fillRect(68, 100, 16, 20);
           ctx.fillStyle = '#4e342e'; ctx.fillRect(42, 116, 18, 8); ctx.fillRect(68, 116, 18, 8);
           ctx.fillStyle = '#212121'; ctx.fillRect(15, 80, 28, 36);
-          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 3; ctx.strokeRect(15, 80, 28, 36);
+          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 3; ctx.strokeRect(15, 80, 28, 36);
         } else {
-          ctx.fillStyle = '#ffca28'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#a3822f'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#0288d1'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#0288d1'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
+          ctx.fillStyle = '#1e5a75'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
           ctx.fillStyle = '#212121'; ctx.fillRect(44, 52, 40, 36);
           ctx.fillStyle = '#6d2828'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
-          ctx.fillStyle = '#ffd54f'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#0288d1'; ctx.beginPath(); ctx.arc(64, 76, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#a68a3a'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
+          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 76, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
           ctx.fillStyle = '#6d2828'; ctx.fillRect(36, 78, 56, 24);
           ctx.fillStyle = '#212121'; ctx.fillRect(44, 100, 16, 20); ctx.fillRect(68, 100, 16, 20);
           ctx.fillStyle = '#4e342e'; ctx.fillRect(42, 116, 18, 8); ctx.fillRect(68, 116, 18, 8);
           ctx.strokeStyle = '#212121'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(85, 55); ctx.lineTo(110, 105); ctx.stroke();
           ctx.fillStyle = '#212121'; ctx.fillRect(95, 80, 28, 36);
-          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 3; ctx.strokeRect(95, 80, 28, 36);
-          ctx.fillStyle = '#0288d1'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 3; ctx.strokeRect(95, 80, 28, 36);
+          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
         }
       }
       else if (type === 'player_swordmaster') {
@@ -667,22 +785,22 @@
 
           ctx.fillStyle = '#212121';
           ctx.beginPath(); ctx.moveTo(40, 26); ctx.lineTo(48, 8); ctx.lineTo(56, 24); ctx.lineTo(64, 4); ctx.lineTo(72, 24); ctx.lineTo(80, 8); ctx.lineTo(88, 26); ctx.fill();
-          ctx.strokeStyle = '#90caf9'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = '#5a7fa0'; ctx.lineWidth = 2; ctx.stroke();
 
-          ctx.fillStyle = '#eceff1'; ctx.fillRect(44, 58, 40, 32);
-          ctx.fillStyle = '#b0bec5'; ctx.fillRect(48, 62, 32, 28);
-          ctx.fillStyle = '#1565c0'; ctx.fillRect(44, 58, 40, 4); ctx.fillRect(44, 86, 40, 4);
+          ctx.fillStyle = '#b8bcc0'; ctx.fillRect(44, 58, 40, 32);
+          ctx.fillStyle = '#7a8a92'; ctx.fillRect(48, 62, 32, 28);
+          ctx.fillStyle = '#1f4266'; ctx.fillRect(44, 58, 40, 4); ctx.fillRect(44, 86, 40, 4);
 
-          ctx.fillStyle = '#cfd8dc';
+          ctx.fillStyle = '#8fa0a8';
           ctx.beginPath(); ctx.moveTo(40, 88); ctx.lineTo(30, 110); ctx.lineTo(50, 100); ctx.fill();
           ctx.beginPath(); ctx.moveTo(88, 88); ctx.lineTo(98, 110); ctx.lineTo(78, 100); ctx.fill();
           ctx.beginPath(); ctx.moveTo(64, 88); ctx.lineTo(64, 116); ctx.lineTo(54, 98); ctx.fill();
 
-          ctx.fillStyle = '#1a237e'; ctx.fillRect(46, 102, 12, 20); ctx.fillRect(70, 102, 12, 20);
+          ctx.fillStyle = '#161c47'; ctx.fillRect(46, 102, 12, 20); ctx.fillRect(70, 102, 12, 20);
 
-          ctx.fillStyle = '#b0bec5';
+          ctx.fillStyle = '#7a8a92';
           ctx.beginPath(); ctx.moveTo(10, 115); ctx.lineTo(118, 55); ctx.lineTo(122, 63); ctx.lineTo(14, 123); ctx.fill();
-          ctx.fillStyle = '#1e88e5';
+          ctx.fillStyle = '#2a5f8f';
           ctx.beginPath(); ctx.moveTo(20, 110); ctx.lineTo(110, 58); ctx.lineTo(114, 64); ctx.lineTo(24, 116); ctx.fill();
         } else {
           ctx.fillStyle = '#111111';
@@ -692,36 +810,36 @@
 
           ctx.fillStyle = '#212121';
           ctx.beginPath(); ctx.moveTo(38, 28); ctx.lineTo(46, 8); ctx.lineTo(54, 24); ctx.lineTo(64, 2); ctx.lineTo(74, 24); ctx.lineTo(82, 8); ctx.lineTo(90, 28); ctx.fill();
-          ctx.strokeStyle = '#90caf9'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#42a5f5'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#5a7fa0'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
 
-          ctx.fillStyle = '#37474f'; ctx.fillRect(48, 32, 32, 10);
-          ctx.fillStyle = '#90caf9'; ctx.fillRect(52, 36, 24, 2);
+          ctx.fillStyle = '#26333a'; ctx.fillRect(48, 32, 32, 10);
+          ctx.fillStyle = '#5a7fa0'; ctx.fillRect(52, 36, 24, 2);
           ctx.fillStyle = '#ffecb3'; ctx.fillRect(54, 42, 20, 10);
 
-          ctx.fillStyle = '#eceff1'; ctx.beginPath(); ctx.moveTo(40, 52); ctx.lineTo(88, 52); ctx.lineTo(82, 88); ctx.lineTo(46, 88); ctx.fill();
-          ctx.fillStyle = '#1565c0'; ctx.fillRect(44, 56, 40, 6);
-          ctx.fillStyle = '#1e88e5'; ctx.fillRect(60, 62, 8, 22);
-          ctx.fillStyle = '#b0bec5'; ctx.fillRect(34, 52, 10, 16); ctx.fillRect(84, 52, 10, 16);
+          ctx.fillStyle = '#b8bcc0'; ctx.beginPath(); ctx.moveTo(40, 52); ctx.lineTo(88, 52); ctx.lineTo(82, 88); ctx.lineTo(46, 88); ctx.fill();
+          ctx.fillStyle = '#1f4266'; ctx.fillRect(44, 56, 40, 6);
+          ctx.fillStyle = '#2a5f8f'; ctx.fillRect(60, 62, 8, 22);
+          ctx.fillStyle = '#7a8a92'; ctx.fillRect(34, 52, 10, 16); ctx.fillRect(84, 52, 10, 16);
 
-          ctx.fillStyle = '#cfd8dc';
+          ctx.fillStyle = '#8fa0a8';
           ctx.beginPath(); ctx.moveTo(42, 88); ctx.lineTo(32, 112); ctx.lineTo(52, 100); ctx.fill();
           ctx.beginPath(); ctx.moveTo(86, 88); ctx.lineTo(96, 112); ctx.lineTo(76, 100); ctx.fill();
           ctx.beginPath(); ctx.moveTo(64, 88); ctx.lineTo(64, 118); ctx.lineTo(52, 100); ctx.fill();
-          ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.strokeStyle = '#1f4266'; ctx.lineWidth = 1.5; ctx.stroke();
 
-          ctx.fillStyle = '#1a237e'; ctx.fillRect(46, 98, 10, 22); ctx.fillRect(72, 98, 10, 22);
+          ctx.fillStyle = '#161c47'; ctx.fillRect(46, 98, 10, 22); ctx.fillRect(72, 98, 10, 22);
 
-          ctx.fillStyle = '#eceff1';
+          ctx.fillStyle = '#b8bcc0';
           ctx.beginPath(); ctx.moveTo(10, 78); ctx.lineTo(80, 65); ctx.lineTo(85, 75); ctx.lineTo(15, 88); ctx.fill();
-          ctx.fillStyle = '#90caf9';
+          ctx.fillStyle = '#5a7fa0';
           for (let s = 0; s < 4; s++) {
             let xPos = 15 + s * 16;
             ctx.beginPath(); ctx.moveTo(xPos, 72 - s*2); ctx.lineTo(xPos + 8, 62 - s*2); ctx.lineTo(xPos + 12, 74 - s*2); ctx.fill();
           }
-          ctx.fillStyle = '#1565c0'; ctx.fillRect(20, 75, 55, 4);
-          ctx.fillStyle = '#37474f'; ctx.fillRect(78, 62, 12, 22);
-          ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.arc(84, 73, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1f4266'; ctx.fillRect(20, 75, 55, 4);
+          ctx.fillStyle = '#26333a'; ctx.fillRect(78, 62, 12, 22);
+          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.arc(84, 73, 5, 0, Math.PI * 2); ctx.fill();
         }
       }
       else if (type === 'player_daedosa') {
@@ -742,16 +860,16 @@
           ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
           ctx.beginPath(); ctx.moveTo(85, 122); ctx.lineTo(82, 60); ctx.lineTo(92, 10); ctx.stroke();
 
-          ctx.fillStyle = '#d4af37';
+          ctx.fillStyle = '#8a7328';
           ctx.beginPath(); ctx.arc(92, 30, 22, -Math.PI*0.7, Math.PI*0.7, false);
           ctx.arc(88, 30, 16, Math.PI*0.7, -Math.PI*0.7, true); ctx.fill();
 
-          ctx.fillStyle = '#fff176';
+          ctx.fillStyle = '#c4b060';
           ctx.beginPath(); ctx.moveTo(92, 6); ctx.lineTo(96, -2); ctx.lineTo(100, 6); ctx.fill();
           ctx.beginPath(); ctx.moveTo(112, 18); ctx.lineTo(120, 14); ctx.lineTo(116, 26); ctx.fill();
 
-          ctx.fillStyle = '#ab47bc'; ctx.beginPath(); ctx.arc(92, 30, 12, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ea80fc'; ctx.beginPath(); ctx.arc(89, 27, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(92, 30, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#8a5a95'; ctx.beginPath(); ctx.arc(89, 27, 4, 0, Math.PI * 2); ctx.fill();
 
           ctx.fillStyle = '#ffffff'; ctx.fillRect(96, 48, 6, 20); ctx.fillRect(100, 60, 6, 20);
         } else {
@@ -760,7 +878,7 @@
           ctx.beginPath(); ctx.moveTo(34, 30); ctx.lineTo(42, 42); ctx.lineTo(50, 28); ctx.lineTo(58, 42); ctx.lineTo(70, 30); ctx.fill();
 
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(52, 40, 13, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffd54f'; ctx.fillRect(44, 38, 5, 5); ctx.fillRect(55, 38, 5, 5);
+          ctx.fillStyle = '#a68a3a'; ctx.fillRect(44, 38, 5, 5); ctx.fillRect(55, 38, 5, 5);
           ctx.fillStyle = '#212121'; ctx.fillRect(46, 39, 2, 3); ctx.fillRect(57, 39, 2, 3);
 
           ctx.fillStyle = '#262626'; ctx.fillRect(38, 48, 28, 8);
@@ -773,171 +891,171 @@
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(18, 75, 5, 0, Math.PI*2); ctx.fill();
           ctx.beginPath(); ctx.arc(78, 68, 5, 0, Math.PI*2); ctx.fill();
 
-          ctx.fillStyle = '#d4af37'; ctx.fillRect(34, 52, 6, 8); ctx.fillRect(64, 52, 6, 8);
-          ctx.fillStyle = '#ab47bc'; ctx.beginPath(); ctx.arc(37, 56, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(67, 56, 2, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#8a7328'; ctx.fillRect(34, 52, 6, 8); ctx.fillRect(64, 52, 6, 8);
+          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(37, 56, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(67, 56, 2, 0, Math.PI*2); ctx.fill();
 
           ctx.fillStyle = '#ffffff'; ctx.fillRect(36, 70, 32, 6);
-          ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.ellipse(52, 73, 7, 5, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#ab47bc'; ctx.beginPath(); ctx.arc(52, 73, 3, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.ellipse(52, 73, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(52, 73, 3, 0, Math.PI*2); ctx.fill();
           ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(48, 76); ctx.lineTo(44, 108); ctx.lineTo(52, 102); ctx.fill();
 
           ctx.fillStyle = '#111111'; ctx.fillRect(34, 114, 12, 8); ctx.fillRect(58, 114, 12, 8);
 
           ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
           ctx.beginPath(); ctx.moveTo(85, 124); ctx.lineTo(78, 68); ctx.lineTo(92, 10); ctx.stroke();
-          ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.moveTo(82, 118); ctx.lineTo(88, 126); ctx.lineTo(80, 126); ctx.fill();
+          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.moveTo(82, 118); ctx.lineTo(88, 126); ctx.lineTo(80, 126); ctx.fill();
 
-          ctx.fillStyle = '#d4af37';
+          ctx.fillStyle = '#8a7328';
           ctx.beginPath(); ctx.arc(92, 28, 22, -Math.PI*0.7, Math.PI*0.7, false);
           ctx.arc(88, 28, 16, Math.PI*0.7, -Math.PI*0.7, true); ctx.fill();
 
-          ctx.fillStyle = '#fff176';
+          ctx.fillStyle = '#c4b060';
           ctx.beginPath(); ctx.moveTo(92, 4); ctx.lineTo(96, -4); ctx.lineTo(100, 4); ctx.fill();
           ctx.beginPath(); ctx.moveTo(112, 16); ctx.lineTo(122, 12); ctx.lineTo(116, 24); ctx.fill();
           ctx.beginPath(); ctx.moveTo(76, 12); ctx.lineTo(70, 4); ctx.lineTo(82, 18); ctx.fill();
 
-          ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(92, 28, 12, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#e040fb'; ctx.beginPath(); ctx.arc(90, 25, 8, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#552266'; ctx.beginPath(); ctx.arc(92, 28, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#7a3d8a'; ctx.beginPath(); ctx.arc(90, 25, 8, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(88, 23, 3, 0, Math.PI * 2); ctx.fill();
 
           ctx.fillStyle = '#ffffff'; ctx.fillRect(96, 46, 5, 18); ctx.fillRect(100, 58, 5, 20);
-          ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(98, 64, 3, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.arc(98, 64, 3, 0, Math.PI*2); ctx.fill();
         }
       }
       else if (type === 'player_hunter_gun') {
         if (isBack) {
-          ctx.fillStyle = '#e8e8e8'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(72, 24, 25, 6);
-          ctx.fillStyle = '#b3e5fc'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1a237e'; ctx.fillRect(44, 75, 40, 25);
-          ctx.fillStyle = '#cc9c6c'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
+          ctx.fillStyle = '#a8a8a8'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#8a6a45'; ctx.fillRect(72, 24, 25, 6);
+          ctx.fillStyle = '#4a6a78'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#161c47'; ctx.fillRect(44, 75, 40, 25);
+          ctx.fillStyle = '#8a6a45'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
           ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12);
-          ctx.fillStyle = '#e0e0e0'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(86, 75, 25, 8);
-          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(58, 88, 12, 30);
+          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
+          ctx.fillStyle = '#8a6a45'; ctx.fillRect(86, 75, 25, 8);
+          ctx.fillStyle = '#8a6a45'; ctx.fillRect(58, 88, 12, 30);
           ctx.fillStyle = '#4e342e'; ctx.fillRect(88, 77, 21, 4);
           ctx.fillRect(60, 90, 8, 26);
         } else {
-          ctx.fillStyle = '#e8e8e8'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(72, 36, 25, 6);
+          ctx.fillStyle = '#a8a8a8'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#8a6a45'; ctx.fillRect(72, 36, 25, 6);
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#212121'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#b3e5fc'; ctx.fillRect(44, 52, 40, 36);
-          ctx.fillStyle = '#1a237e'; ctx.fillRect(44, 75, 40, 36);
-          ctx.fillStyle = '#e0e0e0'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#cc9c6c'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
+          ctx.fillStyle = '#4a6a78'; ctx.fillRect(44, 52, 40, 36);
+          ctx.fillStyle = '#161c47'; ctx.fillRect(44, 75, 40, 36);
+          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
+          ctx.fillStyle = '#8a6a45'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
           ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12);
           ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
           ctx.beginPath(); ctx.moveTo(85, 55); ctx.lineTo(110, 105); ctx.stroke();
           ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
         }
       }
       else if (type === 'player_gun') {
         if (isBack) {
-          ctx.fillStyle = '#37474f'; ctx.fillRect(40, 15, 48, 12);
-          ctx.fillStyle = '#1976d2'; ctx.fillRect(40, 54, 48, 45);
+          ctx.fillStyle = '#26333a'; ctx.fillRect(40, 15, 48, 12);
+          ctx.fillStyle = '#254d75'; ctx.fillRect(40, 54, 48, 45);
         } else {
-          ctx.fillStyle = '#37474f'; ctx.fillRect(40, 15, 48, 12);
+          ctx.fillStyle = '#26333a'; ctx.fillRect(40, 15, 48, 12);
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 16, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1976d2'; ctx.fillRect(40, 54, 48, 45);
+          ctx.fillStyle = '#254d75'; ctx.fillRect(40, 54, 48, 45);
           ctx.fillStyle = '#5d4037'; ctx.fillRect(80, 45, 8, 60);
         }
       }
       else if (type === 'player_mage') {
         if (isBack) {
           ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(64, 32, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#7b1fa2'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
+          ctx.fillStyle = '#4a1a5c'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
         } else {
           ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 16, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#7b1fa2'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-          ctx.fillStyle = '#fbc02d'; ctx.fillRect(80, 60, 14, 22);
+          ctx.fillStyle = '#4a1a5c'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
+          ctx.fillStyle = '#8f7326'; ctx.fillRect(80, 60, 14, 22);
         }
       }
       else if (type === 'cat') {
-        ctx.fillStyle = '#ffb74d'; ctx.beginPath(); ctx.ellipse(64, 64, 32, 28, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8f6a35'; ctx.beginPath(); ctx.ellipse(64, 64, 32, 28, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(36, 40, 12, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(92, 40, 12, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#5d4037'; ctx.fillRect(48, 58, 6, 6); ctx.fillRect(74, 58, 6, 6);
       } 
       else if (type === 'pig') {
-        ctx.fillStyle = '#f8bbd0'; ctx.beginPath(); ctx.ellipse(64, 68, 38, 30, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#f48fb1'; ctx.beginPath(); ctx.ellipse(64, 72, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8a5e68'; ctx.beginPath(); ctx.ellipse(64, 68, 38, 30, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6e4550'; ctx.beginPath(); ctx.ellipse(64, 72, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#5d4037'; ctx.fillRect(44, 56, 6, 6); ctx.fillRect(84, 56, 6, 6);
       }
       else if (type === 'garlic_king') {
-        ctx.fillStyle = '#e57373'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 32, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#2e7d32'; ctx.fillRect(60, 20, 8, 22);
-        ctx.fillStyle = '#b71c1c'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(60, 60); ctx.lineTo(44, 64); ctx.fill();
+        ctx.fillStyle = '#7a3530'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2a4020'; ctx.fillRect(60, 20, 8, 22);
+        ctx.fillStyle = '#5c1414'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(60, 60); ctx.lineTo(44, 64); ctx.fill();
         ctx.beginPath(); ctx.moveTo(86, 52); ctx.lineTo(68, 60); ctx.lineTo(84, 64); ctx.fill();
         ctx.fillStyle = '#212121'; ctx.fillRect(48, 60, 6, 8); ctx.fillRect(74, 60, 6, 8);
-        ctx.fillStyle = '#37474f'; ctx.fillRect(48, 78, 32, 10);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(52, 78, 6, 5); ctx.fillRect(70, 78, 6, 5);
+        ctx.fillStyle = '#232d33'; ctx.fillRect(48, 78, 32, 10);
+        ctx.fillStyle = '#c9c9c9'; ctx.fillRect(52, 78, 6, 5); ctx.fillRect(70, 78, 6, 5);
       }
       else if (type === 'tiger_patient') {
-        ctx.fillStyle = '#ef6c00'; ctx.beginPath(); ctx.ellipse(64, 65, 34, 32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#7a4310'; ctx.beginPath(); ctx.ellipse(64, 65, 34, 32, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#212121'; ctx.fillRect(40, 48, 12, 4); ctx.fillRect(76, 48, 12, 4);
-        ctx.fillStyle = '#d32f2f'; ctx.beginPath(); ctx.ellipse(64, 76, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(54, 72, 5, 8); ctx.fillRect(69, 72, 5, 8);
-        ctx.fillStyle = '#e0e0e0'; ctx.fillRect(32, 78, 20, 8);
+        ctx.fillStyle = '#6e1f1f'; ctx.beginPath(); ctx.ellipse(64, 76, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9c9c9'; ctx.fillRect(54, 72, 5, 8); ctx.fillRect(69, 72, 5, 8);
+        ctx.fillStyle = '#8f8f8f'; ctx.fillRect(32, 78, 20, 8);
       }
       else if (type === 'ungyang') {
-        ctx.fillStyle = '#a1887f'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 38, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5e4f47'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 38, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(64, 40, 24, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fbc02d'; ctx.beginPath(); ctx.arc(80, 22, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8f7326'; ctx.beginPath(); ctx.arc(80, 22, 12, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.arc(80, 22, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#3e2723'; ctx.fillRect(52, 36, 5, 5); ctx.fillRect(71, 36, 5, 5);
-        ctx.fillStyle = '#d7ccc8'; ctx.beginPath(); ctx.arc(64, 46, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff8e1'; for(let i=0; i<4; i++) { ctx.beginPath(); ctx.arc(42 + i*14, 78, 6, 0, Math.PI*2); ctx.fill(); }
+        ctx.fillStyle = '#2a1a14'; ctx.fillRect(52, 36, 5, 5); ctx.fillRect(71, 36, 5, 5);
+        ctx.fillStyle = '#7a6f68'; ctx.beginPath(); ctx.arc(64, 46, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#b0a988'; for(let i=0; i<4; i++) { ctx.beginPath(); ctx.arc(42 + i*14, 78, 6, 0, Math.PI*2); ctx.fill(); }
       }
       else if (type === 'boss_tank') {
-        ctx.fillStyle = '#37474f'; ctx.fillRect(16, 76, 96, 42);
+        ctx.fillStyle = '#232d33'; ctx.fillRect(16, 76, 96, 42);
         ctx.fillStyle = '#212121'; for(let x=22; x<=94; x+=16) { ctx.beginPath(); ctx.arc(x+8, 97, 7, 0, Math.PI*2); ctx.fill(); }
-        ctx.fillStyle = '#8d6e63'; ctx.beginPath(); ctx.ellipse(64, 52, 38, 32, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#263238'; ctx.fillRect(18, 42, 14, 22); ctx.fillRect(96, 42, 14, 22);
-        ctx.fillStyle = '#ab47bc'; ctx.beginPath(); ctx.arc(64, 40, 18, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#f48fb1'; ctx.beginPath(); ctx.arc(64, 18, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5a463c'; ctx.beginPath(); ctx.ellipse(64, 52, 38, 32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#161c20'; ctx.fillRect(18, 42, 14, 22); ctx.fillRect(96, 42, 14, 22);
+        ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(64, 40, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6e4550'; ctx.beginPath(); ctx.arc(64, 18, 7, 0, Math.PI * 2); ctx.fill();
       }
       else if (type === 'judang') {
-        ctx.fillStyle = '#ffcc80'; ctx.beginPath(); ctx.arc(64, 46, 22, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.ellipse(64, 58, 20, 14, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#b71c1c'; ctx.fillRect(52, 42, 5, 5); ctx.fillRect(71, 42, 5, 5);
-        ctx.fillStyle = '#8d6e63'; ctx.fillRect(40, 72, 48, 40);
-        ctx.fillStyle = '#90a4ae'; ctx.beginPath(); ctx.arc(28, 65, 14, Math.PI*0.5, Math.PI*1.5); ctx.fill();
+        ctx.fillStyle = '#8f7040'; ctx.beginPath(); ctx.arc(64, 46, 22, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.ellipse(64, 58, 20, 14, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#5c1414'; ctx.fillRect(52, 42, 5, 5); ctx.fillRect(71, 42, 5, 5);
+        ctx.fillStyle = '#5a463c'; ctx.fillRect(40, 72, 48, 40);
+        ctx.fillStyle = '#4d5a60'; ctx.beginPath(); ctx.arc(28, 65, 14, Math.PI*0.5, Math.PI*1.5); ctx.fill();
       }
       else if (type === 'palgwang') {
-        ctx.fillStyle = '#37474f'; ctx.beginPath(); ctx.ellipse(64, 24, 22, 8, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#e53935'; ctx.fillRect(36, 32, 56, 68);
-        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(64, 64, 14, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#232d33'; ctx.beginPath(); ctx.ellipse(64, 24, 22, 8, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#7a2a28'; ctx.fillRect(36, 32, 56, 68);
+        ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.arc(64, 64, 14, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#212121'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('光', 56, 70);
-        ctx.fillStyle = '#cfd8dc'; ctx.fillRect(94, 12, 6, 90); ctx.fillRect(88, 12, 18, 6);
+        ctx.fillStyle = '#7f8a8e'; ctx.fillRect(94, 12, 6, 90); ctx.fillRect(88, 12, 18, 6);
       }
       else if (type === 'sangdupo') {
-        ctx.fillStyle = '#7e57c2'; ctx.beginPath(); ctx.ellipse(64, 65, 42, 36, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#9575cd'; ctx.beginPath(); ctx.arc(40, 52, 18, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#512da8'; ctx.fillRect(18, 55, 24, 12);
-        ctx.fillStyle = '#4527a0'; ctx.fillRect(46, 38, 36, 34);
-        ctx.fillStyle = '#ffb300'; ctx.strokeRect(46, 38, 36, 34);
+        ctx.fillStyle = '#3f2d63'; ctx.beginPath(); ctx.ellipse(64, 65, 42, 36, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#5a4680'; ctx.beginPath(); ctx.arc(40, 52, 18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#2e1a63'; ctx.fillRect(18, 55, 24, 12);
+        ctx.fillStyle = '#251458'; ctx.fillRect(46, 38, 36, 34);
+        ctx.fillStyle = '#8a5f10'; ctx.strokeRect(46, 38, 36, 34);
       }
       else if (type === 'madaepo') {
-        ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.ellipse(64, 68, 44, 30, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#8d6e63'; ctx.beginPath(); ctx.arc(94, 52, 18, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#3e2723'; ctx.fillRect(90, 34, 6, 22);
-        ctx.fillStyle = '#263238'; ctx.fillRect(28, 28, 62, 28);
-        ctx.fillStyle = '#ff8f00'; ctx.fillRect(18, 26, 14, 32);
+        ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.ellipse(64, 68, 44, 30, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#5a463c'; ctx.beginPath(); ctx.arc(94, 52, 18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#2a1a14'; ctx.fillRect(90, 34, 6, 22);
+        ctx.fillStyle = '#161c20'; ctx.fillRect(28, 28, 62, 28);
+        ctx.fillStyle = '#8a5510'; ctx.fillRect(18, 26, 14, 32);
       }
       else if (type === 'hwangjini') {
         if (isBack) {
-          ctx.fillStyle = '#f5e0b8'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.moveTo(34, 55); ctx.lineTo(94, 55); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
+          ctx.fillStyle = '#8a7a5c'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.moveTo(34, 55); ctx.lineTo(94, 55); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
         } else {
-          ctx.fillStyle = '#f5e0b8'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#8a7a5c'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#f48fb1'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(86, 52); ctx.lineTo(92, 72); ctx.lineTo(36, 72); ctx.fill();
-          ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.moveTo(34, 72); ctx.lineTo(94, 72); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
+          ctx.fillStyle = '#6e4550'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(86, 52); ctx.lineTo(92, 72); ctx.lineTo(36, 72); ctx.fill();
+          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.moveTo(34, 72); ctx.lineTo(94, 72); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
           ctx.fillStyle = '#e1f5fe'; for(let i=0; i<6; i++) ctx.fillRect(36 + i*10, 85, 4, 4);
           ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.moveTo(30, 20); ctx.lineTo(85, 110); ctx.lineTo(72, 115); ctx.lineTo(20, 25); ctx.fill();
           ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 1; for(let l=0; l<4; l++) { ctx.beginPath(); ctx.moveTo(26+l*3, 22); ctx.lineTo(76+l*3, 112); ctx.stroke(); }
@@ -945,22 +1063,22 @@
       }
       else if (type === 'janggeum') {
         if (isBack) {
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.fillRect(36, 102, 56, 6);
+          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
+          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#1e5a75'; ctx.fillRect(36, 102, 56, 6);
         } else {
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.beginPath(); ctx.arc(64, 20, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 20, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 40, 14, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 38, 4, 5); ctx.fillRect(68, 38, 4, 5);
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.fillRect(44, 54, 40, 6); ctx.fillRect(36, 102, 56, 6);
-          ctx.fillStyle = '#8d6e63'; ctx.fillRect(58, 62, 12, 18);
+          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
+          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#1e5a75'; ctx.fillRect(44, 54, 40, 6); ctx.fillRect(36, 102, 56, 6);
+          ctx.fillStyle = '#5a463c'; ctx.fillRect(58, 62, 12, 18);
         }
       }
 
@@ -1065,6 +1183,7 @@
 
     const floorSize = 84;
     let floorMesh = null;
+    let stage1SnowPoints = null;
     const stageObjects = [];
     const monsters = [];
     const nametags = new Map();
@@ -1109,11 +1228,12 @@
       stageObjects.forEach(obj => scene.remove(obj));
       stageObjects.length = 0;
       if (floorMesh) scene.remove(floorMesh);
+      stage1SnowPoints = null;
     }
 
     function buildStage1Field() {
       clearStageObjects(); clearMonsters();
-      document.body.style.backgroundColor = '#dca86b';
+      document.body.style.backgroundColor = '#5c6e52';
       document.getElementById('stage-badge').innerText = "초보자 사냥터 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
@@ -1121,22 +1241,61 @@
       floorMesh = new THREE.Mesh(floorG, floorM); floorMesh.rotation.x = -Math.PI / 2;
       scene.add(floorMesh);
 
+      const half = floorSize / 2;
+
       const roofSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createRoofTexture() }));
-      roofSprite.scale.set(10, 6, 1); roofSprite.position.set(-10, 2, 12); scene.add(roofSprite); stageObjects.push(roofSprite);
+      roofSprite.scale.set(10, 6, 1); roofSprite.position.set(-10, 2, 18); scene.add(roofSprite); stageObjects.push(roofSprite);
 
       const flowerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createFlowerPatchTexture() }));
-      flowerSprite.scale.set(4, 3, 1); flowerSprite.position.set(0, 1.5, 6); scene.add(flowerSprite); stageObjects.push(flowerSprite);
+      flowerSprite.scale.set(4, 3, 1); flowerSprite.position.set(4, 1.5, 20); scene.add(flowerSprite); stageObjects.push(flowerSprite);
 
       const rockSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createRockHillTexture() }));
-      rockSprite.scale.set(12, 10, 1); rockSprite.position.set(16, 4, 2); scene.add(rockSprite); stageObjects.push(rockSprite);
+      rockSprite.scale.set(12, 10, 1); rockSprite.position.set(18, 4, -20); scene.add(rockSprite); stageObjects.push(rockSprite);
+
+      const summerTreeTex = createSummerTreeTexture();
+      const summerTreePositions = [[-24, 22], [-14, 30], [10, 28], [22, 18], [-6, 34], [26, 32], [-28, 10]];
+      summerTreePositions.forEach(([x, z]) => {
+        const t = new THREE.Sprite(new THREE.SpriteMaterial({ map: summerTreeTex }));
+        const s = 6.5 + Math.random() * 1.5;
+        t.scale.set(s * 0.8, s, 1); t.position.set(x, s / 2, z);
+        scene.add(t); stageObjects.push(t);
+      });
+
+      const winterTreeTex = createWinterTreeTexture();
+      const winterTreePositions = [[-22, -24], [-10, -30], [8, -26], [20, -20], [-30, -16], [24, -32], [2, -36]];
+      winterTreePositions.forEach(([x, z]) => {
+        const t = new THREE.Sprite(new THREE.SpriteMaterial({ map: winterTreeTex }));
+        const s = 6.5 + Math.random() * 1.5;
+        t.scale.set(s * 0.8, s, 1); t.position.set(x, s / 2, z);
+        scene.add(t); stageObjects.push(t);
+      });
+
+      const snowTex = createSnowflakeTexture();
+      const snowCount = 90;
+      const snowGeo = new THREE.BufferGeometry();
+      const snowPos = new Float32Array(snowCount * 3);
+      for (let i = 0; i < snowCount; i++) {
+        snowPos[i*3] = (Math.random() - 0.5) * (floorSize * 0.7);
+        snowPos[i*3+1] = Math.random() * 14 + 2;
+        snowPos[i*3+2] = -Math.random() * (half * 0.95);
+      }
+      snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+      const snowMat = new THREE.PointsMaterial({ map: snowTex, size: 0.5, transparent: true, opacity: 0.85, depthWrite: false });
+      const snowPoints = new THREE.Points(snowGeo, snowMat);
+      scene.add(snowPoints); stageObjects.push(snowPoints);
+      stage1SnowPoints = snowPoints;
 
       const types = ['cat', 'pig'];
-      for (let i = 0; i < 12; i++) {
+      // 기존 12마리에서 2배인 24마리로 증가 및 맵 전체에 골고루 분포 (랜덤 범위 확산)
+      for (let i = 0; i < 24; i++) {
         const type = types[i % types.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(2.5, 2.5, 1);
-        const angle = (i / 12) * Math.PI * 2; const radius = 10 + Math.random() * 12;
-        sprite.position.set(Math.cos(angle) * radius, 1.25, Math.sin(angle) * radius + 2);
+        
+        // 맵 전체 영역(-32 ~ 32)에 골고루 젠 되도록 랜덤 좌표 할당
+        const rx = (Math.random() - 0.5) * 64;
+        const rz = (Math.random() - 0.5) * 64;
+        sprite.position.set(rx, 1.25, rz);
         scene.add(sprite);
 
         const mName = type === 'cat' ? '야옹이' : '산돼지';
@@ -1167,12 +1326,15 @@
       bearSprite.scale.set(10, 10, 1); bearSprite.position.set(0, 5, -10); scene.add(bearSprite); stageObjects.push(bearSprite);
 
       const caveTypes = ['garlic_king', 'tiger_patient', 'ungyang'];
-      for (let i = 0; i < 9; i++) {
+      // 기존 9마리에서 2배인 18마리로 증가 및 맵 전체에 골고루 분포
+      for (let i = 0; i < 18; i++) {
         const type = caveTypes[i % caveTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(2.8, 2.8, 1);
-        const angle = (i / 9) * Math.PI * 2; const radius = 8 + Math.random() * 14;
-        sprite.position.set(Math.cos(angle) * radius, 1.4, Math.sin(angle) * radius + 2);
+        
+        const rx = (Math.random() - 0.5) * 64;
+        const rz = (Math.random() - 0.5) * 64;
+        sprite.position.set(rx, 1.4, rz);
         scene.add(sprite);
 
         const mName = type === 'garlic_king' ? '마늘대왕' : (type === 'tiger_patient' ? '병자호랑' : '웅양');
@@ -1191,12 +1353,12 @@
       scene.add(bossSprite);
 
       monsters.push({
-        id: `monster_9`, stageId: 2, sprite: bossSprite, type: '마늘장갑차', tier: 2, isBoss: true,
+        id: `monster_18`, stageId: 2, sprite: bossSprite, type: '마늘장갑차', tier: 2, isBoss: true,
         hp: 5000, maxHp: 5000, goldReward: 3000,
         attackPower: 55, attackRange: 3.5, attackSpeed: 1200,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
-      createNametagElement(`monster_9`, '대왕', '마늘장갑차', false, false, true);
+      createNametagElement(`monster_18`, '대왕', '마늘장갑차', false, false, true);
     }
 
     function buildStage3Baduk() {
@@ -1213,12 +1375,15 @@
       badukAltar.position.set(0, 0.2, -6); scene.add(badukAltar); stageObjects.push(badukAltar);
 
       const badukTypes = ['judang', 'palgwang', 'sangdupo'];
-      for (let i = 0; i < 9; i++) {
+      // 기존 9마리에서 2배인 18마리로 증가 및 맵 전체에 골고루 분포
+      for (let i = 0; i < 18; i++) {
         const type = badukTypes[i % badukTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(3.2, 3.2, 1);
-        const angle = (i / 9) * Math.PI * 2; const radius = 8 + Math.random() * 15;
-        sprite.position.set(Math.cos(angle) * radius, 1.6, Math.sin(angle) * radius + 2);
+        
+        const rx = (Math.random() - 0.5) * 64;
+        const rz = (Math.random() - 0.5) * 64;
+        sprite.position.set(rx, 1.6, rz);
         scene.add(sprite);
 
         const mName = type === 'judang' ? '주당' : (type === 'palgwang' ? '팔광병사' : '상두포');
@@ -1237,12 +1402,12 @@
       scene.add(madaepoBoss);
 
       monsters.push({
-        id: `monster_9`, stageId: 3, sprite: madaepoBoss, type: '마대포', tier: 3, isBoss: true,
+        id: `monster_18`, stageId: 3, sprite: madaepoBoss, type: '마대포', tier: 3, isBoss: true,
         hp: 15000, maxHp: 15000, goldReward: 10000,
         attackPower: 90, attackRange: 4.0, attackSpeed: 1000,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
-      createNametagElement(`monster_9`, '대장군', '마대포', false, false, true);
+      createNametagElement(`monster_18`, '대장군', '마대포', false, false, true);
     }
 
     function openStageModal() {
@@ -2133,7 +2298,7 @@
           if (target.isBoss) {
             target.sprite.position.set(0, 3.25, -2);
           } else {
-            target.sprite.position.set((Math.random() - 0.5) * 28, 1.25, (Math.random() - 0.5) * 28);
+            target.sprite.position.set((Math.random() - 0.5) * 60, 1.25, (Math.random() - 0.5) * 60);
           }
           scene.add(target.sprite);
         }, respawnTime);
@@ -2204,6 +2369,16 @@
       processHeroAI(delta, now);
       processProjectilesAndVfx(delta);
 
+      if (stage1SnowPoints) {
+        const posAttr = stage1SnowPoints.geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+          let y = posAttr.getY(i) - delta * 1.8;
+          if (y < 0) y = 14;
+          posAttr.setY(i, y);
+        }
+        posAttr.needsUpdate = true;
+      }
+
       let moveX = joystickVector.x, moveZ = joystickVector.y;
       if (keys['w'] || keys['arrowup']) moveZ = -1;
       if (keys['s'] || keys['arrowdown']) moveZ = 1;
@@ -2259,7 +2434,6 @@
         }
       }
 
-      /* 1~39레벨/전직전/1차전직 시 오로라 미표시 / 40레벨+2차 전직 완료 시 발끝 바닥 위치에 오로라 노출 */
       if (playerState.tier === 3 && playerState.level >= 40) {
         if (fanAuraMesh) {
           if (playerState.job === '검성') {
