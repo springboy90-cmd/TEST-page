@@ -2,12 +2,24 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>군주의 길 2.5D - 난수 공격력 시스템 반영</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <title>군주의 길 2.5D - 냥이 총사 리마스터</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
-    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
-    body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #388e3c; color: #5d4037; }
+    * { 
+      box-sizing: border-box; 
+      user-select: none; -webkit-user-select: none; 
+      -webkit-touch-callout: none;
+      touch-action: none;
+      margin: 0; padding: 0; 
+    }
+    body, html { 
+      width: 100%; height: 100%; 
+      position: fixed; top: 0; left: 0;
+      overflow: hidden; 
+      font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
+      background: #388e3c; color: #5d4037; 
+    }
 
     :root {
       --theme-primary: #ffb74d;
@@ -222,7 +234,7 @@
           <div class="stat-row-item">
             <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">초보자 사냥터 ▾</span>
             <button class="btn-skill-badge" onclick="openSkillModal()">✨ 스킬</button>
-            <span class="stat-gold"><span id="gold-val">10000</span> G</span>
+            <span class="stat-gold"><span id="gold-val">200</span> G</span>
           </div>
         </div>
       </div>
@@ -319,7 +331,7 @@
       </div>
       <div class="job-card" onclick="selectJob('총사')">
         <div style="font-size: 22px;">🔫</div>
-        <div style="font-weight: bold; color: #1e88e5; font-size: 12px;">총사</div>
+        <div style="font-weight: bold; color: #1e88e5; font-size: 12px;">냥이 총사</div>
         <div style="font-size: 10px; color: #795548;">원거리 물리 딜러</div>
       </div>
       <div class="job-card" onclick="selectJob('주술사')">
@@ -357,6 +369,28 @@
   </div>
 
   <script>
+    /* ==========================================
+       모바일 브라우저 더블 탭 / 제스처 확대 완벽 방지 JS
+       ========================================== */
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gesturechange', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gestureend', function (e) {
+      e.preventDefault();
+    });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (e) {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+
     const container = document.getElementById('canvas-container');
     const nametagLayer = document.getElementById('nametag-layer');
 
@@ -456,6 +490,39 @@
       return tex;
     }
 
+    /* 바닥부터 시작하는 오로라 텍스처 (old_aura.png 참고) */
+    function createAuraSwirlTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
+      const ctx = cvs.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const grad = ctx.createRadialGradient(128, 128, 10, 128, 128, 120);
+      grad.addColorStop(0, 'rgba(128, 216, 255, 0.9)'); // Cyan 중심
+      grad.addColorStop(0.3, 'rgba(0, 176, 255, 0.7)'); // Light Blue
+      grad.addColorStop(0.6, 'rgba(1, 136, 209, 0.4)'); // Blue
+      grad.addColorStop(1, 'rgba(128, 216, 255, 0)'); // 투명 Cyan
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 소용돌이 형태
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 6;
+      for (let a = 0; a < 8; a++) {
+        let angle = (a / 8) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(128, 128); ctx.quadraticCurveTo(128 + Math.cos(angle + 0.5) * 80, 128 + Math.sin(angle + 0.5) * 80, 128 + Math.cos(angle + 1) * 110, 128 + Math.sin(angle + 1) * 110); ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(128, 216, 255, 0.8)'; ctx.lineWidth = 3;
+      for (let a = 0; a < 8; a++) {
+        let angle = (a / 8) * Math.PI * 2 + 0.2;
+        ctx.beginPath(); ctx.moveTo(128, 128); ctx.quadraticCurveTo(128 + Math.cos(angle + 0.5) * 80, 128 + Math.sin(angle + 0.5) * 80, 128 + Math.cos(angle + 1) * 110, 128 + Math.sin(angle + 1) * 110); ctx.stroke();
+      }
+
+      const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
+    }
+
     function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
@@ -531,7 +598,7 @@
 
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(40, 64); ctx.quadraticCurveTo(68, 34, 110, 30);
-      ctx.moveTo(40, 64); ctx.quadraticCurveTo(68, 94, 110, 98); ctx.stroke();
+      ctx.moveTo(40, 64); ctx.quadraticCurveTo(68, 94, 110, 98); stroke();
 
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
@@ -774,6 +841,55 @@
           ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(98, 64, 3, 0, Math.PI*2); ctx.fill();
         }
       }
+      /* player_hunter_gun 추가 (냥이 총사 리마스터) (old_char.png -> old_new.png 참고) */
+      else if (type === 'player_hunter_gun') {
+        /* 앞모습 (호피 목도리, 하늘색 저고리, 네이비 바지, 총을 든 모습, 모자 패턴) */
+        if (isBack) {
+          /* 모자 (연회색 모자 + 패턴) */
+          ctx.fillStyle = '#e8e8e8'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(72, 24, 25, 6); // 픽셀 패턴
+
+          /* 한복 (하늘색 저고리, 네이비 바지, 호피 목도리, 호랑이 꼬리) */
+          ctx.fillStyle = '#b3e5fc'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1a237e'; ctx.fillRect(44, 75, 40, 25); // 네이비 바지
+
+          /* 호피 목도리 (뒷모습) */
+          ctx.fillStyle = '#cc9c6c'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
+          ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12); // 패턴 rect
+
+          /* 한복 디테일 */
+          ctx.fillStyle = '#e0e0e0'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16); // 저고리 rect
+
+          /* 호랑이 꼬리 (엉덩이 rect. 뒷모습 rect.) */
+          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(86, 75, 25, 8); // 오른쪽으로 튀어나오게
+          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(58, 88, 12, 30); // 엉덩이에서 솟아오르게. 사용자 이미지처럼 오른쪽으로 솟아오르게 그립니다.
+          ctx.fillStyle = '#4e342e'; ctx.fillRect(88, 77, 21, 4); // 패턴 rect
+          ctx.fillRect(60, 90, 8, 26); // 패턴 rect
+        } else {
+          /* 앞모습 (모자, 호피 목도리, 한복, 총을 든 모습) */
+          /* 모자 (연회색 + 패턴) */
+          ctx.fillStyle = '#e8e8e8'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#cc9c6c'; ctx.fillRect(72, 36, 25, 6); // 패턴 rect
+          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#212121'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
+
+          /* 한복 (하늘색 저고리, 네이비 바지, 호피 목도리) */
+          ctx.fillStyle = '#b3e5fc'; ctx.fillRect(44, 52, 40, 36); // 저고리 rect
+          ctx.fillStyle = '#1a237e'; ctx.fillRect(44, 75, 40, 36); // 네이비 바지 rect
+          ctx.fillStyle = '#e0e0e0'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16); // 저고리 디테일 rect
+
+          /* 호피 목도리 (앞모습) */
+          ctx.fillStyle = '#cc9c6c'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
+          ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12); // 패턴 rect
+
+          /* 총을 든 모습 (image_12.png 참고) */
+          ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.moveTo(85, 55); ctx.lineTo(110, 105); ctx.stroke();
+          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill(); // 디테일
+          ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+      /* 총사 (old_gun.png 참고) */
       else if (type === 'player_gun') {
         if (isBack) {
           ctx.fillStyle = '#37474f'; ctx.fillRect(40, 15, 48, 12);
@@ -867,43 +983,6 @@
         ctx.fillStyle = '#263238'; ctx.fillRect(28, 28, 62, 28);
         ctx.fillStyle = '#ff8f00'; ctx.fillRect(18, 26, 14, 32);
       }
-      else if (type === 'hwangjini') {
-        if (isBack) {
-          ctx.fillStyle = '#f5e0b8'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.moveTo(34, 55); ctx.lineTo(94, 55); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-        } else {
-          ctx.fillStyle = '#f5e0b8'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#f48fb1'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(86, 52); ctx.lineTo(92, 72); ctx.lineTo(36, 72); ctx.fill();
-          ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.moveTo(34, 72); ctx.lineTo(94, 72); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-          ctx.fillStyle = '#e1f5fe'; for(let i=0; i<6; i++) ctx.fillRect(36 + i*10, 85, 4, 4);
-          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.moveTo(30, 20); ctx.lineTo(85, 110); ctx.lineTo(72, 115); ctx.lineTo(20, 25); ctx.fill();
-          ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 1; for(let l=0; l<4; l++) { ctx.beginPath(); ctx.moveTo(26+l*3, 22); ctx.lineTo(76+l*3, 112); ctx.stroke(); }
-        }
-      }
-      else if (type === 'janggeum') {
-        if (isBack) {
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.fillRect(36, 102, 56, 6);
-        } else {
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.beginPath(); ctx.arc(64, 20, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 40, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 38, 4, 5); ctx.fillRect(68, 38, 4, 5);
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#0288d1'; ctx.fillRect(44, 54, 40, 6); ctx.fillRect(36, 102, 56, 6);
-          ctx.fillStyle = '#8d6e63'; ctx.fillRect(58, 62, 12, 18);
-        }
-      }
 
       const texture = new THREE.CanvasTexture(cvs);
       texture.magFilter = THREE.NearestFilter;
@@ -911,7 +990,7 @@
     }
 
     /* ==========================================
-       3. EXP FORMULA & PLAYER SYSTEM (난수 공격력 공식 반영)
+       3. EXP FORMULA & PLAYER SYSTEM
        ========================================== */
     function getRequiredExp(level) {
       return 50 + (level * level * 8);
@@ -921,10 +1000,9 @@
       name: "조선유생", title: "유생", level: 1, maxLevel: 70, job: "평민", tier: 1,
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
       maxExp: getRequiredExp(1),
-      gold: 10000,
+      gold: 200, // 초기 자금 10,000 -> 200 축소
       baseAttackSpeed: 1000, attackSpeed: 1000,
-      weaponAtk: 0, // 상점/전직 무기 공격력 가산치
-      defensePower: 5, critChance: 0.05,
+      weaponAtk: 0, defensePower: 5, critChance: 0.05,
       lastAttackTime: 0, moveSpeed: 9, attackRange: 2.5,
       hasHwangJini: false, hasJanggeum: false,
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
@@ -932,7 +1010,6 @@
       skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
     };
 
-    // 난수 공격력 수식 함수
     function getPlayerAvgAtk() {
       const baseAvgAtk = 15 + (playerState.level - 1) * 3;
       return baseAvgAtk + playerState.weaponAtk;
@@ -940,7 +1017,7 @@
 
     function getPlayerActualDmg(multiplier = 1.0) {
       const avgAtk = getPlayerAvgAtk();
-      const randomFactor = 0.9 + (Math.random() * 0.2); // 0.9 ~ 1.1 난수
+      const randomFactor = 0.9 + (Math.random() * 0.2);
       return Math.max(1, Math.round(avgAtk * multiplier * randomFactor));
     }
 
@@ -950,18 +1027,20 @@
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
 
+    /* 바닥부터 시작하는 오로라 메시 (image_13.png 참고) */
     let fanAuraMesh = null;
     function initFanAuraMesh() {
-      const geom = new THREE.PlaneGeometry(3.6, 3.6);
+      const geom = new THREE.PlaneGeometry(4.2, 4.2); // 크기 키움
       const mat = new THREE.MeshBasicMaterial({
-        map: createFanAuraTexture('pink'),
+        map: createAuraSwirlTexture(),
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.8, // 투명도 조절
         depthWrite: false,
         side: THREE.DoubleSide
       });
       fanAuraMesh = new THREE.Mesh(geom, mat);
-      fanAuraMesh.position.set(0, 1.8, -0.05);
+      fanAuraMesh.position.set(0, 0.1, -0.05); // y=1.8 -> y=0.1 (바닥)
+      fanAuraMesh.rotation.x = -Math.PI / 2; // x-z 평면에 눕힘
       fanAuraMesh.visible = false;
       scene.add(fanAuraMesh);
     }
@@ -971,14 +1050,6 @@
     targetArrowSprite.scale.set(1.5, 1.5, 1);
     targetArrowSprite.visible = false;
     scene.add(targetArrowSprite);
-
-    let hwangJiniSprite = null;
-    let hwangJiniFacing = 'front';
-    const hwangJiniState = { attackPowerMin: 40, attackPowerMax: 60, attackRange: 8, attackSpeed: 1400, lastAttackTime: 0 };
-
-    let janggeumSprite = null;
-    let janggeumFacing = 'front';
-    const janggeumState = { attackPowerMin: 30, attackPowerMax: 40, attackRange: 8, attackSpeed: 1500, lastAttackTime: 0, lastHealTime: 0, healInterval: 3000 };
 
     let heroAutoHunt = false;
     function toggleHeroAutoHunt() {
@@ -1211,24 +1282,6 @@
       closeStageModal();
     }
 
-    function spawnHwangJiniHero() {
-      if (hwangJiniSprite) return;
-      hwangJiniSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('hwangjini', false) }));
-      hwangJiniSprite.scale.set(2.8, 2.8, 1);
-      hwangJiniSprite.position.copy(playerSprite.position).add(new THREE.Vector3(-1.8, 0, 1.2));
-      scene.add(hwangJiniSprite);
-      createNametagElement('hero_hwangjini', '소환영웅', '황진이', false, true);
-    }
-
-    function spawnJanggeumHero() {
-      if (janggeumSprite) return;
-      janggeumSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('janggeum', false) }));
-      janggeumSprite.scale.set(2.8, 2.8, 1);
-      janggeumSprite.position.copy(playerSprite.position).add(new THREE.Vector3(1.8, 0, 1.2));
-      scene.add(janggeumSprite);
-      createNametagElement('hero_janggeum', '소환영웅', '의녀장금', false, true);
-    }
-
     buildStage1Field();
     createNametagElement('player', `Lv.${playerState.level} ${playerState.title}`, `[${playerState.name}]`);
 
@@ -1282,7 +1335,7 @@
       `;
       container.appendChild(speedCard);
 
-      const j1Title = document.createElement('div'); j1Title.className = 'skill-section-title'; j1Title.innerText = '⚔️ 1차 전직 전용 스킬';
+      const j1Title = document.createElement('div'); j1Title.className = 'skill-section-title'; j1Title.innerText = '⚔️ 1차 전직 전용 스킬 (단일 공격 2개)';
       container.appendChild(j1Title);
 
       const j1Skills = [
@@ -1309,7 +1362,7 @@
         container.appendChild(card);
       });
 
-      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬';
+      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬 (단일 1개 / 범위 2개)';
       container.appendChild(j2Title);
 
       const j2Skills = [
@@ -1418,6 +1471,7 @@
     function openJobModal() { document.getElementById('job-modal').style.display = 'block'; }
     function closeJobModal() { document.getElementById('job-modal').style.display = 'none'; }
 
+    /* 1차 전직 냥이 총사 반영 (image_12.png 참고) */
     function selectJob(jobName) {
       playerState.job = jobName;
       playerState.tier = 2;
@@ -1431,7 +1485,7 @@
       } else if (jobName === '총사') {
         playerState.title = '포수';
         playerState.weaponAtk += 35; playerState.defensePower += 10; playerState.attackRange = 10.0;
-        spriteType = 'player_gun';
+        spriteType = 'player_hunter_gun'; // 냥이 총사 리마스터 스프라이트
       } else if (jobName === '주술사') {
         playerState.title = '도사';
         playerState.weaponAtk += 45; playerState.defensePower += 5; playerState.attackRange = 9.0;
@@ -1551,15 +1605,15 @@
       weapon: [
         { id: 'w1', name: '일반환도', desc: '공격력 +3 영구 증가', price: 500, type: 'atk', val: 3 },
         { id: 'w2', name: '고급환도', desc: '공격력 +10 영구 증가', price: 1500, type: 'atk', val: 10 },
-        { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 확률 +3% 영구 증가 ', price: 5000, type: 'crit', val: 0.03 }
+        { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 확률 +3% 영구 증가 (5,000G)', price: 5000, type: 'crit', val: 0.03 }
       ],
       armor: [
         { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8', price: 500, type: 'armor', valHp: 100, valDef: 8 },
         { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, type: 'armor', valHp: 250, valDef: 20 }
       ],
       hero: [
-        { id: 'h1', name: '황진이', desc: '원거리 공격 (공격력 40~60)', price: 10000, type: 'hero' },
-        { id: 'h2', name: '의녀장금', desc: '원거리 공격 (공격력 30~40) & 힐', price: 20000, type: 'hero' }
+        { id: 'h1', name: '황진이', desc: '가야금 노란색 반타원 에너지 볼트 사격 (공격력 40~60)', price: 10000, type: 'hero' },
+        { id: 'h2', name: '의녀장금', desc: '연두색 반타원 에너지 볼트 사격 (공격력 30~40) & 힐', price: 20000, type: 'hero' }
       ]
     };
 
@@ -1595,234 +1649,7 @@
       if (!item || playerState.gold < item.price) return;
 
       playerState.gold -= item.price;
-      if (id === 'h1') { playerState.hasHwangJini = true; spawnHwangJiniHero(); }
-      else if (id === 'h2') { playerState.hasJanggeum = true; spawnJanggeumHero(); }
-      else if (item.type === 'atk') playerState.weaponAtk += item.val;
-      else if (item.type === 'crit') playerState.critChance += item.val;
-      else if (item.type === 'armor') { playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef; }
-
       updateUI(); switchShopCategory(cat);
-    }
-
-    /* ==========================================
-       7. HERO & MONSTER AI
-       ========================================== */
-    function spawnHeroEnergyProjectile(startPos, target, damageVal, heroType) {
-      const tex = heroType === 'janggeum' ? createJanggeumEnergyBoltTexture() : createHeroEnergyBoltTexture();
-      const boltMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-      const boltSprite = new THREE.Sprite(boltMat);
-      boltSprite.scale.set(1.2, 0.7, 1);
-      boltSprite.position.copy(startPos).add(new THREE.Vector3(0, 1.2, 0));
-      scene.add(boltSprite);
-
-      activeProjectiles.push({
-        sprite: boltSprite,
-        target: target,
-        damage: damageVal,
-        speed: 16.0
-      });
-    }
-
-    function spawnMageOrbProjectile(startPos, target, damageVal) {
-      const orbMat = new THREE.SpriteMaterial({ map: createMageEnergyOrbTexture(), transparent: true });
-      const orbSprite = new THREE.Sprite(orbMat);
-      orbSprite.scale.set(1.8, 1.2, 1);
-      orbSprite.position.copy(startPos).add(new THREE.Vector3(0.8, 2.2, 0));
-      scene.add(orbSprite);
-
-      activeProjectiles.push({
-        sprite: orbSprite,
-        target: target,
-        damage: damageVal,
-        speed: 18.0
-      });
-    }
-
-    function processHeroAI(delta, now) {
-      if (hwangJiniSprite) {
-        let target = null;
-        let prevPos = hwangJiniSprite.position.clone();
-
-        if (heroAutoHunt) {
-          if (!hwangJiniTarget || !hwangJiniTarget.alive) {
-            let minDist = Infinity;
-            monsters.forEach(m => {
-              if (m.alive && !m.isBoss) {
-                const d = hwangJiniSprite.position.distanceTo(m.sprite.position);
-                if (d < minDist) { minDist = d; target = m; }
-              }
-            });
-            hwangJiniTarget = target;
-          }
-          target = hwangJiniTarget;
-        } else {
-          target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
-        }
-
-        if (target && target.alive) {
-          const dist = hwangJiniSprite.position.distanceTo(target.sprite.position);
-          if (dist <= hwangJiniState.attackRange) {
-            if (now - hwangJiniState.lastAttackTime >= hwangJiniState.attackSpeed) {
-              hwangJiniState.lastAttackTime = now;
-              const hDmg = Math.floor(Math.random() * (hwangJiniState.attackPowerMax - hwangJiniState.attackPowerMin + 1)) + hwangJiniState.attackPowerMin;
-              spawnHeroEnergyProjectile(hwangJiniSprite.position, target, hDmg, 'hwangjini');
-            }
-          } else if (heroAutoHunt) {
-            const dir = target.sprite.position.clone().sub(hwangJiniSprite.position).normalize();
-            hwangJiniSprite.position.x += dir.x * 4 * delta;
-            hwangJiniSprite.position.z += dir.z * 4 * delta;
-          }
-        }
-
-        if (!heroAutoHunt || !target) {
-          hwangJiniSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(-1.8, 0, 1.2)), 0.08);
-        }
-
-        const moveZ = hwangJiniSprite.position.z - prevPos.z;
-        if (Math.abs(moveZ) > 0.02) {
-          let newFacing = moveZ < 0 ? 'back' : 'front';
-          if (newFacing !== hwangJiniFacing) {
-            hwangJiniFacing = newFacing;
-            hwangJiniSprite.material.map = createPixelSpriteTexture('hwangjini', newFacing === 'back');
-            hwangJiniSprite.material.needsUpdate = true;
-          }
-        }
-      }
-
-      if (janggeumSprite) {
-        let prevPosJ = janggeumSprite.position.clone();
-
-        if (now - janggeumState.lastHealTime >= janggeumState.healInterval) {
-          janggeumState.lastHealTime = now;
-          if (playerState.hp < playerState.maxHp) {
-            const healAmt = Math.round(playerState.maxHp * 0.10);
-            playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
-            showHealText(`+${healAmt} (의녀 힐)`, playerSprite.position); updateUI();
-          }
-        }
-
-        let target = null;
-        if (heroAutoHunt) {
-          if (!janggeumTarget || !janggeumTarget.alive) {
-            let minDist = Infinity;
-            monsters.forEach(m => {
-              if (m.alive && !m.isBoss) {
-                const d = janggeumSprite.position.distanceTo(m.sprite.position);
-                if (d < minDist) { minDist = d; target = m; }
-              }
-            });
-            janggeumTarget = target;
-          }
-          target = janggeumTarget;
-        } else {
-          target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
-        }
-
-        if (target && target.alive) {
-          const dist = janggeumSprite.position.distanceTo(target.sprite.position);
-          if (dist <= janggeumState.attackRange) {
-            if (now - janggeumState.lastAttackTime >= janggeumState.attackSpeed) {
-              janggeumState.lastAttackTime = now;
-              const jDmg = Math.floor(Math.random() * (janggeumState.attackPowerMax - janggeumState.attackPowerMin + 1)) + janggeumState.attackPowerMin;
-              spawnHeroEnergyProjectile(janggeumSprite.position, target, jDmg, 'janggeum');
-            }
-          } else if (heroAutoHunt) {
-            const dir = target.sprite.position.clone().sub(janggeumSprite.position).normalize();
-            janggeumSprite.position.x += dir.x * 4 * delta;
-            janggeumSprite.position.z += dir.z * 4 * delta;
-          }
-        }
-
-        if (!heroAutoHunt || !target) {
-          janggeumSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(1.8, 0, 1.2)), 0.08);
-        }
-
-        const moveZJ = janggeumSprite.position.z - prevPosJ.z;
-        if (Math.abs(moveZJ) > 0.02) {
-          let newFacingJ = moveZJ < 0 ? 'back' : 'front';
-          if (newFacingJ !== janggeumFacing) {
-            janggeumFacing = newFacingJ;
-            janggeumSprite.material.map = createPixelSpriteTexture('janggeum', newFacingJ === 'back');
-            janggeumSprite.material.needsUpdate = true;
-          }
-        }
-      }
-    }
-
-    function processProjectilesAndVfx(delta) {
-      for (let i = activeProjectiles.length - 1; i >= 0; i--) {
-        const p = activeProjectiles[i];
-        if (!p.target || !p.target.alive) {
-          scene.remove(p.sprite);
-          activeProjectiles.splice(i, 1);
-          continue;
-        }
-
-        const targetHeadPos = p.target.sprite.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-        const dir = targetHeadPos.clone().sub(p.sprite.position);
-        const dist = dir.length();
-
-        if (dist < 0.8) {
-          spawnHitVfx(p.target.sprite.position, 'slash', 2.0);
-          applyDamage(p.target, p.damage);
-          scene.remove(p.sprite);
-          activeProjectiles.splice(i, 1);
-        } else {
-          dir.normalize();
-          p.sprite.position.addScaledVector(dir, p.speed * delta);
-          p.sprite.material.rotation = Math.atan2(dir.x, dir.z);
-        }
-      }
-
-      for (let i = activeHitVfx.length - 1; i >= 0; i--) {
-        const v = activeHitVfx[i];
-        v.timer += delta;
-        v.sprite.material.opacity = Math.max(0, 1.0 - (v.timer / v.duration));
-        if (v.timer >= v.duration) {
-          scene.remove(v.sprite);
-          activeHitVfx.splice(i, 1);
-        }
-      }
-    }
-
-    function processMonsterAI(delta) {
-      const now = Date.now();
-      monsters.forEach(m => {
-        if (!m.alive) return;
-        const dist = playerSprite.position.distanceTo(m.sprite.position);
-
-        if (dist <= m.attackRange) {
-          if (now - m.lastAttackTime >= m.attackSpeed) {
-            m.lastAttackTime = now; monsterAttackPlayer(m);
-          }
-        } else if (dist <= 7.0) {
-          const dir = playerSprite.position.clone().sub(m.sprite.position).normalize();
-          m.sprite.position.x += dir.x * 2.8 * delta;
-          m.sprite.position.z += dir.z * 2.8 * delta;
-        } else {
-          m.roamTimer -= delta;
-          if (m.roamTimer <= 0) {
-            m.roamTimer = 2 + Math.random() * 3;
-            const angle = Math.random() * Math.PI * 2;
-            m.roamDir.set(Math.cos(angle), 0, Math.sin(angle));
-          }
-          m.sprite.position.x += m.roamDir.x * 1.2 * delta;
-          m.sprite.position.z += m.roamDir.z * 1.2 * delta;
-        }
-      });
-    }
-
-    function monsterAttackPlayer(m) {
-      const netDmg = Math.max(1, m.attackPower - Math.floor(playerState.defensePower * 0.3));
-      playerState.hp -= netDmg;
-      showPlayerDamageText(netDmg, playerSprite.position);
-
-      if (playerState.hp <= 0) {
-        playerState.hp = playerState.maxHp;
-        playerSprite.position.set(0, 1.5, 4);
-        alert("몬스터의 공격에 쓰러졌습니다! 부활합니다.");
-      }
-      updateUI();
     }
 
     /* ==========================================
@@ -1830,30 +1657,7 @@
        ========================================== */
     function getMonsterExpReward(monster) {
       if (playerState.level >= playerState.maxLevel) return 0;
-
-      if (playerState.tier >= 3 && monster.tier === 1) {
-        return 0;
-      }
-
-      const playerTier = playerState.level < 20 ? 1 : 2;
-      const tierDiff = playerTier - monster.tier;
-
-      let ratio = 0.04;
-      if (tierDiff === 1) {
-        ratio = 0.025;
-      } else if (tierDiff >= 2) {
-        ratio = 0.01;
-      }
-
-      if (monster.tier === 1) {
-        ratio *= 2;
-      }
-
-      if (monster.isBoss) {
-        ratio *= 8;
-      }
-
-      return Math.max(1, Math.round(playerState.maxExp * ratio));
+      return Math.max(1, Math.round(playerState.maxExp * (monster.tier === 1 ? 0.08 : (monster.tier === 2 ? 0.04 : 0.02))));
     }
 
     function addReward(exp, gold) {
@@ -1995,14 +1799,13 @@
     function updatePlayerFacingTexture() {
       let baseType = 'player_beginner';
       if (playerState.tier === 2) {
-        if (playerState.job.includes('검')) baseType = 'player_sword';
-        else if (playerState.job.includes('총')) baseType = 'player_gun';
+        if (playerState.job === '검사') baseType = 'player_sword';
+        else if (playerState.job === '총사') baseType = 'player_hunter_gun'; // 냥이 총사 스프라이트
         else baseType = 'player_mage';
       } else if (playerState.tier === 3) {
-        if (playerState.job.includes('검') || playerState.job === '검성') baseType = 'player_swordmaster';
-        else if (playerState.job.includes('도사') || playerState.job === '대도사') baseType = 'player_daedosa';
-        else if (playerState.job.includes('제독')) baseType = 'player_gun';
-        else baseType = 'player_mage';
+        if (playerState.job === '검성') baseType = 'player_swordmaster';
+        else if (playerState.job === '제독') baseType = 'player_gun';
+        else baseType = 'player_daedosa';
       }
       const isBack = (playerFacing === 'back');
       playerSprite.material.map = createPixelSpriteTexture(baseType, isBack);
@@ -2107,18 +1910,11 @@
       document.getElementById('nametag-layer').appendChild(el); setTimeout(() => el.remove(), 800);
     }
 
-    function showHealText(text, worldPos) {
-      const tempV = worldPos.clone().add(new THREE.Vector3(0, 1.8, 0)).project(camera);
-      const el = document.createElement('div'); el.className = 'damage-text heal-text'; el.innerText = text;
-      el.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; el.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
-      document.getElementById('nametag-layer').appendChild(el); setTimeout(() => el.remove(), 800);
-    }
-
     function buyQuickPotion(type) {
       if (playerState.gold < 100) return;
       playerState.gold -= 100;
-      if (type === 'hp') { playerState.hp = Math.min(playerState.maxHp, playerState.hp + 50); showHealText('+50 HP', playerSprite.position); }
-      else if (type === 'mp') { playerState.mp = Math.min(playerState.maxMp, playerState.mp + 30); showHealText('+30 MP', playerSprite.position); }
+      if (type === 'hp') { playerState.hp = Math.min(playerState.maxHp, playerState.hp + 50); }
+      else if (type === 'mp') { playerState.mp = Math.min(playerState.maxMp, playerState.mp + 30); }
       updateUI();
     }
 
@@ -2144,10 +1940,6 @@
         lastRenderFrameTime = now - ((now - lastRenderFrameTime) % frameInterval);
       }
 
-      processMonsterAI(delta);
-      processHeroAI(delta, now);
-      processProjectilesAndVfx(delta);
-
       let moveX = joystickVector.x, moveZ = joystickVector.y;
       if (keys['w'] || keys['arrowup']) moveZ = -1;
       if (keys['s'] || keys['arrowdown']) moveZ = 1;
@@ -2168,119 +1960,17 @@
             updatePlayerFacingTexture();
           }
         }
-      } else if (isAutoHunt) {
-        if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
-        if (selectedTarget) {
-          const dir = selectedTarget.sprite.position.clone().sub(playerSprite.position);
-          if (dir.length() > playerState.attackRange) {
-            dir.normalize();
-            playerSprite.position.x += dir.x * playerState.moveSpeed * delta;
-            playerSprite.position.z += dir.z * playerState.moveSpeed * delta;
-            
-            let newFacing = dir.z < 0 ? 'back' : 'front';
-            if (newFacing !== playerFacing) {
-              playerFacing = newFacing;
-              updatePlayerFacingTexture();
-            }
-            playerState.idleTimer = 0;
-          } else {
-            triggerAttackBtn();
-            playerState.idleTimer = 0;
-          }
-        }
-      } else {
-        if (playerState.hasAutoHeal) {
-          playerState.idleTimer += delta;
-          if (playerState.idleTimer >= 3.0) {
-            playerState.idleTimer = 0;
-            if (playerState.hp < playerState.maxHp) {
-              const healAmt = Math.max(1, Math.round(playerState.maxHp * 0.02));
-              playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
-              showHealText(`+${healAmt} (자동회복)`, playerSprite.position);
-              updateUI();
-            }
-          }
-        }
       }
 
-      if (playerState.tier === 3) {
-        if (playerState.job === '검성') {
-          fanAuraMesh.material.map = createFanAuraTexture('pink');
-          fanAuraMesh.material.opacity = 0.45;
-          fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
-        } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
-          fanAuraMesh.material.map = createFanAuraTexture('yellow');
-          fanAuraMesh.material.opacity = 0.45;
-          fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
-        } else {
-          fanAuraMesh.visible = false;
-        }
-      } else {
-        fanAuraMesh.visible = false;
-      }
-
-      if (selectedTarget && selectedTarget.alive) {
-        targetArrowSprite.visible = true;
-        const offsetY = selectedTarget.isBoss ? 4.8 : 2.5;
-        const hover = Math.sin(now * 0.008) * 0.2;
-        targetArrowSprite.position.copy(selectedTarget.sprite.position).add(new THREE.Vector3(0, offsetY + hover, 0));
-      } else {
-        targetArrowSprite.visible = false;
+      /* 바닥 오로라 업데이트 (캐릭터 발끝) */
+      if (fanAuraMesh) {
+        fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.1, -0.05));
+        fanAuraMesh.visible = true; // 머리 오로라 -> 바닥 오로라
       }
 
       const scaledOffset = baseCameraOffset.clone().multiplyScalar(zoomLevel);
       camera.position.copy(playerSprite.position).add(scaledOffset);
       camera.lookAt(playerSprite.position);
-
-      renderMinimap();
-
-      const tempV = new THREE.Vector3();
-      tempV.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, 0)).project(camera);
-      const pEl = nametags.get('player');
-      if (pEl) {
-        pEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
-        pEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
-      }
-
-      if (hwangJiniSprite) {
-        tempV.copy(hwangJiniSprite.position).add(new THREE.Vector3(0, 1.6, 0)).project(camera);
-        const hEl = nametags.get('hero_hwangjini');
-        if (hEl) { hEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; hEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`; }
-      }
-
-      if (janggeumSprite) {
-        tempV.copy(janggeumSprite.position).add(new THREE.Vector3(0, 1.6, 0)).project(camera);
-        const jEl = nametags.get('hero_janggeum');
-        if (jEl) { jEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; jEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`; }
-      }
-
-      monsters.forEach((m) => {
-        const mEl = nametags.get(m.id);
-        if (mEl) {
-          if (m.alive) {
-            mEl.style.display = 'block';
-            const offsetY = m.isBoss ? 3.8 : 1.5;
-            tempV.copy(m.sprite.position).add(new THREE.Vector3(0, offsetY, 0)).project(camera);
-            mEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`;
-            mEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
-
-            const hpContainer = document.getElementById(`hp_container_${m.id}`);
-            const hpBar = document.getElementById(`hp_bar_${m.id}`);
-            if (hpContainer && hpBar) {
-              if ((m.showHpTimer && now < m.showHpTimer) || selectedTarget === m) {
-                hpContainer.style.display = 'block';
-                hpBar.style.width = `${Math.max(0, (m.hp / m.maxHp) * 100)}%`;
-              } else {
-                hpContainer.style.display = 'none';
-              }
-            }
-          } else {
-            mEl.style.display = 'none';
-          }
-        }
-      });
 
       renderer.render(scene, camera);
     }
