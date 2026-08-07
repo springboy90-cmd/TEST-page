@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>군주의 길 2.5D - 2차 전직 오로라 완벽 리마스터</title>
+  <title>군주의 길 2.5D - 오류 수정 완료</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { 
@@ -13,9 +13,9 @@
       touch-action: none;
       margin: 0; padding: 0; 
     }
-    body, html { 
+    html, body { 
       width: 100%; height: 100%; 
-      position: fixed; top: 0; left: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       overflow: hidden; 
       font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
       background: #388e3c; color: #5d4037; 
@@ -31,7 +31,11 @@
       --panel-shadow: rgba(141, 110, 99, 0.25);
     }
     
-    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+    #canvas-container { 
+      width: 100%; height: 100%; 
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 1; 
+    }
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
@@ -204,7 +208,6 @@
 
   <div id="ui-layer">
     <div style="display: flex; justify-content: space-between; width: 100%;">
-      <!-- 좌측 상단 상태창 (레벨업 버튼 병합 & 사냥터 변경 버튼 연동) -->
       <div class="status-panel interactive">
         <div class="character-info">
           <span>
@@ -233,7 +236,6 @@
             <span class="stat-crit">💥<span id="crit-val">5</span>%</span>
           </div>
           <div class="stat-row-item">
-            <!-- 상태창 내 스테이지 변경 버튼으로 통합 -->
             <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">초보자 사냥터 ▾</span>
             <button class="btn-skill-badge" onclick="openSkillModal()">✨ 스킬</button>
             <span class="stat-gold"><span id="gold-val">200</span> G</span>
@@ -241,7 +243,6 @@
         </div>
       </div>
 
-      <!-- 우측 상단 콘트롤 UI 간소화 -->
       <div class="top-right-controls interactive">
         <button class="btn-small btn-job" id="btn-job-modal" style="display: none;" onclick="openJobModal()">📜 1차 전직하기 (Lv.20)</button>
         <button class="btn-small btn-job" id="btn-job2-modal" style="display: none;" onclick="openJob2Modal()">📜 2차 전직하기 (Lv.40)</button>
@@ -261,7 +262,6 @@
       <div class="btn-zoom" onclick="changeZoom(0.25)">🔍-</div>
     </div>
 
-    <!-- 간소화된 포션 버튼 -->
     <div id="quick-potions" class="interactive">
       <button class="btn-potion btn-hp" onclick="buyQuickPotion('hp')" title="HP 50 회복 (100G)">🔴 HP</button>
       <button class="btn-potion btn-mp" onclick="buyQuickPotion('mp')" title="MP 30 회복 (100G)">🔵 MP</button>
@@ -373,9 +373,7 @@
   </div>
 
   <script>
-    /* ==========================================
-       모바일 브라우저 더블 탭 / 제스처 확대 완벽 방지 JS
-       ========================================== */
+    /* 모바일 터치 이벤트 차단 */
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
     document.addEventListener('gestureend', function (e) { e.preventDefault(); });
@@ -400,6 +398,13 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     container.appendChild(renderer.domElement);
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', onWindowResize);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     scene.add(ambientLight);
@@ -483,7 +488,7 @@
       return tex;
     }
 
-    /* 바닥부터 위로 퍼지는 부채꼴 형태의 오로라 텍스처 */
+    /* 부채꼴 오로라 텍스처 (검성 핑크 / 대도사 연노랑) */
     function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
@@ -831,6 +836,17 @@
           ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.stroke();
         }
       }
+      else if (type === 'player_gun') {
+        if (isBack) {
+          ctx.fillStyle = '#37474f'; ctx.fillRect(40, 15, 48, 12);
+          ctx.fillStyle = '#1976d2'; ctx.fillRect(40, 54, 48, 45);
+        } else {
+          ctx.fillStyle = '#37474f'; ctx.fillRect(40, 15, 48, 12);
+          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 16, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1976d2'; ctx.fillRect(40, 54, 48, 45);
+          ctx.fillStyle = '#5d4037'; ctx.fillRect(80, 45, 8, 60);
+        }
+      }
       else if (type === 'player_mage') {
         if (isBack) {
           ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(64, 32, 22, 0, Math.PI * 2); ctx.fill();
@@ -994,19 +1010,19 @@
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
 
+    /* 발끝/바닥에서 시작되는 2차 전직 부채꼴 오로라 메시 */
     let fanAuraMesh = null;
     function initFanAuraMesh() {
-      const geom = new THREE.PlaneGeometry(4.2, 4.2);
+      const geom = new THREE.PlaneGeometry(3.6, 3.6);
       const mat = new THREE.MeshBasicMaterial({
-        map: createAuraSwirlTexture(),
+        map: createFanAuraTexture('pink'),
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.45,
         depthWrite: false,
         side: THREE.DoubleSide
       });
       fanAuraMesh = new THREE.Mesh(geom, mat);
-      fanAuraMesh.position.set(0, 0.1, -0.05);
-      fanAuraMesh.rotation.x = -Math.PI / 2;
+      fanAuraMesh.position.set(0, 0.15, -0.05); // 몸통 중심이 아닌 발끝(바닥) 높이 배치
       fanAuraMesh.visible = false;
       scene.add(fanAuraMesh);
     }
@@ -2161,8 +2177,8 @@
     function buyQuickPotion(type) {
       if (playerState.gold < 100) return;
       playerState.gold -= 100;
-      if (type === 'hp') { playerState.hp = Math.min(playerState.maxHp, playerState.hp + 50); }
-      else if (type === 'mp') { playerState.mp = Math.min(playerState.maxMp, playerState.mp + 30); }
+      if (type === 'hp') { playerState.hp = Math.min(playerState.maxHp, playerState.hp + 50); showHealText('+50 HP', playerSprite.position); }
+      else if (type === 'mp') { playerState.mp = Math.min(playerState.maxMp, playerState.mp + 30); showHealText('+30 MP', playerSprite.position); }
       updateUI();
     }
 
@@ -2247,16 +2263,18 @@
         }
       }
 
-      /* 2차 전직 부채꼴 오로라 오라 갱신 */
+      // 2차 전직 부채꼴 오로라 오라 갱신 (1~39레벨/전직전/1차전직은 안 보임, 40레벨+2차전직만 표시)
       if (playerState.tier === 3) {
         if (playerState.job === '검성') {
           fanAuraMesh.material.map = createFanAuraTexture('pink');
+          fanAuraMesh.material.opacity = 0.45;
           fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
+          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
         } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
           fanAuraMesh.material.map = createFanAuraTexture('yellow');
+          fanAuraMesh.material.opacity = 0.45;
           fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 1.8, -0.05));
+          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
         } else {
           fanAuraMesh.visible = false;
         }
@@ -2328,13 +2346,8 @@
       renderer.render(scene, camera);
     }
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
     updateUI();
+    onWindowResize();
     animate();
   </script>
 </body>
