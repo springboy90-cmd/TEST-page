@@ -1286,13 +1286,11 @@
       stage1SnowPoints = snowPoints;
 
       const types = ['cat', 'pig'];
-      // 기존 12마리에서 2배인 24마리로 증가 및 맵 전체에 골고루 분포 (랜덤 범위 확산)
       for (let i = 0; i < 24; i++) {
         const type = types[i % types.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(2.5, 2.5, 1);
         
-        // 맵 전체 영역(-32 ~ 32)에 골고루 젠 되도록 랜덤 좌표 할당
         const rx = (Math.random() - 0.5) * 64;
         const rz = (Math.random() - 0.5) * 64;
         sprite.position.set(rx, 1.25, rz);
@@ -1326,7 +1324,6 @@
       bearSprite.scale.set(10, 10, 1); bearSprite.position.set(0, 5, -10); scene.add(bearSprite); stageObjects.push(bearSprite);
 
       const caveTypes = ['garlic_king', 'tiger_patient', 'ungyang'];
-      // 기존 9마리에서 2배인 18마리로 증가 및 맵 전체에 골고루 분포
       for (let i = 0; i < 18; i++) {
         const type = caveTypes[i % caveTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
@@ -1375,7 +1372,6 @@
       badukAltar.position.set(0, 0.2, -6); scene.add(badukAltar); stageObjects.push(badukAltar);
 
       const badukTypes = ['judang', 'palgwang', 'sangdupo'];
-      // 기존 9마리에서 2배인 18마리로 증가 및 맵 전체에 골고루 분포
       for (let i = 0; i < 18; i++) {
         const type = badukTypes[i % badukTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
@@ -2073,6 +2069,16 @@
 
       if (monster.isBoss) {
         ratio *= 8;
+      }
+
+      // 1스테이지(스테이지 ID 1) 경험치 제한 규칙 적용
+      if (monster.stageId === 1) {
+        const currentAtk = getPlayerAvgAtk();
+        if (currentAtk >= 300) {
+          return 0; // 공격력 300 이상일 때 경험치 0
+        } else if (currentAtk > 200) {
+          ratio *= 0.5; // 공격력 200 초과일 때 경험치 1/2로 감소
+        }
       }
 
       return Math.max(1, Math.round(playerState.maxExp * ratio));
