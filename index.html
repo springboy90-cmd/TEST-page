@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>군주의 길 2.5D - 오류 수정 완료</title>
+  <title>군주의 길 2.5D - 클래식 RPG 대기/음향 리마스터</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { 
@@ -19,6 +19,7 @@
       overflow: hidden; 
       font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
       background: #388e3c; color: #5d4037; 
+      transition: background-color 1s ease;
     }
 
     :root {
@@ -249,6 +250,8 @@
         <button class="btn-small" style="background: #e1f5fe; border-color: #81d4fa; color: #0288d1;" onclick="openShopModal()">🛒 저자거리 상점</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
         <button class="btn-small" id="btn-fps-toggle" onclick="toggleFpsLimit()" style="background: #e8f5e9; border-color: #81c784; color: #2e7d32;">⚙️ 60 FPS</button>
+
+        <button class="btn-small" id="btn-bgm-toggle" onclick="toggleBgmSound()" style="background: #fff3e0; border-color: #ffe0b2; color: #e65100;">🎵 BGM: ON</button>
         <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵 토글</button>
       </div>
     </div>
@@ -373,7 +376,99 @@
   </div>
 
   <script>
-    /* 모바일 터치 이벤트 차단 */
+    /* ==========================================
+       클래식 RPG 음향 시스템 (Web Audio API 사운드 합성 엔진)
+       ========================================== */
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    let bgmEnabled = true;
+    let bgmTimer = null;
+
+    function initAudioEngine() {
+      if (!audioCtx) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+    window.addEventListener('pointerdown', initAudioEngine, { once: true });
+
+    /* 클래식 동양풍 오악(궁상각치우) BGM 루프 */
+    const bgmNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+    let bgmStep = 0;
+
+    function playClassicBgmStep() {
+      if (!bgmEnabled || !audioCtx) return;
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      
+      const freq = bgmNotes[(bgmStep * 3 + (bgmStep % 5)) % bgmNotes.length];
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.45);
+
+      bgmStep = (bgmStep + 1) % 16;
+    }
+
+    setInterval(playClassicBgmStep, 350);
+
+    function toggleBgmSound() {
+      bgmEnabled = !bgmEnabled;
+      const btn = document.getElementById('btn-bgm-toggle');
+      if (btn) btn.innerText = bgmEnabled ? "🎵 BGM: ON" : "🎵 BGM: OFF";
+    }
+
+    /* 거상 / 바람의나라 스타일 묵직한 타격음 */
+    function playClassicHitSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+
+      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.12);
+
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    }
+
+    /* 도사/무관 스킬음 */
+    function playClassicSkillSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.25);
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+    }
+
+    /* 모바일 터치 이벤트 제어 */
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
     document.addEventListener('gestureend', function (e) { e.preventDefault(); });
@@ -406,8 +501,38 @@
     }
     window.addEventListener('resize', onWindowResize);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
     scene.add(ambientLight);
+
+    /* ==========================================
+       날씨 시스템 (Rain Particles)
+       ========================================== */
+    const rainCount = 180;
+    const rainGeo = new THREE.BufferGeometry();
+    const rainPos = new Float32Array(rainCount * 3);
+    for (let i = 0; i < rainCount * 3; i += 3) {
+      rainPos[i] = (Math.random() - 0.5) * 50;
+      rainPos[i+1] = Math.random() * 25;
+      rainPos[i+2] = (Math.random() - 0.5) * 50;
+    }
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+    const rainMat = new THREE.PointsMaterial({
+      color: 0xa5d6a7,
+      size: 0.25,
+      transparent: true,
+      opacity: 0.5
+    });
+    const rainParticles = new THREE.Points(rainGeo, rainMat);
+    scene.add(rainParticles);
+
+    function updateWeatherSystem(delta) {
+      const pos = rainParticles.geometry.attributes.position.array;
+      for (let i = 1; i < rainCount * 3; i += 3) {
+        pos[i] -= delta * 12;
+        if (pos[i] < 0) pos[i] = 25;
+      }
+      rainParticles.geometry.attributes.position.needsUpdate = true;
+    }
 
     /* ==========================================
        1. STAGE & BACKGROUND TEXTURES
@@ -457,8 +582,6 @@
       ctx.fillStyle = '#b79154'; for(let i=0; i<1200; i++) ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
       ctx.strokeStyle = 'rgba(110, 80, 40, 0.45)'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(140, 360, 90, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(140, 360, 72, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(105, 75, 38, 0.4)'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('1  2  3  4  5  6', 220, 330);
       const tex = new THREE.CanvasTexture(cvs); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 3);
       return tex;
     }
@@ -468,7 +591,6 @@
       const ctx = cvs.getContext('2d');
       ctx.fillStyle = '#838186'; ctx.beginPath(); ctx.ellipse(128, 150, 55, 70, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(128, 75, 42, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f5ebd7'; for(let y=110; y<=180; y+=18) { ctx.beginPath(); ctx.arc(70, y, 10, 0, Math.PI * 2); ctx.fill(); }
       const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter; return tex;
     }
 
@@ -488,7 +610,6 @@
       return tex;
     }
 
-    /* 부채꼴 오로라 텍스처 (검성 핑크 / 대도사 연노랑) */
     function createFanAuraTexture(colorType) {
       const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
       const ctx = cvs.getContext('2d');
@@ -1010,7 +1131,6 @@
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
 
-    /* 발끝/바닥에서 시작되는 2차 전직 부채꼴 오로라 메시 */
     let fanAuraMesh = null;
     function initFanAuraMesh() {
       const geom = new THREE.PlaneGeometry(3.6, 3.6);
@@ -1022,7 +1142,7 @@
         side: THREE.DoubleSide
       });
       fanAuraMesh = new THREE.Mesh(geom, mat);
-      fanAuraMesh.position.set(0, 0.15, -0.05); // 몸통 중심이 아닌 발끝(바닥) 높이 배치
+      fanAuraMesh.position.set(0, 0.15, -0.05);
       fanAuraMesh.visible = false;
       scene.add(fanAuraMesh);
     }
@@ -1424,6 +1544,7 @@
     }
 
     function spawnHitVfx(worldPos, vfxType, scaleVal = 2.5) {
+      playClassicHitSound();
       const vfxMat = new THREE.SpriteMaterial({ map: createHitVfxTexture(vfxType), transparent: true, opacity: 1.0 });
       const vfxSprite = new THREE.Sprite(vfxMat);
       vfxSprite.scale.set(scaleVal, scaleVal, 1);
@@ -1444,6 +1565,7 @@
         return;
       }
 
+      playClassicSkillSound();
       playerState.skillCooldowns[skillId] = now;
 
       if (skillId === 's2_1') {
@@ -2263,23 +2385,25 @@
         }
       }
 
-      // 2차 전직 부채꼴 오로라 오라 갱신 (1~39레벨/전직전/1차전직은 안 보임, 40레벨+2차전직만 표시)
-      if (playerState.tier === 3) {
-        if (playerState.job === '검성') {
-          fanAuraMesh.material.map = createFanAuraTexture('pink');
-          fanAuraMesh.material.opacity = 0.45;
-          fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
-        } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
-          fanAuraMesh.material.map = createFanAuraTexture('yellow');
-          fanAuraMesh.material.opacity = 0.45;
-          fanAuraMesh.visible = true;
-          fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
-        } else {
-          fanAuraMesh.visible = false;
+      /* 1~39레벨/전직전/1차전직 시 오로라 미표시 / 40레벨+2차 전직 완료 시 발끝 바닥 위치에 오로라 노출 */
+      if (playerState.tier === 3 && playerState.level >= 40) {
+        if (fanAuraMesh) {
+          if (playerState.job === '검성') {
+            fanAuraMesh.material.map = createFanAuraTexture('pink');
+            fanAuraMesh.material.opacity = 0.45;
+            fanAuraMesh.visible = true;
+            fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
+          } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
+            fanAuraMesh.material.map = createFanAuraTexture('yellow');
+            fanAuraMesh.material.opacity = 0.45;
+            fanAuraMesh.visible = true;
+            fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
+          } else {
+            fanAuraMesh.visible = false;
+          }
         }
       } else {
-        fanAuraMesh.visible = false;
+        if (fanAuraMesh) fanAuraMesh.visible = false;
       }
 
       if (selectedTarget && selectedTarget.alive) {
