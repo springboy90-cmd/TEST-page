@@ -935,11 +935,12 @@
     }
 
     /* ==========================================
-       MUNYEAHANA HERO — HIGH DETAIL REMASTER
-       Reference-inspired Joseon shaman / ceremonial dancer.
-       Front + back + 5 melee attack poses, 512px canvas.
+       고퀄리티 소환영웅 - 의녀장금
+       첨부 원작 레퍼런스의 흰/청색 의녀복, 둥근 청색 의녀관,
+       단정한 올림머리와 붉은 장식 포인트를 기준으로 재구성.
+       512x512 캔버스 + 부드러운 음영/라인으로 확대 시 디테일 유지.
        ========================================== */
-    function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
+function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const cvs = document.createElement('canvas');
       cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d');
@@ -1120,7 +1121,212 @@
       return tex;
     }
 
+        function createJanggeumHighQualityTexture(isBack = false, attackStage = 0) {
+      const cvs = document.createElement('canvas');
+      cvs.width = 512; cvs.height = 512;
+      const ctx = cvs.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+
+      const sx = 4;
+      const px = v => v * sx;
+      ctx.save();
+      ctx.translate(0, 8);
+
+      /* 부드러운 외곽 광원 */
+      ctx.shadowColor = 'rgba(20, 45, 70, 0.28)';
+      ctx.shadowBlur = px(7);
+      ctx.shadowOffsetY = px(5);
+
+      /* 후면 */
+      if (isBack) {
+        /* 머리카락/올림머리 */
+        ctx.fillStyle = '#2b211d';
+        ctx.beginPath(); ctx.ellipse(px(64), px(29), px(18), px(16), 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#171311';
+        ctx.beginPath(); ctx.ellipse(px(64), px(23), px(13), px(11), 0, 0, Math.PI*2); ctx.fill();
+
+        /* 의녀관 */
+        ctx.shadowBlur = 0;
+        const hat = ctx.createLinearGradient(0, px(8), 0, px(23));
+        hat.addColorStop(0, '#eef7ff'); hat.addColorStop(0.65, '#d9ebfa'); hat.addColorStop(1, '#a9cde7');
+        ctx.fillStyle = hat;
+        ctx.beginPath(); ctx.ellipse(px(64), px(16), px(24), px(9), 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#6fa5cf'; ctx.lineWidth = px(1.6); ctx.stroke();
+        ctx.fillStyle = '#4b86bd'; ctx.beginPath(); ctx.ellipse(px(64), px(13), px(7), px(3.5), 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#d8edf9'; ctx.beginPath(); ctx.ellipse(px(64), px(12), px(4.5), px(2), 0, 0, Math.PI*2); ctx.fill();
+
+        /* 푸른 끈 */
+        ctx.strokeStyle = '#3978aa'; ctx.lineWidth = px(2.2);
+        ctx.beginPath(); ctx.moveTo(px(45),px(18)); ctx.quadraticCurveTo(px(48),px(35),px(56),px(42)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px(83),px(18)); ctx.quadraticCurveTo(px(80),px(35),px(72),px(42)); ctx.stroke();
+
+        /* 흰색 상의 + 청색 테두리 */
+        ctx.shadowColor = 'rgba(25,65,95,.22)'; ctx.shadowBlur = px(5);
+        ctx.fillStyle = '#f7fbff';
+        ctx.beginPath(); ctx.moveTo(px(45),px(43)); ctx.quadraticCurveTo(px(64),px(37),px(83),px(43));
+        ctx.lineTo(px(89),px(75)); ctx.quadraticCurveTo(px(64),px(86),px(39),px(75)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#8db9d9'; ctx.lineWidth = px(2); ctx.stroke();
+
+        /* 뒤쪽 청색 치마 */
+        const skirtBack = ctx.createLinearGradient(0, px(66), 0, px(116));
+        skirtBack.addColorStop(0, '#b9d8ee'); skirtBack.addColorStop(.45, '#7fb0d3'); skirtBack.addColorStop(1, '#4f82aa');
+        ctx.fillStyle = skirtBack;
+        ctx.beginPath(); ctx.moveTo(px(40),px(69)); ctx.quadraticCurveTo(px(64),px(80),px(88),px(69));
+        ctx.lineTo(px(101),px(116)); ctx.lineTo(px(27),px(116)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#3d6f96'; ctx.lineWidth = px(1.5); ctx.stroke();
+
+        /* 뒷주름 */
+        ctx.strokeStyle = 'rgba(255,255,255,.48)'; ctx.lineWidth = px(1.2);
+        for (let x = 36; x <= 92; x += 9) { ctx.beginPath(); ctx.moveTo(px(x),px(78)); ctx.lineTo(px(x+4),px(111)); ctx.stroke(); }
+
+        /* 소매 */
+        ctx.fillStyle = '#f7fbff';
+        ctx.beginPath(); ctx.moveTo(px(43),px(48)); ctx.lineTo(px(28),px(69)); ctx.lineTo(px(35),px(77)); ctx.lineTo(px(51),px(58)); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px(85),px(48)); ctx.lineTo(px(100),px(69)); ctx.lineTo(px(93),px(77)); ctx.lineTo(px(77),px(58)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#8db9d9'; ctx.stroke();
+
+        /* 신발 */
+        ctx.fillStyle = '#f5f7fa'; ctx.beginPath(); ctx.ellipse(px(47),px(118),px(10),px(5),0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#4c83ab'; ctx.beginPath(); ctx.ellipse(px(81),px(118),px(10),px(5),0,0,Math.PI*2); ctx.fill();
+      } else {
+        /* 목/얼굴 */
+        ctx.shadowColor = 'rgba(30,45,55,.22)'; ctx.shadowBlur = px(5);
+        ctx.fillStyle = '#f3d0b0';
+        ctx.beginPath(); ctx.roundRect(px(57),px(32),px(14),px(18),px(5)); ctx.fill();
+        const skin = ctx.createRadialGradient(px(60),px(34),px(2),px(64),px(39),px(18));
+        skin.addColorStop(0,'#ffe4c7'); skin.addColorStop(.75,'#f3c5a3'); skin.addColorStop(1,'#d99e7f');
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(px(64),px(34),px(15),px(18),0,0,Math.PI*2); ctx.fill();
+
+        /* 올림머리 */
+        ctx.fillStyle = '#332520';
+        ctx.beginPath(); ctx.ellipse(px(64),px(20),px(17),px(15),0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#171211'; ctx.beginPath(); ctx.ellipse(px(64),px(14),px(11),px(9),0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#4a342b';
+        ctx.beginPath(); ctx.moveTo(px(49),px(24)); ctx.quadraticCurveTo(px(54),px(35),px(55),px(43)); ctx.lineTo(px(48),px(39)); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px(79),px(24)); ctx.quadraticCurveTo(px(74),px(35),px(73),px(43)); ctx.lineTo(px(80),px(39)); ctx.closePath(); ctx.fill();
+
+        /* 의녀관 - 원작의 둥근 청색 머리장식 */
+        ctx.shadowBlur = 0;
+        const hat = ctx.createLinearGradient(0,px(4),0,px(23));
+        hat.addColorStop(0,'#f6fbff'); hat.addColorStop(.55,'#d9efff'); hat.addColorStop(1,'#9fc6e2');
+        ctx.fillStyle = hat;
+        ctx.beginPath(); ctx.ellipse(px(64),px(12),px(22),px(8),0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#6d9fc7'; ctx.lineWidth = px(1.6); ctx.stroke();
+        ctx.fillStyle = '#4c83b8'; ctx.beginPath(); ctx.ellipse(px(64),px(9.5),px(7.5),px(3.6),0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#eaf6ff'; ctx.beginPath(); ctx.ellipse(px(64),px(8.5),px(4.5),px(2),0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#3979aa'; ctx.lineWidth = px(1.2);
+        ctx.beginPath(); ctx.moveTo(px(45),px(13)); ctx.quadraticCurveTo(px(48),px(28),px(53),px(34)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px(83),px(13)); ctx.quadraticCurveTo(px(80),px(28),px(75),px(34)); ctx.stroke();
+
+        /* 얼굴 디테일 */
+        ctx.fillStyle = '#4b3028';
+        ctx.fillRect(px(55),px(32),px(5),px(1.8)); ctx.fillRect(px(68),px(32),px(5),px(1.8));
+        ctx.fillStyle = '#3a2520'; ctx.beginPath(); ctx.ellipse(px(58),px(36),px(2),px(1.8),0,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px(70),px(36),px(2),px(1.8),0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#df8f8f'; ctx.beginPath(); ctx.ellipse(px(64),px(42),px(3),px(1.5),0,0,Math.PI); ctx.fill();
+
+        /* 목 */
+        ctx.fillStyle = '#f1c4a2'; ctx.fillRect(px(58),px(47),px(12),px(10));
+
+        /* 몸통 - 흰색 의녀복 */
+        const coat = ctx.createLinearGradient(0,px(48),0,px(86));
+        coat.addColorStop(0,'#ffffff'); coat.addColorStop(.55,'#edf7fc'); coat.addColorStop(1,'#c7ddec');
+        ctx.fillStyle = coat;
+        ctx.beginPath(); ctx.moveTo(px(45),px(50)); ctx.quadraticCurveTo(px(64),px(45),px(83),px(50));
+        ctx.lineTo(px(89),px(80)); ctx.quadraticCurveTo(px(64),px(91),px(39),px(80)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#7ba8c9'; ctx.lineWidth = px(1.7); ctx.stroke();
+
+        /* 중앙 청색 여밈/문양 */
+        ctx.strokeStyle = '#477da8'; ctx.lineWidth = px(3);
+        ctx.beginPath(); ctx.moveTo(px(64),px(50)); ctx.lineTo(px(64),px(80)); ctx.stroke();
+        ctx.fillStyle = '#5a8fba';
+        ctx.beginPath(); ctx.arc(px(64),px(59),px(2.3),0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px(64),px(69),px(2.3),0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#e7f4fb';
+        ctx.beginPath(); ctx.moveTo(px(51),px(53)); ctx.lineTo(px(61),px(59)); ctx.lineTo(px(52),px(67)); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px(77),px(53)); ctx.lineTo(px(67),px(59)); ctx.lineTo(px(76),px(67)); ctx.closePath(); ctx.fill();
+
+        /* 소매 + 손 */
+        const sleeve = ctx.createLinearGradient(0,px(50),0,px(79));
+        sleeve.addColorStop(0,'#ffffff'); sleeve.addColorStop(1,'#dbeaf4');
+        ctx.fillStyle = sleeve;
+        ctx.beginPath(); ctx.moveTo(px(46),px(50)); ctx.quadraticCurveTo(px(34),px(53),px(30),px(69)); ctx.lineTo(px(38),px(77)); ctx.lineTo(px(53),px(59)); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px(82),px(50)); ctx.quadraticCurveTo(px(94),px(53),px(98),px(69)); ctx.lineTo(px(90),px(77)); ctx.lineTo(px(75),px(59)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#7ba8c9'; ctx.lineWidth = px(1.4); ctx.stroke();
+
+        ctx.fillStyle = '#f1c4a2';
+        if (attackStage === 0) {
+          ctx.beginPath(); ctx.ellipse(px(51),px(67),px(5),px(4),-.25,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px(77),px(67),px(5),px(4),.25,0,Math.PI*2); ctx.fill();
+        } else {
+          /* 공격/시전 시 손을 앞으로 모으는 자세 */
+          ctx.beginPath(); ctx.ellipse(px(58),px(64),px(5),px(4),-.5,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px(70),px(64),px(5),px(4),.5,0,Math.PI*2); ctx.fill();
+        }
+
+        /* 허리띠 */
+        ctx.fillStyle = '#4d83aa'; ctx.fillRect(px(43),px(78),px(42),px(5));
+        ctx.fillStyle = '#dcecf7'; ctx.fillRect(px(47),px(79),px(34),px(1.5));
+        ctx.fillStyle = '#b4494e'; ctx.beginPath(); ctx.arc(px(64),px(81),px(4),0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#f1d28a'; ctx.lineWidth = px(1.3); ctx.beginPath(); ctx.arc(px(64),px(81),px(2.2),0,Math.PI*2); ctx.stroke();
+
+        /* 긴 청색 치마 */
+        const skirt = ctx.createLinearGradient(0,px(82),0,px(119));
+        skirt.addColorStop(0,'#a9cde5'); skirt.addColorStop(.5,'#6f9fc4'); skirt.addColorStop(1,'#416e93');
+        ctx.fillStyle = skirt;
+        ctx.beginPath(); ctx.moveTo(px(43),px(82)); ctx.quadraticCurveTo(px(64),px(89),px(85),px(82));
+        ctx.lineTo(px(99),px(118)); ctx.lineTo(px(29),px(118)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#365f7e'; ctx.lineWidth = px(1.6); ctx.stroke();
+
+        /* 치마 주름/빛 */
+        for (let x=36; x<=92; x+=9) {
+          ctx.strokeStyle = (x%18===0) ? 'rgba(255,255,255,.38)' : 'rgba(35,74,105,.25)';
+          ctx.lineWidth = px(1.3);
+          ctx.beginPath(); ctx.moveTo(px(x),px(88)); ctx.lineTo(px(x+4),px(114)); ctx.stroke();
+        }
+
+        /* 붉은 포인트 장식 */
+        ctx.fillStyle = '#b54a50';
+        ctx.beginPath(); ctx.arc(px(49),px(87),px(2.3),0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px(79),px(87),px(2.3),0,Math.PI*2); ctx.fill();
+
+        /* 신발 */
+        ctx.fillStyle = '#f6f8fa'; ctx.beginPath(); ctx.ellipse(px(47),px(119),px(10),px(5),-.08,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#5c8fb3'; ctx.beginPath(); ctx.ellipse(px(81),px(119),px(10),px(5),.08,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#365f7e'; ctx.lineWidth = px(1); ctx.stroke();
+      }
+
+      /* 공격/시전 효과: 의녀장금의 연두색 에너지와 연결 */
+      if (!isBack && attackStage > 0) {
+        ctx.shadowColor = 'rgba(126, 220, 120, .75)'; ctx.shadowBlur = px(8);
+        ctx.strokeStyle = 'rgba(180, 255, 170, .9)'; ctx.lineWidth = px(2.2);
+        ctx.beginPath(); ctx.arc(px(64),px(64),px(34 + attackStage*2),-1.1,1.1); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = px(1);
+        ctx.beginPath(); ctx.arc(px(64),px(64),px(30 + attackStage*2),-1.0,1.0); ctx.stroke();
+      }
+
+      ctx.restore();
+      const texture = new THREE.CanvasTexture(cvs);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.anisotropy = (typeof renderer !== 'undefined' && renderer.capabilities) ? Math.min(renderer.capabilities.getMaxAnisotropy(), 8) : 1;
+      return texture;
+    }
+
+    /* ==========================================
+       SUMMON HERO VISUAL REGISTRY
+       Each hero owns an independent texture factory.
+       Gameplay state is separate from visual appearance.
+       ========================================== */
+    const summonHeroVisuals = {
+      janggeum: (isBack = false, attackStage = 0) => createJanggeumHighQualityTexture(isBack, attackStage),
+      munyeahana: (isBack = false, attackStage = 0) => createMunyeahanaHeroTexture(isBack, attackStage)
+    };
+
     function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
+      if (summonHeroVisuals[type]) return summonHeroVisuals[type](isBack, attackStage);
       const cvs = document.createElement('canvas');
       cvs.width = 128; cvs.height = 128;
       const ctx = cvs.getContext('2d');
@@ -1960,8 +2166,6 @@
     let munyeahanaFacing = 'front';
     let munyeahanaShadow = null;
     const munyeahanaState = { level: 1, exp: 0, maxExp: getRequiredExp(1), attackPowerMin: 80, attackPowerMax: 100, attackRange: 3.2, attackSpeed: 1100, lastAttackTime: 0 };
-    let munyeahanaAttackUntil = 0;
-    let munyeahanaVisualStage = 0;
 
     let heroAutoHunt = false;
     function toggleHeroAutoHunt() {
@@ -2274,7 +2478,7 @@
     function spawnJanggeumHero() {
       if (janggeumSprite) return;
       janggeumSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('janggeum', false) }));
-      janggeumSprite.scale.set(2.8, 2.8, 1);
+      janggeumSprite.scale.set(3.05, 3.05, 1);
       janggeumSprite.position.copy(playerSprite.position).add(new THREE.Vector3(1.8, 0, 1.2));
       scene.add(janggeumSprite);
       janggeumShadow = createShadowDisk(2.0, 1.1);
@@ -2284,7 +2488,7 @@
     function spawnMunyeahanaHero() {
       if (munyeahanaSprite) return;
       munyeahanaSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createMunyeahanaHeroTexture(false, 0) }));
-      munyeahanaSprite.scale.set(3.45, 3.45, 1);
+      munyeahanaSprite.scale.set(2.8, 2.8, 1);
       munyeahanaSprite.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0, 1.8));
       scene.add(munyeahanaSprite);
       munyeahanaShadow = createShadowDisk(2.0, 1.1);
@@ -2914,7 +3118,6 @@
               const effectiveMinM = munyeahanaState.attackPowerMin + (munyeahanaState.level - 1) * 4;
               const effectiveMaxM = munyeahanaState.attackPowerMax + (munyeahanaState.level - 1) * 4;
               const mDmg = Math.floor(Math.random() * (effectiveMaxM - effectiveMinM + 1)) + effectiveMinM;
-              munyeahanaAttackUntil = now + 520;
               spawnHitVfx(target.sprite.position, 'slash', 2.2);
               applyDamage(target, mDmg);
             }
@@ -2936,24 +3139,12 @@
         const moveZM = munyeahanaSprite.position.z - prevPosM.z;
         if (Math.abs(moveZM) > 0.02) {
           let newFacingM = moveZM < 0 ? 'back' : 'front';
-          if (newFacingM !== munyeahanaFacing) munyeahanaFacing = newFacingM;
+          if (newFacingM !== munyeahanaFacing) {
+            munyeahanaFacing = newFacingM;
+            munyeahanaSprite.material.map = createMunyeahanaHeroTexture(newFacingM === 'back', munyeahanaVisualStage);
+            munyeahanaSprite.material.needsUpdate = true;
+          }
         }
-
-        // Five-frame melee flourish inspired by the reference character's ceremonial sleeves.
-        let desiredStage = 0;
-        if (now < munyeahanaAttackUntil) {
-          const elapsed = 520 - (munyeahanaAttackUntil - now);
-          desiredStage = Math.min(5, Math.floor(elapsed / 104) + 1);
-        }
-        if (desiredStage !== munyeahanaVisualStage || moveZM > 0.02 || moveZM < -0.02) {
-          munyeahanaVisualStage = desiredStage;
-          munyeahanaSprite.material.map = createMunyeahanaHeroTexture(munyeahanaFacing === 'back', munyeahanaVisualStage);
-          munyeahanaSprite.material.needsUpdate = true;
-        }
-
-        const bob = Math.sin(now * 0.008) * 0.045;
-        munyeahanaSprite.position.y = 1.62 + bob + (desiredStage > 0 ? Math.sin((now % 160) / 160 * Math.PI) * 0.06 : 0);
-        munyeahanaSprite.rotation = Math.sin(now * 0.004) * 0.012;
       }
     }
 
