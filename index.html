@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>군주의 길 2.5D</title>
+  <title>군주의 길 2.5D-리마스터 </title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { 
@@ -187,7 +187,7 @@
     .btn-buy { background: #66bb6a; border: none; color: #fff; font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 0 #388e3c; }
     .btn-buy:disabled { background: #d7ccc8; box-shadow: none; color: #8d6e63; cursor: not-allowed; }
 
-    .job-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+    .job-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .job-card { background: #fff; border: 2px solid var(--panel-border); border-radius: 12px; padding: 10px 4px; text-align: center; cursor: pointer; }
     .job-card:active { background: #fff8e1; }
 
@@ -336,11 +336,6 @@
         <div style="font-weight: bold; color: #e53935; font-size: 12px;">검사</div>
         <div style="font-size: 10px; color: #795548;">근접 탱커/물리</div>
       </div>
-      <div class="job-card" onclick="selectJob('총사')">
-        <div style="font-size: 22px;">🔫</div>
-        <div style="font-weight: bold; color: #1e88e5; font-size: 12px;">냥이 총사</div>
-        <div style="font-size: 10px; color: #795548;">원거리 물리 딜러</div>
-      </div>
       <div class="job-card" onclick="selectJob('주술사')">
         <div style="font-size: 22px;">🔮</div>
         <div style="font-weight: bold; color: #8e24aa; font-size: 12px;">주술사</div>
@@ -398,6 +393,15 @@
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
     const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    /* 크리티컬 화면 흔들림(Screen Shake) 관련 변수 */
+    let shakeTimer = 0;
+    let shakeIntensity = 0;
+
+    function triggerScreenShake(intensity = 0.65, duration = 0.28) {
+      shakeIntensity = intensity;
+      shakeTimer = duration;
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -607,34 +611,6 @@
       return tex;
     }
 
-    function createFanAuraTexture(colorType) {
-      const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 256;
-      const ctx = cvs.getContext('2d');
-      const grad = ctx.createRadialGradient(128, 220, 10, 128, 220, 200);
-
-      if (colorType === 'yellow') {
-        grad.addColorStop(0, 'rgba(255, 245, 157, 0.95)');
-        grad.addColorStop(0.5, 'rgba(255, 238, 88, 0.6)');
-        grad.addColorStop(0.85, 'rgba(253, 216, 53, 0.3)');
-        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
-      } else {
-        grad.addColorStop(0, 'rgba(255, 64, 129, 0.95)');
-        grad.addColorStop(0.5, 'rgba(245, 0, 87, 0.6)');
-        grad.addColorStop(0.85, 'rgba(255, 128, 171, 0.3)');
-        grad.addColorStop(1, 'rgba(255, 128, 171, 0)');
-      }
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(128, 220);
-      ctx.arc(128, 220, 210, -Math.PI * 0.85, -Math.PI * 0.15, false);
-      ctx.closePath();
-      ctx.fill();
-
-      const tex = new THREE.CanvasTexture(cvs);
-      return tex;
-    }
-
     function createTargetArrowTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 64; cvs.height = 64;
       const ctx = cvs.getContext('2d');
@@ -694,7 +670,7 @@
       if (vfxType === 'slash') {
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 8;
         ctx.beginPath(); ctx.arc(64, 64, 45, 0.2, Math.PI * 0.8); ctx.stroke();
-        ctx.strokeStyle = '#ff8a80'; ctx.lineWidth = 4;
+        ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(64, 64, 45, 0.2, Math.PI * 0.8); ctx.stroke();
       } else if (vfxType === 'lightning') {
         ctx.fillStyle = '#fff59d';
@@ -714,9 +690,179 @@
     }
 
     /* ==========================================
-       2. SPRITE GENERATOR
+       2. SPRITE GENERATOR & WEAPON DRAWING (2차 전직 네온/길이연장/반짝이 및 외형 적용)
        ========================================== */
-    function createPixelSpriteTexture(type, isBack = false) {
+    function drawSpearWeapon(ctx, x, y, angle, attackStage, isTier3 = false) {
+      ctx.save();
+      ctx.translate(x, y);
+      
+      let rotAngle = angle;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (attackStage === 1) { rotAngle -= 0.6; offsetX = -8; offsetY = -6; }
+      else if (attackStage === 2) { rotAngle += 0.9; offsetX = 12; offsetY = -8; }
+      else if (attackStage === 3) { rotAngle += 1.8; offsetX = 22; offsetY = 2; }
+      else if (attackStage === 4) { rotAngle += 1.2; offsetX = 12; offsetY = 8; }
+      else if (attackStage === 5) { rotAngle += 0.4; offsetX = 4; offsetY = 2; }
+
+      ctx.translate(offsetX, offsetY);
+      ctx.rotate(rotAngle);
+
+      // 2차 검성 전직 시 무기 길이 35% 연장
+      const lenMult = isTier3 ? 1.35 : 1.0;
+
+      // 2차 검성 전직 무기 은은한 네온 발광 네온 효과
+      if (isTier3) {
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(-52 * lenMult, 0); ctx.lineTo(52 * lenMult, 0);
+        ctx.stroke();
+      }
+
+      // 장창 자루 (중앙 봉)
+      ctx.fillStyle = isTier3 ? '#0f172a' : '#1e293b';
+      ctx.fillRect(-52 * lenMult, -3, 104 * lenMult, 6);
+      ctx.fillStyle = isTier3 ? '#38bdf8' : '#475569';
+      ctx.fillRect(-52 * lenMult, -1, 104 * lenMult, 2);
+
+      // 장식 금속 테두리
+      ctx.fillStyle = isTier3 ? '#f59e0b' : '#94a3b8';
+      ctx.fillRect(-32 * lenMult, -5, 6, 10);
+      ctx.fillRect(26 * lenMult, -5, 6, 10);
+
+      // 왼쪽 푸른 양날창 날
+      ctx.fillStyle = isTier3 ? '#00f0ff' : '#06b6d4';
+      ctx.beginPath();
+      ctx.moveTo(-30 * lenMult, -8 * (isTier3 ? 1.2 : 1.0)); ctx.lineTo(-68 * lenMult, 0); ctx.lineTo(-30 * lenMult, 8 * (isTier3 ? 1.2 : 1.0)); ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(-32 * lenMult, -3); ctx.lineTo(-60 * lenMult, 0); ctx.lineTo(-32 * lenMult, 3); ctx.closePath();
+      ctx.fill();
+
+      // 오른쪽 푸른 양날창 날
+      ctx.fillStyle = isTier3 ? '#00f0ff' : '#06b6d4';
+      ctx.beginPath();
+      ctx.moveTo(30 * lenMult, -8 * (isTier3 ? 1.2 : 1.0)); ctx.lineTo(68 * lenMult, 0); ctx.lineTo(30 * lenMult, 8 * (isTier3 ? 1.2 : 1.0)); ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(32 * lenMult, -3); ctx.lineTo(60 * lenMult, 0); ctx.lineTo(32 * lenMult, 3); ctx.closePath();
+      ctx.fill();
+
+      // 공격 시 푸른 궤적 에너지 아우라 & 빤짝이 연출
+      if (attackStage > 0) {
+        ctx.strokeStyle = isTier3 ? 'rgba(0, 240, 255, 0.9)' : 'rgba(34, 211, 238, 0.75)';
+        ctx.lineWidth = isTier3 ? 12 : 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 60 * lenMult, -Math.PI / 2.5, Math.PI / 2.5);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 60 * lenMult, -Math.PI / 2.5, Math.PI / 2.5);
+        ctx.stroke();
+
+        // 2차 검성 무기 휘두를 때 캔버스 상에 스파클/빤짝이 가루 그리기
+        if (isTier3) {
+          for (let i = 0; i < 14; i++) {
+            let r = (40 + Math.random() * 28) * lenMult;
+            let a = (Math.random() - 0.5) * (Math.PI * 0.9);
+            let px = Math.cos(a) * r;
+            let py = Math.sin(a) * r;
+
+            ctx.fillStyle = Math.random() > 0.3 ? '#ffffff' : '#38bdf8';
+            let size = 2 + Math.random() * 3;
+            ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawShamanStaff(ctx, staffX, staffY, angle, attackStage, isTier3 = false) {
+      ctx.save();
+      ctx.translate(staffX, staffY);
+      
+      let weaponAngle = angle;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (attackStage === 1) { weaponAngle -= 0.3; offsetX = -2; offsetY = -4; }
+      else if (attackStage === 2) { weaponAngle += 0.5; offsetX = 8; offsetY = -2; }
+      else if (attackStage === 3) { weaponAngle += 0.9; offsetX = 14; offsetY = 4; }
+      else if (attackStage === 4) { weaponAngle += 0.4; offsetX = 8; offsetY = 2; }
+      else if (attackStage === 5) { weaponAngle += 0.1; offsetX = 2; offsetY = 0; }
+
+      ctx.translate(offsetX, offsetY);
+      ctx.rotate(weaponAngle);
+
+      // 2차 대도사 전직 네온 아우라 효과
+      if (isTier3) {
+        ctx.strokeStyle = 'rgba(216, 180, 254, 0.7)';
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.moveTo(0, -42); ctx.lineTo(0, 38);
+        ctx.stroke();
+      }
+
+      // 지팡이 자루
+      ctx.fillStyle = isTier3 ? '#3b0764' : '#654321';
+      ctx.fillRect(-3, -35, 6, 75);
+      ctx.fillStyle = isTier3 ? '#c084fc' : '#a17438';
+      ctx.fillRect(-2, -35, 2, 75);
+
+      // 고리 및 보석
+      ctx.strokeStyle = isTier3 ? '#a855f7' : '#fbbf24';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, -38, isTier3 ? 15 : 12, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = isTier3 ? '#00f0ff' : '#fef08a';
+      ctx.beginPath();
+      ctx.arc(0, -38, isTier3 ? 7 : 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 장식 깃털
+      ctx.fillStyle = isTier3 ? '#c084fc' : '#e2e8f0';
+      ctx.beginPath();
+      ctx.ellipse(-8, -26, 10, 4, -Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(-10, -20, 8, 3, -Math.PI / 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 공격 마법 아우라 및 빤짝이 연출
+      if (attackStage > 0) {
+        ctx.fillStyle = isTier3 ? 'rgba(192, 132, 252, 0.85)' : 'rgba(0, 229, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(0, -38, 18 + attackStage * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2차 대도사 마법 휘두를 때 스파클/빤짝이 가루 그리기
+        if (isTier3) {
+          for (let i = 0; i < 14; i++) {
+            let r = 10 + Math.random() * 32;
+            let a = Math.random() * Math.PI * 2;
+            let px = Math.cos(a) * r;
+            let py = -38 + Math.sin(a) * r;
+
+            ctx.fillStyle = Math.random() > 0.3 ? '#ffffff' : '#f0abfc';
+            let size = 2 + Math.random() * 3;
+            ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
       const cvs = document.createElement('canvas');
       cvs.width = 128; cvs.height = 128;
       const ctx = cvs.getContext('2d');
@@ -724,256 +870,405 @@
 
       if (type === 'player_beginner') {
         if (isBack) {
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(64, 38, 24, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
-          ctx.fillStyle = '#8f7326'; ctx.fillRect(48, 72, 32, 5);
-          ctx.fillStyle = '#4a8088'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(40, 114, 20, 8); ctx.fillRect(68, 114, 20, 8);
-          ctx.fillStyle = '#8d6e63'; ctx.fillRect(38, 65, 25, 8);
+          ctx.fillStyle = '#1e3a8a';
+          ctx.beginPath(); ctx.arc(64, 28, 22, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(44, 26, 40, 42);
+
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(58, 42, 12, 6);
+
+          ctx.fillStyle = '#1d4ed8';
+          ctx.beginPath(); ctx.moveTo(38, 48); ctx.lineTo(90, 48); ctx.lineTo(96, 92); ctx.lineTo(32, 92); ctx.fill();
+
+          ctx.fillRect(22, 52, 18, 38);
+          ctx.fillRect(88, 52, 18, 38);
+
+          ctx.save();
+          ctx.translate(64, 64);
+          ctx.rotate(-Math.PI / 6);
+          ctx.fillStyle = '#334155'; ctx.fillRect(18, -45, 8, 80);
+          ctx.fillStyle = '#94a3b8'; ctx.fillRect(16, -50, 12, 8);
+          ctx.fillStyle = '#2563eb'; ctx.fillRect(20, -58, 4, 10);
+          ctx.restore();
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(42, 66, 44, 8);
+          ctx.fillStyle = '#2563eb'; ctx.fillRect(60, 74, 6, 18);
+
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(44, 92, 16, 20); ctx.fillRect(68, 92, 16, 20);
+          ctx.fillStyle = '#1e293b'; ctx.fillRect(42, 112, 20, 8); ctx.fillRect(66, 112, 20, 8);
         } else {
-          ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.moveTo(64, 10); ctx.lineTo(38, 45); ctx.lineTo(90, 45); ctx.fill();
-          ctx.beginPath(); ctx.arc(64, 35, 24, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 42, 17, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#3e2723'; ctx.fillRect(52, 40, 5, 7); ctx.fillRect(71, 40, 5, 7);
-          ctx.fillStyle = '#6b3018'; ctx.fillRect(60, 51, 8, 2);
-          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.moveTo(42, 58); ctx.lineTo(86, 58); ctx.lineTo(90, 88); ctx.lineTo(38, 88); ctx.fill();
-          ctx.fillStyle = '#7a2a28'; ctx.fillRect(58, 58, 12, 30);
-          ctx.fillStyle = '#8f7326'; ctx.fillRect(48, 72, 32, 5); ctx.fillRect(58, 66, 12, 4);
-          ctx.fillStyle = '#4a8088'; ctx.fillRect(42, 88, 18, 28); ctx.fillRect(68, 88, 18, 28);
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(40, 114, 20, 8); ctx.fillRect(68, 114, 20, 8);
-          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(36, 62, 8, 20);
-          ctx.fillStyle = '#8d6e63'; ctx.fillRect(86, 75, 25, 8);
+          if (attackStage === 0) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(64, 28, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(40, 24); ctx.lineTo(24, 44); ctx.lineTo(44, 38); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(88, 24); ctx.lineTo(104, 44); ctx.lineTo(84, 38); ctx.fill();
+
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 34, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1e1b4b'; ctx.fillRect(54, 32, 5, 3); ctx.fillRect(70, 32, 5, 3);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(52, 42); ctx.lineTo(64, 54); ctx.lineTo(76, 42); ctx.lineTo(64, 46); ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(38, 48); ctx.lineTo(90, 48); ctx.lineTo(96, 92); ctx.lineTo(32, 92); ctx.fill();
+
+            ctx.fillStyle = '#e0f2fe';
+            ctx.beginPath(); ctx.arc(46, 52, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(52, 54, 4, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fillRect(22, 52, 18, 38);
+            ctx.fillRect(88, 52, 18, 38);
+
+            ctx.fillStyle = '#ffecb3';
+            ctx.beginPath(); ctx.arc(28, 84, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(92, 78, 5, 0, Math.PI * 2); ctx.fill();
+
+            ctx.save();
+            ctx.translate(28, 84);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillStyle = '#334155'; ctx.fillRect(-3, -25, 6, 50);
+            ctx.fillStyle = '#2563eb'; ctx.fillRect(-2, -32, 4, 8);
+            ctx.restore();
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(42, 66, 44, 8);
+            ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.moveTo(62, 74); ctx.lineTo(58, 92); ctx.lineTo(66, 92); ctx.fill();
+
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(44, 92, 16, 20); ctx.fillRect(68, 92, 16, 20);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(42, 112, 20, 8); ctx.fillRect(66, 112, 20, 8);
+
+          } else if (attackStage === 1) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(60, 32, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(60, 38, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1e1b4b'; ctx.fillRect(50, 36, 5, 3); ctx.fillRect(66, 36, 5, 3);
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(34, 52); ctx.lineTo(86, 52); ctx.lineTo(92, 94); ctx.lineTo(28, 94); ctx.fill();
+
+            ctx.save();
+            ctx.translate(32, 80);
+            ctx.rotate(Math.PI / 6);
+            ctx.fillStyle = '#334155'; ctx.fillRect(-3, -25, 6, 50);
+            ctx.fillStyle = '#2563eb'; ctx.fillRect(-2, -32, 4, 8);
+            ctx.restore();
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(38, 70, 44, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(40, 94, 16, 18); ctx.fillRect(64, 94, 16, 18);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(38, 112, 20, 8); ctx.fillRect(62, 112, 20, 8);
+
+          } else if (attackStage === 2) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(54, 30, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(54, 36, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1e1b4b'; ctx.fillRect(44, 34, 5, 3); ctx.fillRect(60, 34, 5, 3);
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(28, 50); ctx.lineTo(80, 50); ctx.lineTo(86, 94); ctx.lineTo(22, 94); ctx.fill();
+
+            ctx.save();
+            ctx.translate(24, 46);
+            ctx.rotate(-Math.PI / 3.5);
+            ctx.fillStyle = '#94a3b8'; ctx.fillRect(-3, -40, 6, 80);
+            ctx.fillStyle = '#2563eb'; ctx.fillRect(-4, 38, 8, 12);
+            ctx.restore();
+
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(24, 46, 5, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(32, 68, 44, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(34, 94, 16, 18); ctx.fillRect(56, 94, 16, 18);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(32, 112, 20, 8); ctx.fillRect(56, 112, 20, 8);
+
+          } else if (attackStage === 3) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(66, 30, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(66, 36, 15, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(40, 50); ctx.lineTo(92, 50); ctx.lineTo(98, 94); ctx.lineTo(34, 94); ctx.fill();
+
+            ctx.save();
+            ctx.translate(90, 54);
+            ctx.rotate(Math.PI / 6);
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(-3, -35, 6, 70);
+            ctx.restore();
+
+            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(78, 64, 44, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(78, 64, 44, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(44, 68, 44, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(46, 94, 16, 18); ctx.fillRect(70, 94, 16, 18);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(44, 112, 20, 8); ctx.fillRect(68, 112, 20, 8);
+
+          } else if (attackStage === 4) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(72, 32, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(72, 38, 15, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(46, 52); ctx.lineTo(98, 52); ctx.lineTo(104, 96); ctx.lineTo(40, 96); ctx.fill();
+
+            ctx.fillStyle = '#f8fafc'; ctx.fillRect(94, 52, 28, 6);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(118, 55, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3;
+            for (let a = 0; a < 8; a++) {
+              let ang = a * Math.PI / 4;
+              ctx.beginPath(); ctx.moveTo(118, 55);
+              ctx.lineTo(118 + Math.cos(ang) * 22, 55 + Math.sin(ang) * 22); ctx.stroke();
+            }
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(50, 70, 44, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(52, 96, 16, 18); ctx.fillRect(76, 96, 16, 18);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(50, 114, 20, 8); ctx.fillRect(74, 114, 20, 8);
+
+          } else if (attackStage === 5) {
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath(); ctx.arc(62, 30, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(62, 36, 15, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(36, 50); ctx.lineTo(88, 50); ctx.lineTo(94, 94); ctx.lineTo(30, 94); ctx.fill();
+
+            ctx.save();
+            ctx.translate(78, 68);
+            ctx.rotate(Math.PI / 3);
+            ctx.fillStyle = '#94a3b8'; ctx.fillRect(-3, -25, 6, 50);
+            ctx.restore();
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(40, 68, 44, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(42, 94, 16, 18); ctx.fillRect(66, 94, 16, 18);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(40, 112, 20, 8); ctx.fillRect(64, 112, 20, 8);
+          }
         }
       }
+      /* 1차 검사(player_sword) */
       else if (type === 'player_sword') {
         if (isBack) {
-          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#212121'; ctx.fillRect(72, 24, 25, 6);
-          ctx.fillStyle = '#a3822f'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6d2828'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
-          ctx.fillStyle = '#212121'; ctx.fillRect(44, 75, 40, 25);
-          ctx.fillStyle = '#a68a3a'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#212121'; ctx.fillRect(44, 100, 16, 20); ctx.fillRect(68, 100, 16, 20);
-          ctx.fillStyle = '#4e342e'; ctx.fillRect(42, 116, 18, 8); ctx.fillRect(68, 116, 18, 8);
-          ctx.fillStyle = '#212121'; ctx.fillRect(15, 80, 28, 36);
-          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 3; ctx.strokeRect(15, 80, 28, 36);
+          ctx.fillStyle = '#111827';
+          ctx.beginPath(); ctx.ellipse(64, 30, 26, 22, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1f2937';
+          ctx.beginPath(); ctx.ellipse(64, 26, 22, 17, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#0f766e';
+          ctx.beginPath(); ctx.moveTo(36, 48); ctx.lineTo(92, 48); ctx.lineTo(100, 95); ctx.lineTo(28, 95); ctx.fill();
+
+          ctx.fillStyle = '#78350f'; ctx.fillRect(36, 70, 56, 10);
+          ctx.fillStyle = '#b45309'; ctx.fillRect(60, 70, 8, 18);
+
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(24, 65, 14, 12); ctx.fillRect(90, 65, 14, 12);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(42, 95, 16, 12); ctx.fillRect(70, 95, 16, 12);
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(44, 105, 12, 8); ctx.fillRect(72, 105, 12, 8);
+          ctx.fillStyle = '#854d0e'; ctx.fillRect(42, 112, 16, 6); ctx.fillRect(70, 112, 16, 6);
+
+          drawSpearWeapon(ctx, 64, 68, -Math.PI / 6, attackStage, false);
         } else {
-          ctx.fillStyle = '#a3822f'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1e5a75'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#212121'; ctx.fillRect(44, 52, 40, 36);
-          ctx.fillStyle = '#6d2828'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
-          ctx.fillStyle = '#a68a3a'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 76, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#6d2828'; ctx.fillRect(36, 78, 56, 24);
-          ctx.fillStyle = '#212121'; ctx.fillRect(44, 100, 16, 20); ctx.fillRect(68, 100, 16, 20);
-          ctx.fillStyle = '#4e342e'; ctx.fillRect(42, 116, 18, 8); ctx.fillRect(68, 116, 18, 8);
-          ctx.strokeStyle = '#212121'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(85, 55); ctx.lineTo(110, 105); ctx.stroke();
-          ctx.fillStyle = '#212121'; ctx.fillRect(95, 80, 28, 36);
-          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 3; ctx.strokeRect(95, 80, 28, 36);
-          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = '#111827';
+          ctx.beginPath(); ctx.ellipse(64, 28, 27, 22, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1f2937';
+          ctx.beginPath(); ctx.ellipse(64, 24, 22, 16, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#ffecb3';
+          ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(53, 33, 8, 3); ctx.fillRect(67, 33, 8, 3);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(55, 37, 4, 3); ctx.fillRect(69, 37, 4, 3);
+
+          ctx.fillStyle = '#0f766e';
+          ctx.beginPath(); ctx.moveTo(34, 50); ctx.lineTo(94, 50); ctx.lineTo(100, 95); ctx.lineTo(28, 95); ctx.fill();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath(); ctx.moveTo(52, 50); ctx.lineTo(64, 68); ctx.lineTo(76, 50); ctx.lineTo(64, 56); ctx.fill();
+
+          ctx.fillStyle = '#78350f'; ctx.fillRect(34, 70, 60, 10);
+          ctx.fillStyle = '#b45309'; ctx.fillRect(58, 70, 8, 20);
+
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(22, 65, 14, 12); ctx.fillRect(92, 65, 14, 12);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(42, 95, 16, 12); ctx.fillRect(70, 95, 16, 12);
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(44, 105, 12, 8); ctx.fillRect(72, 105, 12, 8);
+          ctx.fillStyle = '#854d0e'; ctx.fillRect(42, 112, 16, 6); ctx.fillRect(70, 112, 16, 6);
+
+          drawSpearWeapon(ctx, 64, 68, Math.PI / 12, attackStage, false);
         }
       }
+      /* 2차 최종 전직 검성(player_swordmaster) - 네온 효과 및 화려한 외형 연출 */
       else if (type === 'player_swordmaster') {
         if (isBack) {
-          ctx.fillStyle = '#111111';
-          ctx.beginPath(); ctx.ellipse(64, 52, 28, 38, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#262626';
-          ctx.beginPath(); ctx.ellipse(54, 56, 12, 30, -0.2, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(74, 56, 12, 30, 0.2, 0, Math.PI * 2); ctx.fill();
+          // 등 뒤 네온 아우라 링
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.55)'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.arc(64, 52, 42, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(64, 52, 42, 0, Math.PI * 2); ctx.stroke();
 
-          ctx.fillStyle = '#212121';
-          ctx.beginPath(); ctx.moveTo(40, 26); ctx.lineTo(48, 8); ctx.lineTo(56, 24); ctx.lineTo(64, 4); ctx.lineTo(72, 24); ctx.lineTo(80, 8); ctx.lineTo(88, 26); ctx.fill();
-          ctx.strokeStyle = '#5a7fa0'; ctx.lineWidth = 2; ctx.stroke();
+          // 풍성한 백은발/볼륨 머리
+          ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.ellipse(64, 28, 28, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.ellipse(64, 24, 23, 18, 0, 0, Math.PI * 2); ctx.fill();
 
-          ctx.fillStyle = '#b8bcc0'; ctx.fillRect(44, 58, 40, 32);
-          ctx.fillStyle = '#7a8a92'; ctx.fillRect(48, 62, 32, 28);
-          ctx.fillStyle = '#1f4266'; ctx.fillRect(44, 58, 40, 4); ctx.fillRect(44, 86, 40, 4);
+          // 화려한 어깨 견갑 갑옷
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(20, 48, 16, 12); ctx.fillRect(92, 48, 16, 12);
 
-          ctx.fillStyle = '#8fa0a8';
-          ctx.beginPath(); ctx.moveTo(40, 88); ctx.lineTo(30, 110); ctx.lineTo(50, 100); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(88, 88); ctx.lineTo(98, 110); ctx.lineTo(78, 100); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(64, 88); ctx.lineTo(64, 116); ctx.lineTo(54, 98); ctx.fill();
+          ctx.fillStyle = '#0d9488';
+          ctx.beginPath(); ctx.moveTo(32, 48); ctx.lineTo(96, 48); ctx.lineTo(104, 98); ctx.lineTo(24, 98); ctx.fill();
 
-          ctx.fillStyle = '#161c47'; ctx.fillRect(46, 102, 12, 20); ctx.fillRect(70, 102, 12, 20);
+          ctx.fillStyle = '#b45309'; ctx.fillRect(32, 68, 64, 12);
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(60, 68, 8, 22);
 
-          ctx.fillStyle = '#7a8a92';
-          ctx.beginPath(); ctx.moveTo(10, 115); ctx.lineTo(118, 55); ctx.lineTo(122, 63); ctx.lineTo(14, 123); ctx.fill();
-          ctx.fillStyle = '#2a5f8f';
-          ctx.beginPath(); ctx.moveTo(20, 110); ctx.lineTo(110, 58); ctx.lineTo(114, 64); ctx.lineTo(24, 116); ctx.fill();
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(20, 62, 16, 14); ctx.fillRect(92, 62, 16, 14);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(40, 98, 18, 12); ctx.fillRect(70, 98, 18, 12);
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(42, 108, 14, 8); ctx.fillRect(72, 108, 14, 8);
+          ctx.fillStyle = '#78350f'; ctx.fillRect(40, 114, 18, 6); ctx.fillRect(70, 114, 18, 6);
+
+          drawSpearWeapon(ctx, 64, 66, -Math.PI / 5, attackStage, true);
         } else {
-          ctx.fillStyle = '#111111';
-          ctx.beginPath(); ctx.ellipse(64, 48, 30, 35, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(40, 55, 14, 28, -0.3, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(88, 55, 14, 28, 0.3, 0, Math.PI * 2); ctx.fill();
+          // 등 뒤 네온 아우라 링
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.55)'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.arc(64, 52, 42, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(64, 52, 42, 0, Math.PI * 2); ctx.stroke();
 
-          ctx.fillStyle = '#212121';
-          ctx.beginPath(); ctx.moveTo(38, 28); ctx.lineTo(46, 8); ctx.lineTo(54, 24); ctx.lineTo(64, 2); ctx.lineTo(74, 24); ctx.lineTo(82, 8); ctx.lineTo(90, 28); ctx.fill();
-          ctx.strokeStyle = '#5a7fa0'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#2e5a80'; ctx.beginPath(); ctx.arc(64, 20, 4, 0, Math.PI * 2); ctx.fill();
+          // 풍성한 백은발/볼륨 머리
+          ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.ellipse(64, 26, 29, 24, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.ellipse(64, 22, 24, 18, 0, 0, Math.PI * 2); ctx.fill();
 
-          ctx.fillStyle = '#26333a'; ctx.fillRect(48, 32, 32, 10);
-          ctx.fillStyle = '#5a7fa0'; ctx.fillRect(52, 36, 24, 2);
-          ctx.fillStyle = '#ffecb3'; ctx.fillRect(54, 42, 20, 10);
+          // 이마 푸른 서구형 띠 장식
+          ctx.fillStyle = '#00f0ff'; ctx.fillRect(52, 22, 24, 4);
 
-          ctx.fillStyle = '#b8bcc0'; ctx.beginPath(); ctx.moveTo(40, 52); ctx.lineTo(88, 52); ctx.lineTo(82, 88); ctx.lineTo(46, 88); ctx.fill();
-          ctx.fillStyle = '#1f4266'; ctx.fillRect(44, 56, 40, 6);
-          ctx.fillStyle = '#2a5f8f'; ctx.fillRect(60, 62, 8, 22);
-          ctx.fillStyle = '#7a8a92'; ctx.fillRect(34, 52, 10, 16); ctx.fillRect(84, 52, 10, 16);
-
-          ctx.fillStyle = '#8fa0a8';
-          ctx.beginPath(); ctx.moveTo(42, 88); ctx.lineTo(32, 112); ctx.lineTo(52, 100); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(86, 88); ctx.lineTo(96, 112); ctx.lineTo(76, 100); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(64, 88); ctx.lineTo(64, 118); ctx.lineTo(52, 100); ctx.fill();
-          ctx.strokeStyle = '#1f4266'; ctx.lineWidth = 1.5; ctx.stroke();
-
-          ctx.fillStyle = '#161c47'; ctx.fillRect(46, 98, 10, 22); ctx.fillRect(72, 98, 10, 22);
-
-          ctx.fillStyle = '#b8bcc0';
-          ctx.beginPath(); ctx.moveTo(10, 78); ctx.lineTo(80, 65); ctx.lineTo(85, 75); ctx.lineTo(15, 88); ctx.fill();
-          ctx.fillStyle = '#5a7fa0';
-          for (let s = 0; s < 4; s++) {
-            let xPos = 15 + s * 16;
-            ctx.beginPath(); ctx.moveTo(xPos, 72 - s*2); ctx.lineTo(xPos + 8, 62 - s*2); ctx.lineTo(xPos + 12, 74 - s*2); ctx.fill();
-          }
-          ctx.fillStyle = '#1f4266'; ctx.fillRect(20, 75, 55, 4);
-          ctx.fillStyle = '#26333a'; ctx.fillRect(78, 62, 12, 22);
-          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.arc(84, 73, 5, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-      else if (type === 'player_daedosa') {
-        if (isBack) {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.beginPath(); ctx.arc(52, 38, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillRect(40, 36, 24, 18);
-
-          ctx.fillStyle = '#262626'; ctx.fillRect(40, 48, 24, 10);
-          ctx.fillStyle = '#1c1c1c';
-          ctx.beginPath(); ctx.moveTo(32, 54); ctx.lineTo(72, 54); ctx.lineTo(82, 114); ctx.lineTo(22, 114); ctx.fill();
-
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(36, 70, 32, 6);
-          ctx.beginPath(); ctx.moveTo(42, 76); ctx.lineTo(38, 105); ctx.lineTo(48, 100); ctx.fill();
-
-          ctx.fillStyle = '#111111'; ctx.fillRect(34, 114, 12, 8); ctx.fillRect(58, 114, 12, 8);
-
-          ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
-          ctx.beginPath(); ctx.moveTo(85, 122); ctx.lineTo(82, 60); ctx.lineTo(92, 10); ctx.stroke();
-
-          ctx.fillStyle = '#8a7328';
-          ctx.beginPath(); ctx.arc(92, 30, 22, -Math.PI*0.7, Math.PI*0.7, false);
-          ctx.arc(88, 30, 16, Math.PI*0.7, -Math.PI*0.7, true); ctx.fill();
-
-          ctx.fillStyle = '#c4b060';
-          ctx.beginPath(); ctx.moveTo(92, 6); ctx.lineTo(96, -2); ctx.lineTo(100, 6); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(112, 18); ctx.lineTo(120, 14); ctx.lineTo(116, 26); ctx.fill();
-
-          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(92, 30, 12, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#8a5a95'; ctx.beginPath(); ctx.arc(89, 27, 4, 0, Math.PI * 2); ctx.fill();
-
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(96, 48, 6, 20); ctx.fillRect(100, 60, 6, 20);
-        } else {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.beginPath(); ctx.arc(52, 34, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(34, 30); ctx.lineTo(42, 42); ctx.lineTo(50, 28); ctx.lineTo(58, 42); ctx.lineTo(70, 30); ctx.fill();
-
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(52, 40, 13, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#a68a3a'; ctx.fillRect(44, 38, 5, 5); ctx.fillRect(55, 38, 5, 5);
-          ctx.fillStyle = '#212121'; ctx.fillRect(46, 39, 2, 3); ctx.fillRect(57, 39, 2, 3);
-
-          ctx.fillStyle = '#262626'; ctx.fillRect(38, 48, 28, 8);
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(46, 52); ctx.lineTo(58, 52); ctx.lineTo(52, 68); ctx.fill();
-
-          ctx.fillStyle = '#1c1c1c';
-          ctx.beginPath(); ctx.moveTo(32, 54); ctx.lineTo(72, 54); ctx.lineTo(82, 114); ctx.lineTo(22, 114); ctx.fill();
-
-          ctx.fillStyle = '#333333'; ctx.fillRect(20, 58, 14, 35); ctx.fillRect(70, 58, 14, 35);
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(18, 75, 5, 0, Math.PI*2); ctx.fill();
-          ctx.beginPath(); ctx.arc(78, 68, 5, 0, Math.PI*2); ctx.fill();
-
-          ctx.fillStyle = '#8a7328'; ctx.fillRect(34, 52, 6, 8); ctx.fillRect(64, 52, 6, 8);
-          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(37, 56, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(67, 56, 2, 0, Math.PI*2); ctx.fill();
-
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(36, 70, 32, 6);
-          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.ellipse(52, 73, 7, 5, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(52, 73, 3, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(48, 76); ctx.lineTo(44, 108); ctx.lineTo(52, 102); ctx.fill();
-
-          ctx.fillStyle = '#111111'; ctx.fillRect(34, 114, 12, 8); ctx.fillRect(58, 114, 12, 8);
-
-          ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
-          ctx.beginPath(); ctx.moveTo(85, 124); ctx.lineTo(78, 68); ctx.lineTo(92, 10); ctx.stroke();
-          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.moveTo(82, 118); ctx.lineTo(88, 126); ctx.lineTo(80, 126); ctx.fill();
-
-          ctx.fillStyle = '#8a7328';
-          ctx.beginPath(); ctx.arc(92, 28, 22, -Math.PI*0.7, Math.PI*0.7, false);
-          ctx.arc(88, 28, 16, Math.PI*0.7, -Math.PI*0.7, true); ctx.fill();
-
-          ctx.fillStyle = '#c4b060';
-          ctx.beginPath(); ctx.moveTo(92, 4); ctx.lineTo(96, -4); ctx.lineTo(100, 4); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(112, 16); ctx.lineTo(122, 12); ctx.lineTo(116, 24); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(76, 12); ctx.lineTo(70, 4); ctx.lineTo(82, 18); ctx.fill();
-
-          ctx.fillStyle = '#552266'; ctx.beginPath(); ctx.arc(92, 28, 12, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#7a3d8a'; ctx.beginPath(); ctx.arc(90, 25, 8, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(88, 23, 3, 0, Math.PI * 2); ctx.fill();
-
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(96, 46, 5, 18); ctx.fillRect(100, 58, 5, 20);
-          ctx.fillStyle = '#8a7328'; ctx.beginPath(); ctx.arc(98, 64, 3, 0, Math.PI*2); ctx.fill();
-        }
-      }
-      else if (type === 'player_hunter_gun') {
-        if (isBack) {
-          ctx.fillStyle = '#a8a8a8'; ctx.beginPath(); ctx.ellipse(64, 26, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#8a6a45'; ctx.fillRect(72, 24, 25, 6);
-          ctx.fillStyle = '#4a6a78'; ctx.beginPath(); ctx.ellipse(64, 45, 20, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#161c47'; ctx.fillRect(44, 75, 40, 25);
-          ctx.fillStyle = '#8a6a45'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
-          ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12);
-          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#8a6a45'; ctx.fillRect(86, 75, 25, 8);
-          ctx.fillStyle = '#8a6a45'; ctx.fillRect(58, 88, 12, 30);
-          ctx.fillStyle = '#4e342e'; ctx.fillRect(88, 77, 21, 4);
-          ctx.fillRect(60, 90, 8, 26);
-        } else {
-          ctx.fillStyle = '#a8a8a8'; ctx.beginPath(); ctx.ellipse(64, 38, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#8a6a45'; ctx.fillRect(72, 36, 25, 6);
           ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#212121'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#4a6a78'; ctx.fillRect(44, 52, 40, 36);
-          ctx.fillStyle = '#161c47'; ctx.fillRect(44, 75, 40, 36);
-          ctx.fillStyle = '#a8a8a8'; ctx.fillRect(32, 60, 10, 16); ctx.fillRect(86, 60, 10, 16);
-          ctx.fillStyle = '#8a6a45'; ctx.beginPath(); ctx.moveTo(36, 52); ctx.lineTo(64, 62); ctx.lineTo(92, 52); ctx.lineTo(84, 75); ctx.lineTo(44, 75); ctx.fill();
-          ctx.fillStyle = '#4e342e'; ctx.fillRect(48, 62, 32, 12);
-          ctx.strokeStyle = '#212121'; ctx.lineWidth = 6;
-          ctx.beginPath(); ctx.moveTo(85, 55); ctx.lineTo(110, 105); ctx.stroke();
-          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.arc(109, 98, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#a68a3a'; ctx.lineWidth = 2; ctx.stroke();
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(52, 33, 9, 3); ctx.fillRect(67, 33, 9, 3);
+          ctx.fillStyle = '#06b6d4'; ctx.fillRect(55, 37, 4, 3); ctx.fillRect(69, 37, 4, 3);
+
+          // 화려한 어깨 견갑 갑옷
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(18, 48, 16, 12); ctx.fillRect(94, 48, 16, 12);
+
+          ctx.fillStyle = '#0d9488';
+          ctx.beginPath(); ctx.moveTo(30, 48); ctx.lineTo(98, 48); ctx.lineTo(104, 98); ctx.lineTo(24, 98); ctx.fill();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath(); ctx.moveTo(50, 48); ctx.lineTo(64, 68); ctx.lineTo(78, 48); ctx.lineTo(64, 54); ctx.fill();
+
+          ctx.fillStyle = '#b45309'; ctx.fillRect(30, 68, 68, 12);
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(58, 68, 12, 22);
+
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(18, 62, 16, 14); ctx.fillRect(94, 62, 16, 14);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(40, 98, 18, 12); ctx.fillRect(70, 98, 18, 12);
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(42, 108, 14, 8); ctx.fillRect(72, 108, 14, 8);
+          ctx.fillStyle = '#78350f'; ctx.fillRect(40, 114, 18, 6); ctx.fillRect(70, 114, 18, 6);
+
+          drawSpearWeapon(ctx, 64, 66, Math.PI / 8, attackStage, true);
         }
       }
-      else if (type === 'player_gun') {
-        if (isBack) {
-          ctx.fillStyle = '#26333a'; ctx.fillRect(40, 15, 48, 12);
-          ctx.fillStyle = '#254d75'; ctx.fillRect(40, 54, 48, 45);
-        } else {
-          ctx.fillStyle = '#26333a'; ctx.fillRect(40, 15, 48, 12);
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 16, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#254d75'; ctx.fillRect(40, 54, 48, 45);
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(80, 45, 8, 60);
-        }
-      }
+      /* 1차 주술사(player_mage) */
       else if (type === 'player_mage') {
         if (isBack) {
-          ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(64, 32, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#4a1a5c'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
+          ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.ellipse(64, 30, 24, 20, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#f1f5f9'; ctx.beginPath(); ctx.ellipse(64, 25, 20, 15, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#1e1b4b';
+          ctx.beginPath(); ctx.moveTo(38, 48); ctx.lineTo(90, 48); ctx.lineTo(98, 105); ctx.lineTo(30, 105); ctx.fill();
+
+          ctx.fillStyle = '#312e81'; ctx.fillRect(44, 52, 40, 48);
+          ctx.fillStyle = '#3b82f6'; ctx.fillRect(60, 48, 8, 55);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(44, 102, 16, 18); ctx.fillRect(68, 102, 16, 18);
+
+          drawShamanStaff(ctx, 88, 60, -Math.PI / 6, attackStage, false);
         } else {
-          ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 16, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#4a1a5c'; ctx.beginPath(); ctx.moveTo(36, 54); ctx.lineTo(92, 54); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-          ctx.fillStyle = '#8f7326'; ctx.fillRect(80, 60, 14, 22);
+          ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.ellipse(64, 28, 25, 20, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#f1f5f9'; ctx.beginPath(); ctx.ellipse(64, 24, 20, 15, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.ellipse(64, 24, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#1e1b4b'; ctx.fillRect(55, 36, 5, 3); ctx.fillRect(69, 36, 5, 3);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(57, 37, 2, 2); ctx.fillRect(71, 37, 2, 2);
+
+          ctx.fillStyle = '#1e1b4b';
+          ctx.beginPath(); ctx.moveTo(36, 50); ctx.lineTo(92, 50); ctx.lineTo(98, 105); ctx.lineTo(30, 105); ctx.fill();
+
+          ctx.fillStyle = '#312e81'; ctx.fillRect(46, 52, 36, 45);
+
+          ctx.fillStyle = '#3b82f6'; ctx.fillRect(40, 50, 10, 35); ctx.fillRect(78, 50, 10, 35);
+          ctx.fillStyle = '#fbbf24'; ctx.fillRect(62, 58, 4, 4); ctx.fillRect(62, 68, 4, 4); ctx.fillRect(62, 78, 4, 4);
+
+          ctx.fillStyle = '#1f2937'; ctx.fillRect(44, 102, 16, 18); ctx.fillRect(68, 102, 16, 18);
+          ctx.fillStyle = '#111827'; ctx.fillRect(42, 114, 20, 8); ctx.fillRect(66, 114, 20, 8);
+
+          drawShamanStaff(ctx, 92, 62, Math.PI / 10, attackStage, false);
+        }
+      }
+      /* 2차 최종 전직 대도사(player_daedosa) - 네온 효과 및 화려한 외형 연출 */
+      else if (type === 'player_daedosa') {
+        if (isBack) {
+          // 등 뒤 보랏빛 퍼플 네온 영기 링
+          ctx.strokeStyle = 'rgba(216, 180, 254, 0.65)'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.arc(64, 50, 42, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(64, 50, 42, 0, Math.PI * 2); ctx.stroke();
+
+          // 은신선 은발 머리
+          ctx.fillStyle = '#4c1d95'; ctx.beginPath(); ctx.ellipse(64, 28, 26, 22, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ddd6fe'; ctx.beginPath(); ctx.ellipse(64, 24, 22, 17, 0, 0, Math.PI * 2); ctx.fill();
+
+          // 신령한 무구 구체 장식
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath(); ctx.arc(28, 45, 6, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(100, 45, 6, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#2e1065';
+          ctx.beginPath(); ctx.moveTo(36, 48); ctx.lineTo(92, 48); ctx.lineTo(100, 108); ctx.lineTo(28, 108); ctx.fill();
+
+          ctx.fillStyle = '#7e22ce'; ctx.fillRect(44, 52, 40, 50);
+          ctx.fillStyle = '#c084fc'; ctx.fillRect(60, 48, 8, 58);
+
+          ctx.fillStyle = '#111827'; ctx.fillRect(44, 102, 16, 18); ctx.fillRect(68, 102, 16, 18);
+
+          drawShamanStaff(ctx, 88, 60, -Math.PI / 6, attackStage, true);
+        } else {
+          // 등 뒤 보랏빛 퍼플 네온 영기 링
+          ctx.strokeStyle = 'rgba(216, 180, 254, 0.65)'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.arc(64, 50, 42, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(64, 50, 42, 0, Math.PI * 2); ctx.stroke();
+
+          // 은신선 은발 머리
+          ctx.fillStyle = '#4c1d95'; ctx.beginPath(); ctx.ellipse(64, 26, 27, 22, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ddd6fe'; ctx.beginPath(); ctx.ellipse(64, 22, 22, 16, 0, 0, Math.PI * 2); ctx.fill();
+
+          // 보랏빛 마법 보석
+          ctx.fillStyle = '#f0abfc'; ctx.beginPath(); ctx.ellipse(64, 22, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#ffecb3'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#2e1065'; ctx.fillRect(55, 36, 5, 3); ctx.fillRect(69, 36, 5, 3);
+          ctx.fillStyle = '#c084fc'; ctx.fillRect(57, 37, 2, 2); ctx.fillRect(71, 37, 2, 2);
+
+          // 신령한 무구 구체 장식
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath(); ctx.arc(26, 45, 6, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(102, 45, 6, 0, Math.PI * 2); ctx.fill();
+
+          ctx.fillStyle = '#2e1065';
+          ctx.beginPath(); ctx.moveTo(34, 50); ctx.lineTo(94, 50); ctx.lineTo(100, 108); ctx.lineTo(28, 108); ctx.fill();
+
+          ctx.fillStyle = '#7e22ce'; ctx.fillRect(44, 52, 40, 48);
+
+          ctx.fillStyle = '#c084fc'; ctx.fillRect(38, 50, 10, 38); ctx.fillRect(80, 50, 10, 38);
+          ctx.fillStyle = '#fbbf24'; ctx.fillRect(62, 58, 4, 4); ctx.fillRect(62, 68, 4, 4); ctx.fillRect(62, 78, 4, 4);
+
+          ctx.fillStyle = '#1f2937'; ctx.fillRect(44, 102, 16, 18); ctx.fillRect(68, 102, 16, 18);
+          ctx.fillStyle = '#111827'; ctx.fillRect(42, 114, 20, 8); ctx.fillRect(66, 114, 20, 8);
+
+          drawShamanStaff(ctx, 92, 62, Math.PI / 10, attackStage, true);
         }
       }
       else if (type === 'cat') {
@@ -989,100 +1284,37 @@
       else if (type === 'garlic_king') {
         ctx.fillStyle = '#7a3530'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 32, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#2a4020'; ctx.fillRect(60, 20, 8, 22);
-        ctx.fillStyle = '#5c1414'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(60, 60); ctx.lineTo(44, 64); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(86, 52); ctx.lineTo(68, 60); ctx.lineTo(84, 64); ctx.fill();
-        ctx.fillStyle = '#212121'; ctx.fillRect(48, 60, 6, 8); ctx.fillRect(74, 60, 6, 8);
-        ctx.fillStyle = '#232d33'; ctx.fillRect(48, 78, 32, 10);
-        ctx.fillStyle = '#c9c9c9'; ctx.fillRect(52, 78, 6, 5); ctx.fillRect(70, 78, 6, 5);
       }
       else if (type === 'tiger_patient') {
         ctx.fillStyle = '#7a4310'; ctx.beginPath(); ctx.ellipse(64, 65, 34, 32, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#212121'; ctx.fillRect(40, 48, 12, 4); ctx.fillRect(76, 48, 12, 4);
-        ctx.fillStyle = '#6e1f1f'; ctx.beginPath(); ctx.ellipse(64, 76, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#c9c9c9'; ctx.fillRect(54, 72, 5, 8); ctx.fillRect(69, 72, 5, 8);
-        ctx.fillStyle = '#8f8f8f'; ctx.fillRect(32, 78, 20, 8);
       }
       else if (type === 'ungyang') {
         ctx.fillStyle = '#5e4f47'; ctx.beginPath(); ctx.ellipse(64, 70, 36, 38, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(64, 40, 24, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#8f7326'; ctx.beginPath(); ctx.arc(80, 22, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.arc(80, 22, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#2a1a14'; ctx.fillRect(52, 36, 5, 5); ctx.fillRect(71, 36, 5, 5);
-        ctx.fillStyle = '#7a6f68'; ctx.beginPath(); ctx.arc(64, 46, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#b0a988'; for(let i=0; i<4; i++) { ctx.beginPath(); ctx.arc(42 + i*14, 78, 6, 0, Math.PI*2); ctx.fill(); }
       }
       else if (type === 'boss_tank') {
         ctx.fillStyle = '#232d33'; ctx.fillRect(16, 76, 96, 42);
-        ctx.fillStyle = '#212121'; for(let x=22; x<=94; x+=16) { ctx.beginPath(); ctx.arc(x+8, 97, 7, 0, Math.PI*2); ctx.fill(); }
         ctx.fillStyle = '#5a463c'; ctx.beginPath(); ctx.ellipse(64, 52, 38, 32, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#161c20'; ctx.fillRect(18, 42, 14, 22); ctx.fillRect(96, 42, 14, 22);
-        ctx.fillStyle = '#5e3568'; ctx.beginPath(); ctx.arc(64, 40, 18, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#6e4550'; ctx.beginPath(); ctx.arc(64, 18, 7, 0, Math.PI * 2); ctx.fill();
       }
       else if (type === 'judang') {
         ctx.fillStyle = '#8f7040'; ctx.beginPath(); ctx.arc(64, 46, 22, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.ellipse(64, 58, 20, 14, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#5c1414'; ctx.fillRect(52, 42, 5, 5); ctx.fillRect(71, 42, 5, 5);
-        ctx.fillStyle = '#5a463c'; ctx.fillRect(40, 72, 48, 40);
-        ctx.fillStyle = '#4d5a60'; ctx.beginPath(); ctx.arc(28, 65, 14, Math.PI*0.5, Math.PI*1.5); ctx.fill();
       }
       else if (type === 'palgwang') {
-        ctx.fillStyle = '#232d33'; ctx.beginPath(); ctx.ellipse(64, 24, 22, 8, 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#7a2a28'; ctx.fillRect(36, 32, 56, 68);
-        ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.arc(64, 64, 14, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#212121'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('光', 56, 70);
-        ctx.fillStyle = '#7f8a8e'; ctx.fillRect(94, 12, 6, 90); ctx.fillRect(88, 12, 18, 6);
       }
       else if (type === 'sangdupo') {
         ctx.fillStyle = '#3f2d63'; ctx.beginPath(); ctx.ellipse(64, 65, 42, 36, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#5a4680'; ctx.beginPath(); ctx.arc(40, 52, 18, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#2e1a63'; ctx.fillRect(18, 55, 24, 12);
-        ctx.fillStyle = '#251458'; ctx.fillRect(46, 38, 36, 34);
-        ctx.fillStyle = '#8a5f10'; ctx.strokeRect(46, 38, 36, 34);
       }
       else if (type === 'madaepo') {
         ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.ellipse(64, 68, 44, 30, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#5a463c'; ctx.beginPath(); ctx.arc(94, 52, 18, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#2a1a14'; ctx.fillRect(90, 34, 6, 22);
-        ctx.fillStyle = '#161c20'; ctx.fillRect(28, 28, 62, 28);
-        ctx.fillStyle = '#8a5510'; ctx.fillRect(18, 26, 14, 32);
       }
       else if (type === 'hwangjini') {
-        if (isBack) {
-          ctx.fillStyle = '#8a7a5c'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.moveTo(34, 55); ctx.lineTo(94, 55); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-        } else {
-          ctx.fillStyle = '#8a7a5c'; ctx.beginPath(); ctx.ellipse(64, 18, 42, 12, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 36, 4, 5); ctx.fillRect(68, 36, 4, 5);
-          ctx.fillStyle = '#6e4550'; ctx.beginPath(); ctx.moveTo(42, 52); ctx.lineTo(86, 52); ctx.lineTo(92, 72); ctx.lineTo(36, 72); ctx.fill();
-          ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.moveTo(34, 72); ctx.lineTo(94, 72); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
-          ctx.fillStyle = '#e1f5fe'; for(let i=0; i<6; i++) ctx.fillRect(36 + i*10, 85, 4, 4);
-          ctx.fillStyle = '#5d4037'; ctx.beginPath(); ctx.moveTo(30, 20); ctx.lineTo(85, 110); ctx.lineTo(72, 115); ctx.lineTo(20, 25); ctx.fill();
-          ctx.strokeStyle = '#ffe0b2'; ctx.lineWidth = 1; for(let l=0; l<4; l++) { ctx.beginPath(); ctx.moveTo(26+l*3, 22); ctx.lineTo(76+l*3, 112); ctx.stroke(); }
-        }
+        ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(64, 30, 22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 38, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2a5f8f'; ctx.beginPath(); ctx.moveTo(34, 72); ctx.lineTo(94, 72); ctx.lineTo(102, 115); ctx.lineTo(26, 115); ctx.fill();
       }
       else if (type === 'janggeum') {
-        if (isBack) {
-          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#1e5a75'; ctx.fillRect(36, 102, 56, 6);
-        } else {
-          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.ellipse(64, 20, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#1e5a75'; ctx.beginPath(); ctx.arc(64, 20, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#4a332b'; ctx.beginPath(); ctx.arc(64, 32, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 40, 14, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5d4037'; ctx.fillRect(56, 38, 4, 5); ctx.fillRect(68, 38, 4, 5);
-          ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
-          ctx.strokeStyle = '#1e5a75'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.fillStyle = '#1e5a75'; ctx.fillRect(44, 54, 40, 6); ctx.fillRect(36, 102, 56, 6);
-          ctx.fillStyle = '#5a463c'; ctx.fillRect(58, 62, 12, 18);
-        }
+        ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(64, 40, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9c9c9'; ctx.beginPath(); ctx.moveTo(40, 54); ctx.lineTo(88, 54); ctx.lineTo(96, 110); ctx.lineTo(32, 110); ctx.fill();
       }
 
       const texture = new THREE.CanvasTexture(cvs);
@@ -1097,7 +1329,6 @@
       return 50 + (level * level * 8);
     }
 
-    // 부적: 필살의 기운 강화 정보 테이블 (+0 ~ +10)
     const talismanTable = [
       { level: 0, crit: 0.05, mult: 1.50, nextCost: 1, nextRate: 1.00 },
       { level: 1, crit: 0.06, mult: 1.55, nextCost: 2, nextRate: 0.95 },
@@ -1117,11 +1348,12 @@
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
       maxExp: getRequiredExp(1),
       gold: 200, 
-      talismanLoot: 0, // 전리품 수량
-      talismanLevel: 0, // 부적 강화 단계 (+0 ~ +10)
+      talismanLoot: 0,
+      talismanLevel: 0,
       baseAttackSpeed: 1000, attackSpeed: 1000,
       weaponAtk: 0, defensePower: 5,
       lastAttackTime: 0, moveSpeed: 9, attackRange: 2.5,
+      isAttacking: false, attackStage: 0, attackAnimTimer: 0,
       hasHwangJini: false, hasJanggeum: false,
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
       skillsLearned: [],
@@ -1148,27 +1380,10 @@
     }
 
     let playerFacing = 'front';
-    let playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('player_beginner', false) }));
+    let playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('player_beginner', false, 0) }));
     playerSprite.scale.set(3.2, 3.2, 1);
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
-
-    let fanAuraMesh = null;
-    function initFanAuraMesh() {
-      const geom = new THREE.PlaneGeometry(3.6, 3.6);
-      const mat = new THREE.MeshBasicMaterial({
-        map: createFanAuraTexture('pink'),
-        transparent: true,
-        opacity: 0.45,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      });
-      fanAuraMesh = new THREE.Mesh(geom, mat);
-      fanAuraMesh.position.set(0, 0.15, -0.05);
-      fanAuraMesh.visible = false;
-      scene.add(fanAuraMesh);
-    }
-    initFanAuraMesh();
 
     const targetArrowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createTargetArrowTexture() }));
     targetArrowSprite.scale.set(1.5, 1.5, 1);
@@ -1199,6 +1414,36 @@
 
     const activeProjectiles = [];
     const activeHitVfx = [];
+
+    // 3D 빤짝이 가루(Sparkle Particles) 시스템 생성 함수
+    function spawnSparkles(pos, colorType) {
+      for (let i = 0; i < 16; i++) {
+        const pMat = new THREE.SpriteMaterial({
+          map: createSnowflakeTexture(),
+          color: colorType === 'swordmaster' ? 0x00f0ff : 0xd8b4fe,
+          transparent: true,
+          opacity: 1.0
+        });
+        const pSprite = new THREE.Sprite(pMat);
+        const pSize = 0.5 + Math.random() * 0.6;
+        pSprite.scale.set(pSize, pSize, 1);
+
+        const offset = new THREE.Vector3(
+          (Math.random() - 0.5) * 2.8,
+          1.2 + (Math.random() - 0.5) * 1.6,
+          (Math.random() - 0.5) * 2.8
+        );
+        pSprite.position.copy(pos).add(offset);
+        scene.add(pSprite);
+
+        activeHitVfx.push({
+          sprite: pSprite,
+          timer: 0,
+          duration: 0.45 + Math.random() * 0.35,
+          vel: new THREE.Vector3((Math.random() - 0.5) * 3.5, Math.random() * 2.5 + 1.2, (Math.random() - 0.5) * 3.5)
+        });
+      }
+    }
 
     const floorSize = 84;
     let floorMesh = null;
@@ -1663,12 +1908,8 @@
       if (jobName === '검사') {
         playerState.title = '무관';
         playerState.maxHp += 150; playerState.hp = playerState.maxHp;
-        playerState.weaponAtk += 25; playerState.defensePower += 20; playerState.attackRange = 3.0;
+        playerState.weaponAtk += 25; playerState.defensePower += 20; playerState.attackRange = 3.2;
         spriteType = 'player_sword';
-      } else if (jobName === '총사') {
-        playerState.title = '포수';
-        playerState.weaponAtk += 35; playerState.defensePower += 10; playerState.attackRange = 10.0;
-        spriteType = 'player_hunter_gun';
       } else if (jobName === '주술사') {
         playerState.title = '도사';
         playerState.weaponAtk += 45; playerState.defensePower += 5; playerState.attackRange = 9.0;
@@ -1689,9 +1930,7 @@
 
       let job2Options = [];
       if (playerState.job === '검사') {
-        job2Options = [{ name: '검성', desc: '검의 극의에 달한 최강의 검사' }];
-      } else if (playerState.job === '총사') {
-        job2Options = [{ name: '제독', desc: '화력과 원거리 사격을 지배하는 자' }];
+        job2Options = [{ name: '검성', desc: '검과 양날창의 극의에 달한 최강의 무사' }];
       } else if (playerState.job === '주술사') {
         job2Options = [{ name: '대도사', desc: '천지신명의 음양 마법을 부리는 자' }];
       } else {
@@ -1721,7 +1960,9 @@
       playerState.maxHp += 300; playerState.hp = playerState.maxHp;
       playerState.weaponAtk += 80; playerState.defensePower += 40;
 
-      if (job2Name === '대도사' || playerState.job.includes('도사')) {
+      if (job2Name === '검성' || playerState.job.includes('검사')) {
+        playerState.attackRange = 4.2; // 2차 검성 전직 시 더욱 늘어난 사거리
+      } else if (job2Name === '대도사' || playerState.job.includes('도사')) {
         playerState.attackRange = 11.0;
       }
 
@@ -1736,7 +1977,7 @@
 
       updatePlayerFacingTexture();
       updateUI(); closeJob2Modal();
-      alert(`🎉 2차 전직 [${job2Name}] 완료! 스킬 수련원에서 2차 전직 스킬을 배울 수 있습니다.`);
+      alert(`🎉 2차 전직 [${job2Name}] 완료! 네온 발광 효과 및 빤짝이 연출이 무기에 적용됩니다.`);
     }
 
     /* ==========================================
@@ -2084,6 +2325,12 @@
       for (let i = activeHitVfx.length - 1; i >= 0; i--) {
         const v = activeHitVfx[i];
         v.timer += delta;
+
+        // 3D 빤짝이 입자 이동 및 페이드아웃 처리
+        if (v.vel) {
+          v.sprite.position.addScaledVector(v.vel, delta);
+        }
+
         v.sprite.material.opacity = Math.max(0, 1.0 - (v.timer / v.duration));
         if (v.timer >= v.duration) {
           scene.remove(v.sprite);
@@ -2118,7 +2365,6 @@
           m.sprite.position.z += m.roamDir.z * 1.2 * delta;
         }
 
-        // 몬스터 맵 이탈 방지
         m.sprite.position.x = Math.max(-boundLimit, Math.min(boundLimit, m.sprite.position.x));
         m.sprite.position.z = Math.max(-boundLimit, Math.min(boundLimit, m.sprite.position.z));
       });
@@ -2178,7 +2424,6 @@
     }
 
     function addReward(exp, gold) {
-      // 본캐릭터 경험치 및 골드 보상
       if (playerState.level < playerState.maxLevel) {
         playerState.exp += exp;
         while (playerState.level < playerState.maxLevel && playerState.exp >= playerState.maxExp) {
@@ -2200,7 +2445,6 @@
 
       playerState.gold += gold;
 
-      // 소환영웅 경험치 및 레벨업 처리 (+3 공격력)
       [hwangJiniSprite, janggeumSprite].forEach((heroSprite, index) => {
         if (heroSprite) {
           const heroState = index === 0 ? hwangJiniState : janggeumState;
@@ -2254,7 +2498,6 @@
       const pEl = nametags.get('player');
       if (pEl) pEl.querySelector('.tag-title').innerText = `Lv.${playerState.level} ${playerState.title}`;
 
-      // 소환영웅 네임택 레벨 업데이트
       if (hwangJiniSprite) {
         const el = document.getElementById('hero_lv_hero_hwangjini');
         if (el) el.innerText = hwangJiniState.level >= 70 ? 'Lv.70 (MAX)' : `Lv.${hwangJiniState.level}`;
@@ -2345,16 +2588,56 @@
       let baseType = 'player_beginner';
       if (playerState.tier === 2) {
         if (playerState.job === '검사') baseType = 'player_sword';
-        else if (playerState.job === '총사') baseType = 'player_hunter_gun';
         else baseType = 'player_mage';
       } else if (playerState.tier === 3) {
         if (playerState.job === '검성') baseType = 'player_swordmaster';
-        else if (playerState.job === '제독') baseType = 'player_gun';
         else baseType = 'player_daedosa';
       }
       const isBack = (playerFacing === 'back');
-      playerSprite.material.map = createPixelSpriteTexture(baseType, isBack);
+      playerSprite.material.map = createPixelSpriteTexture(baseType, isBack, playerState.attackStage);
       playerSprite.material.needsUpdate = true;
+    }
+
+    function triggerAttackAnim() {
+      playerState.isAttacking = true;
+      
+      // 2차 최종 전직일 때 공격 시 3D 공간에 빤짝이 가루 산개 연출 트리거
+      if (playerState.tier === 3) {
+        const colorType = (playerState.job === '검성' || playerState.job.includes('검')) ? 'swordmaster' : 'daedosa';
+        spawnSparkles(playerSprite.position, colorType);
+      }
+
+      playerState.attackStage = 1; updatePlayerFacingTexture();
+
+      setTimeout(() => {
+        if (playerState.isAttacking) {
+          playerState.attackStage = 2; updatePlayerFacingTexture();
+        }
+      }, 50);
+
+      setTimeout(() => {
+        if (playerState.isAttacking) {
+          playerState.attackStage = 3; updatePlayerFacingTexture();
+        }
+      }, 100);
+
+      setTimeout(() => {
+        if (playerState.isAttacking) {
+          playerState.attackStage = 4; updatePlayerFacingTexture();
+        }
+      }, 160);
+
+      setTimeout(() => {
+        if (playerState.isAttacking) {
+          playerState.attackStage = 5; updatePlayerFacingTexture();
+        }
+      }, 220);
+
+      setTimeout(() => {
+        playerState.isAttacking = false;
+        playerState.attackStage = 0;
+        updatePlayerFacingTexture();
+      }, 280);
     }
 
     let selectedTarget = null;
@@ -2381,6 +2664,8 @@
       if (now - playerState.lastAttackTime < playerState.attackSpeed) return;
       playerState.lastAttackTime = now;
 
+      triggerAttackAnim();
+
       if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
       if (selectedTarget && playerSprite.position.distanceTo(selectedTarget.sprite.position) <= playerState.attackRange) {
         if (playerState.job.includes('주술사') || playerState.job.includes('도사') || playerState.job === '대도사') {
@@ -2402,6 +2687,8 @@
       let isCrit = Math.random() < critChance;
       if (isCrit) {
         finalDmg = Math.round(amount * critMult);
+        /* 크리티컬 발생 시 스크린 쉐이크 연출 트리거 */
+        triggerScreenShake(0.7, 0.3);
       }
 
       target.hp -= finalDmg;
@@ -2416,20 +2703,17 @@
         
         let rewardGold = target.goldReward;
         if (target.isBoss) {
-          // BOSS 몹 처치 시 10% 확률로 100,000 게임머니 추가 획득
           if (Math.random() < 0.1) {
             rewardGold += 100000;
             showHealText('+100,000 G (보스 보너스!)', target.sprite.position);
           }
 
-          // BOSS 몹 드롭 확률 로직:
-          // 25% 확률로 10개 획득, 50% 확률로 2~5개 랜덤 획득
           const rand = Math.random();
           let lootCount = 0;
           if (rand < 0.25) {
             lootCount = 10;
-          } else if (rand < 0.75) { // 0.25 ~ 0.75 (50% 확률)
-            lootCount = Math.floor(Math.random() * 4) + 2; // 2 ~ 5개
+          } else if (rand < 0.75) {
+            lootCount = Math.floor(Math.random() * 4) + 2;
           }
 
           if (lootCount > 0) {
@@ -2437,9 +2721,8 @@
             showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
           }
         } else {
-          // 일반 몬스터: 40% 확률로 1~3개 랜덤 획득
           if (Math.random() < 0.4) {
-            const normalLootCount = Math.floor(Math.random() * 3) + 1; // 1 ~ 3개
+            const normalLootCount = Math.floor(Math.random() * 3) + 1;
             playerState.talismanLoot += normalLootCount;
             showHealText(`+${normalLootCount} 전리품 획득!`, target.sprite.position);
           }
@@ -2596,29 +2879,8 @@
         }
       }
 
-      // 플레이어 맵 이탈 방지
       playerSprite.position.x = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.x));
       playerSprite.position.z = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.z));
-
-      if (playerState.tier === 3 && playerState.level >= 40) {
-        if (fanAuraMesh) {
-          if (playerState.job === '검성') {
-            fanAuraMesh.material.map = createFanAuraTexture('pink');
-            fanAuraMesh.material.opacity = 0.45;
-            fanAuraMesh.visible = true;
-            fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
-          } else if (playerState.job === '대도사' || playerState.job.includes('도사')) {
-            fanAuraMesh.material.map = createFanAuraTexture('yellow');
-            fanAuraMesh.material.opacity = 0.45;
-            fanAuraMesh.visible = true;
-            fanAuraMesh.position.copy(playerSprite.position).add(new THREE.Vector3(0, 0.15, -0.05));
-          } else {
-            fanAuraMesh.visible = false;
-          }
-        }
-      } else {
-        if (fanAuraMesh) fanAuraMesh.visible = false;
-      }
 
       if (selectedTarget && selectedTarget.alive) {
         targetArrowSprite.visible = true;
@@ -2631,6 +2893,15 @@
 
       const scaledOffset = baseCameraOffset.clone().multiplyScalar(zoomLevel);
       camera.position.copy(playerSprite.position).add(scaledOffset);
+
+      /* 크리티컬 발생 시 카메라 스크린 쉐이크 연출 적용 */
+      if (shakeTimer > 0) {
+        shakeTimer -= delta;
+        camera.position.x += (Math.random() - 0.5) * shakeIntensity;
+        camera.position.y += (Math.random() - 0.5) * shakeIntensity;
+        camera.position.z += (Math.random() - 0.5) * shakeIntensity;
+      }
+
       camera.lookAt(playerSprite.position);
 
       renderMinimap();
