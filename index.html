@@ -3071,7 +3071,7 @@
         sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
         scene.add(sprite);
         const mShadow=createShadowDisk(2.7,1.4);
-        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,hp:3600,maxHp:3600,goldReward:1200,attackPower:72,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,hp:5400,maxHp:5400,goldReward:1200,attackPower:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
         createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
       }
 
@@ -3079,7 +3079,7 @@
       const bossSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture('icequeen',false,0),transparent:true}));
       bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(0,4.1,-10); scene.add(bossSprite);
       const bossShadow=createShadowDisk(7.0,3.6);
-      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,hp:24000,maxHp:24000,goldReward:18000,attackPower:115,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,hp:36000,maxHp:36000,goldReward:18000,attackPower:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
       createNametagElement('monster_18','얼음성의 여왕','빙설여왕',false,false,true);
     }
 
@@ -3742,11 +3742,13 @@
         let target = null;
         let prevPos = siriSprite.position.clone();
 
-        if (heroAutoHunt) {
+        if (selectedTarget && selectedTarget.alive) {
+          target = selectedTarget;
+        } else if (heroAutoHunt) {
           if (!siriTarget || !siriTarget.alive) {
             let minDist = Infinity;
             monsters.forEach(m => {
-              if (m.alive && !m.isBoss) {
+              if (m.alive) {
                 const d = siriSprite.position.distanceTo(m.sprite.position);
                 if (d < minDist) { minDist = d; target = m; }
               }
@@ -3754,8 +3756,6 @@
             siriTarget = target;
           }
           target = siriTarget;
-        } else {
-          target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
         }
 
         if (target && target.alive) {
@@ -3770,14 +3770,14 @@
               spawnHeroEnergyProjectile(siriSprite.position, target, hDmg, 'siri');
               showHealText('🏹 시리의 활 공격!', siriSprite.position);
             }
-          } else if (heroAutoHunt) {
+          } else {
             const dir = target.sprite.position.clone().sub(siriSprite.position).normalize();
             siriSprite.position.x += dir.x * 4 * delta;
             siriSprite.position.z += dir.z * 4 * delta;
           }
         }
 
-        if (!heroAutoHunt || !target) {
+        if (!target) {
           siriSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(-1.8, 0, 1.2)), 0.08);
         }
 
@@ -3809,11 +3809,13 @@
         }
 
         let target = null;
-        if (heroAutoHunt) {
+        if (selectedTarget && selectedTarget.alive) {
+          target = selectedTarget;
+        } else if (heroAutoHunt) {
           if (!janggeumTarget || !janggeumTarget.alive) {
             let minDist = Infinity;
             monsters.forEach(m => {
-              if (m.alive && !m.isBoss) {
+              if (m.alive) {
                 const d = janggeumSprite.position.distanceTo(m.sprite.position);
                 if (d < minDist) { minDist = d; target = m; }
               }
@@ -3821,8 +3823,6 @@
             janggeumTarget = target;
           }
           target = janggeumTarget;
-        } else {
-          target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
         }
 
         if (target && target.alive) {
@@ -3835,14 +3835,14 @@
               const jDmg = Math.floor(Math.random() * (effectiveMaxJ - effectiveMinJ + 1)) + effectiveMinJ;
               spawnHeroEnergyProjectile(janggeumSprite.position, target, jDmg, 'janggeum');
             }
-          } else if (heroAutoHunt) {
+          } else {
             const dir = target.sprite.position.clone().sub(janggeumSprite.position).normalize();
             janggeumSprite.position.x += dir.x * 4 * delta;
             janggeumSprite.position.z += dir.z * 4 * delta;
           }
         }
 
-        if (!heroAutoHunt || !target) {
+        if (!target) {
           janggeumSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(1.8, 0, 1.2)), 0.08);
         }
 
@@ -3865,11 +3865,13 @@
         let prevPosM = munyeahanaSprite.position.clone();
         let target = null;
 
-        if (heroAutoHunt) {
+        if (selectedTarget && selectedTarget.alive) {
+          target = selectedTarget;
+        } else if (heroAutoHunt) {
           if (!munyeahanaTarget || !munyeahanaTarget.alive) {
             let minDist = Infinity;
             monsters.forEach(m => {
-              if (m.alive && !m.isBoss) {
+              if (m.alive) {
                 const d = munyeahanaSprite.position.distanceTo(m.sprite.position);
                 if (d < minDist) { minDist = d; target = m; }
               }
@@ -3877,8 +3879,6 @@
             munyeahanaTarget = target;
           }
           target = munyeahanaTarget;
-        } else {
-          target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
         }
 
         if (target && target.alive) {
@@ -3892,14 +3892,14 @@
               spawnHitVfx(target.sprite.position, 'slash', 2.2);
               applyDamage(target, mDmg);
             }
-          } else if (heroAutoHunt) {
+          } else {
             const dir = target.sprite.position.clone().sub(munyeahanaSprite.position).normalize();
             munyeahanaSprite.position.x += dir.x * 4.5 * delta;
             munyeahanaSprite.position.z += dir.z * 4.5 * delta;
           }
         }
 
-        if (!heroAutoHunt || !target) {
+        if (!target) {
           munyeahanaSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(0, 0, 1.8)), 0.08);
         }
 
