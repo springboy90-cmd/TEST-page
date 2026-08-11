@@ -288,6 +288,121 @@
 }
 </style>
 
+
+<style id="hero-management-size-final">
+/* ===== 소환영웅 관리 팝업 최종 모바일 최적화 ===== */
+.modal-overlay:has(.hero-management),
+.modal-overlay:has(.hero-list),
+.modal-overlay:has(.hero-card),
+.modal:has(.hero-management),
+.modal:has(.hero-list),
+.modal:has(.hero-card) {
+  padding: 8px !important;
+  overflow: hidden !important;
+}
+
+.modal-overlay:has(.hero-management) > div,
+.modal-overlay:has(.hero-list) > div,
+.modal-overlay:has(.hero-card) > div,
+.modal:has(.hero-management) > div,
+.modal:has(.hero-list) > div,
+.modal:has(.hero-card) > div {
+  width: min(360px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+  padding: 10px !important;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 600px) {
+  .modal-overlay:has(.hero-management) > div,
+  .modal-overlay:has(.hero-list) > div,
+  .modal-overlay:has(.hero-card) > div,
+  .modal:has(.hero-management) > div,
+  .modal:has(.hero-list) > div,
+  .modal:has(.hero-card) > div {
+    width: min(300px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    padding: 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .modal-overlay:has(.hero-management) button,
+  .modal-overlay:has(.hero-list) button,
+  .modal-overlay:has(.hero-card) button,
+  .modal:has(.hero-management) button,
+  .modal:has(.hero-list) button,
+  .modal:has(.hero-card) button {
+    font-size: 11px !important;
+    padding: 5px 7px !important;
+  }
+
+  .modal-overlay:has(.hero-management) h2,
+  .modal-overlay:has(.hero-management) h3,
+  .modal-overlay:has(.hero-list) h2,
+  .modal-overlay:has(.hero-list) h3,
+  .modal:has(.hero-management) h2,
+  .modal:has(.hero-management) h3,
+  .modal:has(.hero-list) h2,
+  .modal:has(.hero-list) h3 {
+    font-size: 14px !important;
+    margin: 4px 0 !important;
+  }
+}
+
+/* 닫기 버튼이 팝업 밖으로 밀리지 않도록 */
+.modal-overlay:has(.hero-management) .close,
+.modal-overlay:has(.hero-list) .close,
+.modal-overlay:has(.hero-card) .close,
+.modal:has(.hero-management) .close,
+.modal:has(.hero-list) .close,
+.modal:has(.hero-card) .close {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9999 !important;
+}
+</style>
+
+
+<style id="hero-manager-direct-final">
+/* 실제 영웅관리 팝업 ID: #hero-manager-modal */
+#hero-manager-modal {
+  width: min(360px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 10px !important;
+  margin: auto !important;
+}
+
+#hero-manager-modal .hero-manage-grid {
+  gap: 6px !important;
+}
+
+#hero-manager-modal .hero-manage-btn {
+  padding: 5px 7px !important;
+  font-size: 11px !important;
+}
+
+@media (max-width: 600px) {
+  #hero-manager-modal {
+    width: min(300px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    padding: 8px !important;
+    border-radius: 10px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 
