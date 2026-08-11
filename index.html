@@ -97,6 +97,34 @@
     }
     .btn-skill-badge:active { transform: scale(0.95); }
 
+    /* 캐릭터 상태창 하단 빠른 메뉴 */
+    .status-action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px dashed var(--panel-border);
+    }
+    .status-action-btn {
+      min-width: 0;
+      background: #fff;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 4px 3px;
+      font-size: 8px;
+      font-weight: 800;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status-action-btn:active { transform: translateY(1px); box-shadow: none; }
+    .status-shop-btn { background:#e1f5fe; border-color:#81d4fa; color:#0288d1; }
+    .status-settings-btn { background:#ede7f6; border-color:#b388ff; color:#512da8; }
+
     #quick-potions { position: absolute; bottom: 140px; left: 15px; display: flex; gap: 6px; z-index: 20; pointer-events: auto; }
     .btn-potion { 
       background: var(--panel-bg); border: 2px solid var(--panel-border); 
@@ -169,6 +197,19 @@
       box-shadow: 0 8px 25px var(--panel-shadow); overflow: hidden; pointer-events: auto;
     }
     .modal-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 2px dashed var(--panel-border); padding-bottom: 8px; }
+    .hero-manage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px; }
+    .hero-manage-card { background:linear-gradient(180deg,#fffdf7,#f3ead8); border:1px solid #c8b99a; border-radius:10px; padding:10px; text-align:center; box-shadow:0 2px 5px rgba(60,40,20,.12); }
+    .hero-manage-card .hero-icon { width:64px; height:64px; margin:0 auto 6px; border-radius:8px; background:#e8f1f5; border:1px solid #b9cbd2; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:30px; }
+    .hero-manage-card .hero-name { font-weight:800; font-size:13px; color:#3d2b1f; margin-bottom:3px; }
+    .hero-manage-card .hero-status { font-size:10px; margin-bottom:7px; font-weight:700; }
+    .hero-status.active { color:#2e7d32; }
+    .hero-status.hidden { color:#757575; }
+    .hero-manage-card .hero-desc { min-height:32px; font-size:9px; line-height:1.35; color:#5d5145; margin-bottom:8px; }
+    .hero-manage-btn { width:100%; border:1px solid #8d6e63; border-radius:6px; padding:6px 4px; font-weight:800; cursor:pointer; background:#fff; color:#4e342e; }
+    .hero-manage-btn.summon { background:#e8f5e9; border-color:#66bb6a; color:#2e7d32; }
+    .hero-manage-btn.hide { background:#fff3e0; border-color:#ffb74d; color:#e65100; }
+    .hero-manage-note { margin-top:9px; font-size:10px; text-align:center; color:#6d6258; }
+    @media (max-width:700px){ .hero-manage-grid{grid-template-columns:1fr;} }
 
     .shop-tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 2px solid var(--panel-border); padding-bottom: 6px; }
     .shop-tab { flex: 1; background: #fff; border: 2px solid var(--panel-border); color: var(--text-main); padding: 8px 0; font-size: 11px; font-weight: bold; border-radius: 8px; cursor: pointer; text-align: center; }
@@ -244,16 +285,18 @@
           <div class="stat-row-item" style="justify-content: flex-end;">
             <span class="stat-loot">📜 전리품: <span id="loot-val">0</span>개</span>
           </div>
+          <div class="status-action-row">
+            <button class="status-action-btn status-shop-btn" onclick="openShopModal()">🛒 저자거리 상점</button>
+            <button class="status-action-btn status-settings-btn" onclick="openSettingsModal()">⚙️ 설정</button>
+          </div>
         </div>
       </div>
 
       <div class="top-right-controls interactive">
         <button class="btn-small btn-job" id="btn-job-modal" style="display: none;" onclick="openJobModal()">📜 1차 전직하기 (Lv.20)</button>
         <button class="btn-small btn-job" id="btn-job2-modal" style="display: none;" onclick="openJob2Modal()">📜 2차 전직하기 (Lv.40)</button>
-        <button class="btn-small" style="background: #e1f5fe; border-color: #81d4fa; color: #0288d1;" onclick="openShopModal()">🛒 저자거리 상점</button>
+        <button class="btn-small" style="background:#f3e5f5; border-color:#ce93d8; color:#6a1b9a;" onclick="openHeroManager()">👥 영웅 관리</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
-        <button class="btn-small" style="background: #ede7f6; border-color: #b388ff; color: #512da8;" onclick="openSettingsModal()">⚙️ 설정</button>
-        <button class="btn-small" onclick="toggleMinimap()">🗺️ 미니맵 토글</button>
       </div>
     </div>
 
@@ -381,6 +424,15 @@
     <div style="text-align: center;">
       <button class="btn-small" onclick="closeJob2Modal()">창 닫기</button>
     </div>
+  </div>
+
+  <!-- Hero Manager Modal -->
+  <div class="modal interactive" id="hero-manager-modal" style="display:none; width:min(560px,92vw);">
+    <div class="modal-title">👥 소환영웅 관리</div>
+    <div style="font-size:11px; text-align:center; color:#6d6258; margin-bottom:8px;">구매한 영웅을 각각 소환하거나 숨길 수 있습니다.</div>
+    <div id="hero-manager-grid" class="hero-manage-grid"></div>
+    <div class="hero-manage-note">💡 숨긴 영웅은 화면에서 사라지며 영웅 자율사냥도 하지 않습니다.</div>
+    <div style="text-align:center; margin-top:12px;"><button class="btn-small" onclick="closeHeroManager()">닫기</button></div>
   </div>
 
   <!-- Shop Modal -->
@@ -1323,11 +1375,279 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     }
 
     /* ==========================================
+       고퀄리티 소환영웅 - 시리
+       의녀장금/무녀하나와 동일한 512x512 Canvas Sprite 방식.
+       원본 일러스트는 디자인 레퍼런스로만 사용하고,
+       게임용 실루엣/의상/명암/라인을 새로 그려 독립적인 외관을 구성.
+       ========================================== */
+    let siriTextureCache = null;
+    let siriBackTextureCache = null;
+    const siriTextureStageCache = {};
+
+    function createSiriHeroTexture(isBack = false, attackStage = 0) {
+      const stage = Math.max(0, Math.min(5, attackStage | 0));
+      const cacheKey = `${isBack ? 'back' : 'front'}_${stage}`;
+      if (siriTextureStageCache[cacheKey]) return siriTextureStageCache[cacheKey];
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 512; cvs.height = 512;
+      const ctx = cvs.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.clearRect(0, 0, 512, 512);
+
+      const S = 4;
+      const px = v => v * S;
+      const P = v => v * S;
+
+      function ellipse(cx, cy, rx, ry, fill, stroke = null, sw = 1, rot = 0) {
+        ctx.beginPath(); ctx.ellipse(P(cx), P(cy), P(rx), P(ry), rot, 0, Math.PI * 2);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = P(sw); ctx.stroke(); }
+      }
+      function poly(points, fill, stroke = null, sw = 1) {
+        ctx.beginPath(); ctx.moveTo(P(points[0][0]), P(points[0][1]));
+        for (let i = 1; i < points.length; i++) ctx.lineTo(P(points[i][0]), P(points[i][1]));
+        ctx.closePath();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = P(sw); ctx.stroke(); }
+      }
+      function line(x1,y1,x2,y2,color,width=1,cap='round') {
+        ctx.strokeStyle=color; ctx.lineWidth=P(width); ctx.lineCap=cap;
+        ctx.beginPath(); ctx.moveTo(P(x1),P(y1)); ctx.lineTo(P(x2),P(y2)); ctx.stroke();
+      }
+      function path(draw, fill, stroke=null, sw=1) {
+        ctx.beginPath(); draw();
+        if(fill){ctx.fillStyle=fill;ctx.fill();}
+        if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=P(sw);ctx.stroke();}
+      }
+
+      ctx.save();
+      const bodyTilt = stage === 1 ? -0.04 : stage === 2 ? -0.09 : stage === 3 ? 0.08 : stage === 4 ? 0.05 : 0;
+      ctx.translate(P(64), P(64));
+      ctx.rotate(bodyTilt);
+      ctx.translate(-P(64), -P(64));
+
+      /* 은은한 캐릭터 림라이트 */
+      ctx.shadowColor = 'rgba(255,220,120,.18)';
+      ctx.shadowBlur = P(5);
+
+      if (isBack) {
+        /* ===== 후면 ===== */
+        /* 긴 주황색 머리 + 두 갈래 땋은 머리 */
+        ctx.shadowBlur = 0;
+        ellipse(64, 29, 23, 21, '#d66a2b', '#713315', 1.2);
+        path(() => {
+          ctx.moveTo(P(45),P(37)); ctx.quadraticCurveTo(P(33),P(52),P(40),P(71));
+          ctx.quadraticCurveTo(P(45),P(63),P(50),P(49)); ctx.closePath();
+        }, '#c95d24', '#713315', 1);
+        path(() => {
+          ctx.moveTo(P(83),P(37)); ctx.quadraticCurveTo(P(96),P(53),P(88),P(72));
+          ctx.quadraticCurveTo(P(83),P(63),P(78),P(49)); ctx.closePath();
+        }, '#c95d24', '#713315', 1);
+
+        /* 땋은 머리 */
+        for(let i=0;i<6;i++){
+          ellipse(36-i*1.1, 51+i*7, 5.2, 6.2, i%2 ? '#d9742f' : '#bb5421', '#713315', .8, -0.18);
+          ellipse(92+i*1.1, 51+i*7, 5.2, 6.2, i%2 ? '#d9742f' : '#bb5421', '#713315', .8, 0.18);
+        }
+
+        /* 흰색 둥근 모자 */
+        const hat = ctx.createLinearGradient(P(38),P(8),P(88),P(38));
+        hat.addColorStop(0,'#ffffff'); hat.addColorStop(.55,'#edf0ed'); hat.addColorStop(1,'#cfd6d0');
+        ellipse(64, 19, 27, 15, hat, '#aeb7b2', 1.2);
+        ellipse(64, 24, 23, 7, '#e7ebe7', '#b6c0ba', .8);
+        ellipse(64, 24, 5.2, 2.8, '#f2d35c', '#8f6c1d', .8);
+
+        /* 등 장식과 긴 끈 */
+        poly([[42,48],[86,48],[92,91],[64,104],[36,91]], '#eef1ef', '#737d79', 1.3);
+        line(64,51,64,94,'#c8a247',1.5);
+        line(48,58,80,58,'#d8b75a',1.2);
+        line(47,67,81,67,'#d8b75a',1.2);
+        line(46,76,82,76,'#d8b75a',1.2);
+
+        /* 허리 장식 */
+        poly([[40,88],[88,88],[82,98],[46,98]], '#d9b55a', '#6f5522', 1);
+        ellipse(64, 92, 5, 5, '#f2d86d', '#79551c', 1);
+
+        /* 보라색 치맛자락 */
+        const skirtBack = ctx.createLinearGradient(0,P(94),0,P(123));
+        skirtBack.addColorStop(0,'#77758f'); skirtBack.addColorStop(.5,'#56556e'); skirtBack.addColorStop(1,'#37374d');
+        poly([[43,96],[85,96],[98,121],[30,121]], skirtBack, '#353448', 1.5);
+        for(let x=39;x<=89;x+=9) line(x,99,x+3,118,'rgba(230,226,242,.28)',1);
+
+        /* 뒤에서 보이는 활 */
+        ctx.shadowColor='rgba(244,191,69,.25)'; ctx.shadowBlur=P(4);
+        line(101,52,101,111,'#9b641f',2.5);
+        ctx.beginPath(); ctx.arc(P(101),P(81),P(28),-1.0,1.0); ctx.strokeStyle='#d39b38'; ctx.lineWidth=P(2.5); ctx.stroke();
+        line(101,54,101,108,'#f2e6c8',.8);
+        ctx.shadowBlur=0;
+
+        /* 부츠 */
+        ellipse(51,119,10,4.5,'#6d4a27','#3b2a1b',1);
+        ellipse(77,119,10,4.5,'#6d4a27','#3b2a1b',1);
+      } else {
+        /* ===== 전면 ===== */
+        /* 긴 머리 실루엣 */
+        ellipse(64, 33, 27, 25, '#d66b2d', '#713315', 1.2);
+        path(() => {
+          ctx.moveTo(P(43),P(31)); ctx.quadraticCurveTo(P(26),P(44),P(33),P(72));
+          ctx.quadraticCurveTo(P(41),P(61),P(49),P(48)); ctx.closePath();
+        }, '#c95d24', '#713315', 1);
+        path(() => {
+          ctx.moveTo(P(85),P(31)); ctx.quadraticCurveTo(P(102),P(46),P(94),P(73));
+          ctx.quadraticCurveTo(P(86),P(61),P(78),P(48)); ctx.closePath();
+        }, '#c95d24', '#713315', 1);
+
+        /* 머리카락 하이라이트 */
+        line(40,39,34,62,'#f29a4b',1.2); line(88,39,94,62,'#f29a4b',1.2);
+
+        /* 얼굴 */
+        const skin = ctx.createRadialGradient(P(57),P(42),P(3),P(64),P(45),P(17));
+        skin.addColorStop(0,'#fff5e8'); skin.addColorStop(.72,'#f6d6bd'); skin.addColorStop(1,'#dcae93');
+        ellipse(64, 44, 16, 17, skin, '#8f5c49', 1);
+        /* 눈썹/눈 */
+        line(53,40,59,39,'#5b382e',1.1); line(69,39,75,40,'#5b382e',1.1);
+        ellipse(57,44,2.6,1.8,'#2d2523'); ellipse(71,44,2.6,1.8,'#2d2523');
+        ellipse(57.5,43.5,.7,.7,'#ffffff'); ellipse(71.5,43.5,.7,.7,'#ffffff');
+        line(61,51,67,51,'#b45f61',1.1);
+
+        /* 흰색 둥근 모자 */
+        const hat = ctx.createLinearGradient(P(38),P(7),P(90),P(35));
+        hat.addColorStop(0,'#ffffff'); hat.addColorStop(.55,'#edf0ed'); hat.addColorStop(1,'#cdd5d0');
+        ellipse(64, 19, 28, 16, hat, '#9ca6a1', 1.3);
+        ellipse(64, 25, 24, 7, '#e6ebe7', '#adb7b1', .9);
+        /* 중앙 금속/청록 장식 */
+        ellipse(64, 24, 5.5, 3.2, '#d8b54c', '#75581c', .9);
+        ellipse(64, 24, 2.2, 1.5, '#58bfc0');
+
+        /* 어깨/상의 */
+        const top = ctx.createLinearGradient(P(38),P(57),P(90),P(91));
+        top.addColorStop(0,'#ffffff'); top.addColorStop(.5,'#f3f3ef'); top.addColorStop(1,'#d8d9d3');
+        poly([[43,58],[53,55],[64,61],[75,55],[85,58],[91,91],[37,91]], top, '#7e8580', 1.2);
+
+        /* 황금 갑주/장식판 */
+        const gold = ctx.createLinearGradient(P(50),P(58),P(78),P(82));
+        gold.addColorStop(0,'#f4d36d'); gold.addColorStop(.45,'#c8952f'); gold.addColorStop(1,'#80601d');
+        poly([[47,59],[57,56],[62,64],[59,82],[49,77]], gold, '#72521b', 1.1);
+        poly([[81,59],[71,56],[66,64],[69,82],[79,77]], gold, '#72521b', 1.1);
+        ellipse(53,68,3.2,3.2,'#f4df85','#795a1e',.8);
+        ellipse(75,68,3.2,3.2,'#f4df85','#795a1e',.8);
+
+        /* 가슴 중앙 끈 */
+        line(64,62,64,88,'#b68b2b',2);
+        line(57,64,64,72,'#d9b557',1.3); line(71,64,64,72,'#d9b557',1.3);
+        ellipse(64,73,3.4,3.4,'#f0d36a','#77581b',.8);
+
+        /* 팔 + 손 */
+        const armShift = stage === 1 ? -5 : stage === 2 ? -9 : stage === 3 ? 7 : stage === 4 ? 4 : 0;
+        poly([[43,61],[35,69],[39+armShift,78],[47,72]], '#f3f3ef', '#7c827f', 1);
+        poly([[85,61],[93,68],[88-armShift,78],[81,72]], '#f3f3ef', '#7c827f', 1);
+        ellipse(40+armShift,79,4.5,3.5,'#f4c9aa','#8d604d',.8);
+        ellipse(88-armShift,79,4.5,3.5,'#f4c9aa','#8d604d',.8);
+
+        /* 허리띠 */
+        ctx.fillStyle='#8c6a28'; ctx.fillRect(P(40),P(84),P(48),P(5));
+        ctx.fillStyle='#f0d36a'; ctx.fillRect(P(45),P(85),P(38),P(1.3));
+        ellipse(64,86.5,4.3,4.3,'#e9ca5e','#76581e',.8);
+
+        /* 보라색 전통 치마 */
+        const skirt = ctx.createLinearGradient(P(32),P(88),P(96),P(121));
+        skirt.addColorStop(0,'#8b89a4'); skirt.addColorStop(.48,'#62617b'); skirt.addColorStop(1,'#3d3d55');
+        path(() => {
+          ctx.moveTo(P(42),P(89));
+          ctx.quadraticCurveTo(P(64),P(95),P(86),P(89));
+          ctx.quadraticCurveTo(P(91),P(103),P(101),P(120));
+          ctx.lineTo(P(27),P(120));
+          ctx.quadraticCurveTo(P(37),P(103),P(42),P(89));
+          ctx.closePath();
+        }, skirt, '#383849', 1.4);
+        for(let x=35;x<=94;x+=9){
+          line(x,94,x+5,117,x%18===0?'rgba(245,241,255,.38)':'rgba(24,24,42,.28)',1.1);
+        }
+        /* 금색 치맛단 */
+        line(32,115,96,115,'#b78a2c',2.2);
+        line(37,118,91,118,'rgba(244,216,110,.7)',1);
+
+        /* 다리/부츠 */
+        poly([[48,117],[58,117],[55,126],[48,126]], '#dce1e4', '#72797b', .9);
+        poly([[70,117],[80,117],[80,126],[73,126]], '#dce1e4', '#72797b', .9);
+        ellipse(50,127,8,4,'#65421f','#382516',1);
+        ellipse(77,127,8,4,'#65421f','#382516',1);
+
+        /* 활: 시리의 핵심 실루엣 */
+        ctx.shadowColor='rgba(248,192,66,.35)'; ctx.shadowBlur=P(5);
+        ctx.strokeStyle='#c98b27'; ctx.lineWidth=P(2.5);
+        ctx.beginPath(); ctx.arc(P(105),P(78),P(31),-1.02,1.02); ctx.stroke();
+        ctx.shadowBlur=0;
+        line(105,48,105,108,'#f5e7c8',.9);
+        line(83,78,105,48,'#7a4c1d',1.2);
+        line(83,78,105,108,'#7a4c1d',1.2);
+        /* 화살/당기는 자세 */
+        const bowPull = stage === 0 ? 0 : stage * 1.4;
+        line(78-bowPull,78,109,78,'#f5e8c8',1.1);
+        if(stage>0){
+          ctx.strokeStyle='rgba(255,233,133,.9)'; ctx.lineWidth=P(1.2);
+          ctx.beginPath(); ctx.arc(P(78),P(78),P(16+stage*2),-0.8,0.8); ctx.stroke();
+          ellipse(78,78,2.2,2.2,'#fff5b0');
+        }
+      }
+
+      /* 깃털과 금색 파티클: 첨부 디자인의 분위기를 게임용으로 재해석 */
+      if (!isBack) {
+        ctx.globalAlpha = .78;
+        ellipse(26,38,2,5,'#e7e3dc',null,0,-.45);
+        ellipse(105,39,2,5,'#e7e3dc',null,0,.45);
+        ellipse(111,101,1.7,4,'#f1e6c8',null,0,.4);
+        ctx.globalAlpha = 1;
+      }
+
+      if (stage > 0) {
+        ctx.shadowColor='rgba(255,210,80,.75)'; ctx.shadowBlur=P(9);
+        ctx.strokeStyle='rgba(255,220,105,.82)'; ctx.lineWidth=P(1.5);
+        ctx.beginPath(); ctx.arc(P(78),P(78),P(19+stage*3),-0.9,0.9); ctx.stroke();
+        ctx.shadowBlur=0;
+      }
+
+      ctx.restore();
+
+      const texture = new THREE.CanvasTexture(cvs);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.anisotropy = (typeof renderer !== 'undefined' && renderer.capabilities)
+        ? Math.min(renderer.capabilities.getMaxAnisotropy(), 8) : 1;
+      texture.needsUpdate = true;
+      siriTextureStageCache[cacheKey] = texture;
+      if (isBack) siriBackTextureCache = texture; else siriTextureCache = texture;
+      return texture;
+    }
+
+    function createSiriArrowTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 192; cvs.height = 96;
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0,0,192,96);
+      ctx.strokeStyle = '#5b3517'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(22,48); ctx.lineTo(157,48); ctx.stroke();
+      ctx.fillStyle = '#f6e7c2'; ctx.beginPath();
+      ctx.moveTo(180,48); ctx.lineTo(145,27); ctx.lineTo(152,48); ctx.lineTo(145,69); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#7a5a2b'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.globalAlpha = .9;
+      ctx.beginPath(); ctx.moveTo(12,39); ctx.lineTo(30,48); ctx.lineTo(12,57); ctx.stroke();
+      ctx.globalAlpha = 1;
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.LinearFilter;
+      tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+      return tex;
+    }
+
+    /* ==========================================
        SUMMON HERO VISUAL REGISTRY
        Each hero owns an independent texture factory.
        Gameplay state is separate from visual appearance.
        ========================================== */
     const summonHeroVisuals = {
+      siri: (isBack = false, attackStage = 0) => createSiriHeroTexture(isBack, attackStage),
       janggeum: (isBack = false, attackStage = 0) => createJanggeumHighQualityTexture(isBack, attackStage),
       munyeahana: (isBack = false, attackStage = 0) => createMunyeahanaHeroTexture(isBack, attackStage)
     };
@@ -2230,7 +2550,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       weaponAtk: 0, defensePower: 5,
       lastAttackTime: 0, moveSpeed: 9, attackRange: 2.5,
       isAttacking: false, attackStage: 0, attackAnimTimer: 0,
-      hasHwangJini: false, hasJanggeum: false, hasMunyeahana: false,
+      hasSiri: false, hasJanggeum: false, hasMunyeahana: false,
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
       skillsLearned: [],
       skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
@@ -2278,10 +2598,11 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     targetArrowSprite.visible = false;
     scene.add(targetArrowSprite);
 
-    let hwangJiniSprite = null;
-    let hwangJiniFacing = 'front';
-    let hwangJiniShadow = null;
-    const hwangJiniState = { level: 1, exp: 0, maxExp: getRequiredExp(1), attackPowerMin: 40, attackPowerMax: 60, attackRange: 8, attackSpeed: 1400, lastAttackTime: 0 };
+    let siriSprite = null;
+    let siriFacing = 'front';
+    let siriShadow = null;
+    const siriState = { level: 1, exp: 0, maxExp: getRequiredExp(1), attackPowerMin: 70, attackPowerMax: 90, attackRange: 9, attackSpeed: 1300, lastAttackTime: 0 };
+    let siriAttackPulse = 0;
 
     let janggeumSprite = null;
     let janggeumFacing = 'front';
@@ -2303,7 +2624,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
 
     let lastRenderFrameTime = 0;
 
-    let hwangJiniTarget = null;
+    let siriTarget = null;
     let janggeumTarget = null;
     let munyeahanaTarget = null;
 
@@ -2653,14 +2974,104 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       closeStageModal();
     }
 
-    function spawnHwangJiniHero() {
-      if (hwangJiniSprite) return;
-      hwangJiniSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('hwangjini', false) }));
-      hwangJiniSprite.scale.set(2.8, 2.8, 1);
-      hwangJiniSprite.position.copy(playerSprite.position).add(new THREE.Vector3(-1.8, 0, 1.2));
-      scene.add(hwangJiniSprite);
-      hwangJiniShadow = createShadowDisk(2.0, 1.1);
-      createNametagElement('hero_hwangjini', '소환영웅', '황진이', false, true);
+    function getHeroOwned(type) {
+      if (type === 'siri') return playerState.hasSiri;
+      if (type === 'janggeum') return playerState.hasJanggeum;
+      if (type === 'munyeahana') return playerState.hasMunyeahana;
+      return false;
+    }
+
+    function getHeroActive(type) {
+      if (type === 'siri') return !!siriSprite;
+      if (type === 'janggeum') return !!janggeumSprite;
+      if (type === 'munyeahana') return !!munyeahanaSprite;
+      return false;
+    }
+
+    function removeHeroNametag(id) {
+      const el = nametags.get(id);
+      if (el) el.remove();
+      nametags.delete(id);
+    }
+
+    function hideSiriHero() {
+      if (!siriSprite) return;
+      scene.remove(siriSprite);
+      if (siriSprite.material) siriSprite.material.dispose();
+      siriSprite = null;
+      if (siriShadow) { scene.remove(siriShadow); if (siriShadow.material) siriShadow.material.dispose(); siriShadow = null; }
+      siriTarget = null;
+      removeHeroNametag('hero_siri');
+    }
+
+    function hideJanggeumHero() {
+      if (!janggeumSprite) return;
+      scene.remove(janggeumSprite);
+      if (janggeumSprite.material) janggeumSprite.material.dispose();
+      janggeumSprite = null;
+      if (janggeumShadow) { scene.remove(janggeumShadow); if (janggeumShadow.material) janggeumShadow.material.dispose(); janggeumShadow = null; }
+      janggeumTarget = null;
+      removeHeroNametag('hero_janggeum');
+    }
+
+    function hideMunyeahanaHero() {
+      if (!munyeahanaSprite) return;
+      scene.remove(munyeahanaSprite);
+      if (munyeahanaSprite.material) munyeahanaSprite.material.dispose();
+      munyeahanaSprite = null;
+      if (munyeahanaShadow) { scene.remove(munyeahanaShadow); if (munyeahanaShadow.material) munyeahanaShadow.material.dispose(); munyeahanaShadow = null; }
+      munyeahanaTarget = null;
+      removeHeroNametag('hero_munyeahana');
+    }
+
+    function toggleHeroSummon(type) {
+      if (!getHeroOwned(type)) return;
+      if (type === 'siri') { getHeroActive(type) ? hideSiriHero() : spawnSiriHero(); }
+      else if (type === 'janggeum') { getHeroActive(type) ? hideJanggeumHero() : spawnJanggeumHero(); }
+      else if (type === 'munyeahana') { getHeroActive(type) ? hideMunyeahanaHero() : spawnMunyeahanaHero(); }
+      renderHeroManager();
+      updateUI();
+    }
+
+    function openHeroManager() {
+      renderHeroManager();
+      document.getElementById('hero-manager-modal').style.display = 'block';
+    }
+
+    function closeHeroManager() {
+      document.getElementById('hero-manager-modal').style.display = 'none';
+    }
+
+    function renderHeroManager() {
+      const grid = document.getElementById('hero-manager-grid');
+      if (!grid) return;
+      const heroes = [
+        { type:'siri', name:'시리', icon:'🏹', desc:'원거리 70~90 · 유저 경험치 +10%', owned:getHeroOwned('siri') },
+        { type:'janggeum', name:'의녀장금', icon:'👩🏻‍⚕️', desc:'원거리 30~40 · 힐 지원', owned:getHeroOwned('janggeum') },
+        { type:'munyeahana', name:'무녀하나', icon:'🎎', desc:'근거리 80~100 · 공/방 버프', owned:getHeroOwned('munyeahana') }
+      ];
+      grid.innerHTML = '';
+      heroes.forEach(h => {
+        const active = getHeroActive(h.type);
+        const card = document.createElement('div');
+        card.className = 'hero-manage-card';
+        if (!h.owned) {
+          card.innerHTML = `<div class="hero-icon">🔒</div><div class="hero-name">${h.name}</div><div class="hero-status hidden">미보유</div><div class="hero-desc">상점에서 구매하면 사용할 수 있습니다.</div><button class="hero-manage-btn" onclick="openShopModal(); closeHeroManager(); switchShopCategory('hero');">상점에서 구매</button>`;
+        } else {
+          card.innerHTML = `<div class="hero-icon">${h.icon}</div><div class="hero-name">${h.name}</div><div class="hero-status ${active ? 'active' : 'hidden'}">${active ? '● 소환중' : '○ 숨김'}</div><div class="hero-desc">${h.desc}</div><button class="hero-manage-btn ${active ? 'hide' : 'summon'}" onclick="toggleHeroSummon('${h.type}')">${active ? '숨기기' : '소환하기'}</button>`;
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    function spawnSiriHero() {
+      if (siriSprite) return;
+      siriSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createSiriHeroTexture(false, 0), transparent: true }));
+      siriSprite.scale.set(2.8, 2.8, 1);
+      siriSprite.position.copy(playerSprite.position).add(new THREE.Vector3(-1.8, 0, 1.2));
+      scene.add(siriSprite);
+      siriShadow = createShadowDisk(2.0, 1.1);
+      createNametagElement('hero_siri', '소환영웅', '시리', false, true);
     }
 
     function spawnJanggeumHero() {
@@ -3008,7 +3419,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, currency: 'gold', type: 'armor', valHp: 250, valDef: 20 }
       ],
       hero: [
-        { id: 'h1', name: '황진이', desc: '가야금 노란색 반타원 에너지 볼트 사격 (공격력 40~60)', price: 10000, currency: 'gold', type: 'hero' },
+        { id: 'h1', name: '시리', desc: '활을 이용한 원거리 공격형 (기본공격 70~90) & 유저 경험치 +10% 버프', price: 40000, currency: 'gold', type: 'hero' },
         { id: 'h2', name: '의녀장금', desc: '연두색 반타원 에너지 볼트 사격 (공격력 30~40) & 힐', price: 20000, currency: 'gold', type: 'hero' },
         { id: 'h3', name: '무녀하나', desc: '근거리 공격형 (기본공격 80-100) & 공/방 상시 버프 (레벨/7)%', price: 50000, currency: 'gold', type: 'hero' }
       ]
@@ -3065,17 +3476,15 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
             </div>
           `;
         } else {
-          const isBought = (item.id === 'h1' && playerState.hasHwangJini) || (item.id === 'h2' && playerState.hasJanggeum) || (item.id === 'h3' && playerState.hasMunyeahana);
+          const isBought = (item.id === 'h1' && playerState.hasSiri) || (item.id === 'h2' && playerState.hasJanggeum) || (item.id === 'h3' && playerState.hasMunyeahana);
           const canAfford = playerState.gold >= item.price;
           const priceLabel = `${item.price.toLocaleString()} G`;
           
           card.innerHTML = `
             <div><div class="item-header"><span>${item.name}</span></div><div class="item-desc">${item.desc}</div></div>
             <div class="item-footer">
-              <span class="item-price">${priceLabel}</span>
-              <button class="btn-buy" ${isBought || !canAfford ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">
-                ${isBought ? '보유중' : '구매하기'}
-              </button>
+              <span class="item-price">${isBought ? '보유중' : priceLabel}</span>
+              ${isBought ? `<button class="btn-buy" onclick="openHeroManager(); closeShopModal();">관리하기</button>` : `<button class="btn-buy" ${!canAfford ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">구매하기</button>`}
             </div>
           `;
         }
@@ -3113,31 +3522,36 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
 
       playerState.gold -= item.price;
 
-      if (id === 'h1') { playerState.hasHwangJini = true; spawnHwangJiniHero(); }
+      if (id === 'h1') { playerState.hasSiri = true; spawnSiriHero(); }
       else if (id === 'h2') { playerState.hasJanggeum = true; spawnJanggeumHero(); }
       else if (id === 'h3') { playerState.hasMunyeahana = true; spawnMunyeahanaHero(); }
       else if (item.type === 'atk') playerState.weaponAtk += item.val;
       else if (item.type === 'armor') { playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef; }
 
-      updateUI(); 
+      updateUI();
+      if (item.type === 'hero') {
+        switchShopCategory('hero');
+        closeShopModal();
+        openHeroManager();
+      }
     }
 
     /* ==========================================
        7. HERO & MONSTER AI
        ========================================== */
     function spawnHeroEnergyProjectile(startPos, target, damageVal, heroType) {
-      const tex = heroType === 'janggeum' ? createJanggeumEnergyBoltTexture() : createHeroEnergyBoltTexture();
+      const tex = heroType === 'siri' ? createSiriArrowTexture() : (heroType === 'janggeum' ? createJanggeumEnergyBoltTexture() : createHeroEnergyBoltTexture());
       const boltMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
       const boltSprite = new THREE.Sprite(boltMat);
-      boltSprite.scale.set(1.2, 0.7, 1);
-      boltSprite.position.copy(startPos).add(new THREE.Vector3(0, 1.2, 0));
+      boltSprite.scale.set(heroType === 'siri' ? 1.35 : 1.2, heroType === 'siri' ? 0.68 : 0.7, 1);
+      boltSprite.position.copy(startPos).add(new THREE.Vector3(0, 1.35, 0));
       scene.add(boltSprite);
 
       activeProjectiles.push({
         sprite: boltSprite,
         target: target,
         damage: damageVal,
-        speed: 16.0
+        speed: heroType === 'siri' ? 22.0 : 16.0
       });
     }
 
@@ -3157,58 +3571,61 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     }
 
     function processHeroAI(delta, now) {
-      if (hwangJiniSprite) {
+      if (siriSprite) {
+        siriAttackPulse = Math.max(0, siriAttackPulse - delta * 5);
         let target = null;
-        let prevPos = hwangJiniSprite.position.clone();
+        let prevPos = siriSprite.position.clone();
 
         if (heroAutoHunt) {
-          if (!hwangJiniTarget || !hwangJiniTarget.alive) {
+          if (!siriTarget || !siriTarget.alive) {
             let minDist = Infinity;
             monsters.forEach(m => {
               if (m.alive && !m.isBoss) {
-                const d = hwangJiniSprite.position.distanceTo(m.sprite.position);
+                const d = siriSprite.position.distanceTo(m.sprite.position);
                 if (d < minDist) { minDist = d; target = m; }
               }
             });
-            hwangJiniTarget = target;
+            siriTarget = target;
           }
-          target = hwangJiniTarget;
+          target = siriTarget;
         } else {
           target = selectedTarget && selectedTarget.alive ? selectedTarget : null;
         }
 
         if (target && target.alive) {
-          const dist = hwangJiniSprite.position.distanceTo(target.sprite.position);
-          if (dist <= hwangJiniState.attackRange) {
-            if (now - hwangJiniState.lastAttackTime >= hwangJiniState.attackSpeed) {
-              hwangJiniState.lastAttackTime = now;
-              const effectiveMin = hwangJiniState.attackPowerMin + (hwangJiniState.level - 1) * 3;
-              const effectiveMax = hwangJiniState.attackPowerMax + (hwangJiniState.level - 1) * 3;
+          const dist = siriSprite.position.distanceTo(target.sprite.position);
+          if (dist <= siriState.attackRange) {
+            if (now - siriState.lastAttackTime >= siriState.attackSpeed) {
+              siriState.lastAttackTime = now;
+              const effectiveMin = siriState.attackPowerMin + (siriState.level - 1) * 3;
+              const effectiveMax = siriState.attackPowerMax + (siriState.level - 1) * 3;
               const hDmg = Math.floor(Math.random() * (effectiveMax - effectiveMin + 1)) + effectiveMin;
-              spawnHeroEnergyProjectile(hwangJiniSprite.position, target, hDmg, 'hwangjini');
+              siriAttackPulse = 1;
+              spawnHeroEnergyProjectile(siriSprite.position, target, hDmg, 'siri');
+              showHealText('🏹 시리의 활 공격!', siriSprite.position);
             }
           } else if (heroAutoHunt) {
-            const dir = target.sprite.position.clone().sub(hwangJiniSprite.position).normalize();
-            hwangJiniSprite.position.x += dir.x * 4 * delta;
-            hwangJiniSprite.position.z += dir.z * 4 * delta;
+            const dir = target.sprite.position.clone().sub(siriSprite.position).normalize();
+            siriSprite.position.x += dir.x * 4 * delta;
+            siriSprite.position.z += dir.z * 4 * delta;
           }
         }
 
         if (!heroAutoHunt || !target) {
-          hwangJiniSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(-1.8, 0, 1.2)), 0.08);
+          siriSprite.position.lerp(playerSprite.position.clone().add(new THREE.Vector3(-1.8, 0, 1.2)), 0.08);
         }
 
-        if (hwangJiniShadow) {
-          hwangJiniShadow.position.set(hwangJiniSprite.position.x, 0.02, hwangJiniSprite.position.z);
+        if (siriShadow) {
+          siriShadow.position.set(siriSprite.position.x, 0.02, siriSprite.position.z);
         }
 
-        const moveZ = hwangJiniSprite.position.z - prevPos.z;
+        const moveZ = siriSprite.position.z - prevPos.z;
         if (Math.abs(moveZ) > 0.02) {
           let newFacing = moveZ < 0 ? 'back' : 'front';
-          if (newFacing !== hwangJiniFacing) {
-            hwangJiniFacing = newFacing;
-            hwangJiniSprite.material.map = createPixelSpriteTexture('hwangjini', newFacing === 'back');
-            hwangJiniSprite.material.needsUpdate = true;
+          if (newFacing !== siriFacing) {
+            siriFacing = newFacing;
+            siriSprite.material.map = createSiriHeroTexture(newFacing === 'back', siriAttackPulse);
+            siriSprite.material.needsUpdate = true;
           }
         }
       }
@@ -3473,8 +3890,9 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     }
 
     function addReward(exp, gold) {
+      const playerExp = playerState.hasSiri ? Math.max(1, Math.round(exp * 1.10)) : exp;
       if (playerState.level < playerState.maxLevel) {
-        playerState.exp += exp;
+        playerState.exp += playerExp;
         while (playerState.level < playerState.maxLevel && playerState.exp >= playerState.maxExp) {
           playerState.exp -= playerState.maxExp;
           playerState.level++;
@@ -3494,9 +3912,9 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
 
       playerState.gold += gold;
 
-      [hwangJiniSprite, janggeumSprite, munyeahanaSprite].forEach((heroSprite, index) => {
+      [siriSprite, janggeumSprite, munyeahanaSprite].forEach((heroSprite, index) => {
         if (heroSprite) {
-          const heroState = index === 0 ? hwangJiniState : (index === 1 ? janggeumState : munyeahanaState);
+          const heroState = index === 0 ? siriState : (index === 1 ? janggeumState : munyeahanaState);
           if (heroState.level < 70) {
             heroState.exp += exp;
             while (heroState.level < 70 && heroState.exp >= heroState.maxExp) {
@@ -3547,9 +3965,9 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const pEl = nametags.get('player');
       if (pEl) pEl.querySelector('.tag-title').innerText = `Lv.${playerState.level} ${playerState.title}`;
 
-      if (hwangJiniSprite) {
-        const el = document.getElementById('hero_lv_hero_hwangjini');
-        if (el) el.innerText = hwangJiniState.level >= 70 ? 'Lv.70 (MAX)' : `Lv.${hwangJiniState.level}`;
+      if (siriSprite) {
+        const el = document.getElementById('hero_lv_hero_siri');
+        if (el) el.innerText = siriState.level >= 70 ? 'Lv.70 (MAX)' : `Lv.${siriState.level}`;
       }
       if (janggeumSprite) {
         const el = document.getElementById('hero_lv_hero_janggeum');
@@ -3700,33 +4118,19 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       document.getElementById('btn-auto').innerHTML = isAutoHunt ? "AUTO<br>ON" : "AUTO<br>OFF";
     }
 
-    // 🎯 타겟팅: 플레이어 주변의 가까운 몬스터만 선택한다.
-    // 기존에는 전체 맵의 모든 몬스터를 대상으로 검색하여,
-    // 주변에 몬스터가 없으면 멀리 떨어진 몬스터가 선택되는 문제가 있었다.
-    const TARGET_ACQUIRE_RANGE = 12.0;
-
     function targetNearestMonster() {
-      let nearest = null;
-      let minDist = TARGET_ACQUIRE_RANGE;
-
+      const MAX_TARGET_DISTANCE = 12;
+      let nearest = null, minDist = MAX_TARGET_DISTANCE;
       monsters.forEach(m => {
-        if (!m.alive || !m.sprite) return;
-
-        const d = playerSprite.position.distanceTo(m.sprite.position);
-
-        // 12m 이내에서 가장 가까운 몬스터만 타겟으로 선택
-        if (d <= TARGET_ACQUIRE_RANGE && d < minDist) {
-          minDist = d;
-          nearest = m;
+        if (m.alive) {
+          const d = playerSprite.position.distanceTo(m.sprite.position);
+          if (d <= MAX_TARGET_DISTANCE && d < minDist) {
+            minDist = d;
+            nearest = m;
+          }
         }
       });
-
       selectedTarget = nearest;
-
-      // 가까운 몬스터가 없으면 기존 원거리 타겟을 유지하지 않고 해제
-      if (!selectedTarget && targetArrowSprite) {
-        targetArrowSprite.visible = false;
-      }
     }
 
     function triggerAttackBtn() {
@@ -4010,9 +4414,9 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         pEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`;
       }
 
-      if (hwangJiniSprite) {
-        tempV.copy(hwangJiniSprite.position).add(new THREE.Vector3(0, 1.6, 0)).project(camera);
-        const hEl = nametags.get('hero_hwangjini');
+      if (siriSprite) {
+        tempV.copy(siriSprite.position).add(new THREE.Vector3(0, 1.6, 0)).project(camera);
+        const hEl = nametags.get('hero_siri');
         if (hEl) { hEl.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; hEl.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight}px`; }
       }
 
