@@ -369,36 +369,117 @@
 </style>
 
 
-<style id="hero-manager-direct-final">
-/* 실제 영웅관리 팝업 ID: #hero-manager-modal */
+<style id="hero-manager-compact-final">
 #hero-manager-modal {
-  width: min(360px, calc(100vw - 24px)) !important;
+  width: min(330px, 88vw) !important;
   max-width: calc(100vw - 24px) !important;
-  max-height: calc(100vh - 24px) !important;
-  height: auto !important;
-  box-sizing: border-box !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  max-height: calc(100vh - 32px) !important;
   padding: 10px !important;
-  margin: auto !important;
+  border-radius: 10px !important;
+  overflow-y: auto !important;
 }
-
+#hero-manager-modal .modal-title {
+  font-size: 14px !important;
+  margin-bottom: 7px !important;
+}
 #hero-manager-modal .hero-manage-grid {
-  gap: 6px !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 5px !important;
 }
-
+#hero-manager-modal .hero-manage-grid > * {
+  min-height: 42px !important;
+  padding: 6px 8px !important;
+}
+#hero-manager-modal .hero-manage-note {
+  display: none !important;
+}
 #hero-manager-modal .hero-manage-btn {
-  padding: 5px 7px !important;
-  font-size: 11px !important;
+  padding: 4px 7px !important;
+  font-size: 10px !important;
 }
-
 @media (max-width: 600px) {
   #hero-manager-modal {
     width: min(300px, calc(100vw - 20px)) !important;
     max-width: calc(100vw - 20px) !important;
     max-height: calc(100vh - 20px) !important;
     padding: 8px !important;
-    border-radius: 10px !important;
+  }
+  #hero-manager-modal .modal-title {
+    font-size: 13px !important;
+  }
+}
+</style>
+
+
+<style id="hero-manager-horizontal-final">
+/* 영웅관리 = 설정창과 같은 계열의 가로형 팝업 */
+#hero-manager-modal {
+  width: min(420px, 90vw) !important;
+  max-width: 90vw !important;
+  max-height: calc(100vh - 32px) !important;
+  box-sizing: border-box !important;
+  padding: 12px !important;
+  overflow-y: auto !important;
+}
+
+#hero-manager-modal .modal-title {
+  font-size: 14px !important;
+  margin-bottom: 9px !important;
+}
+
+/* 영웅들을 가로로 배치 */
+#hero-manager-modal .hero-manage-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+  width: 100% !important;
+}
+
+#hero-manager-modal .hero-manage-grid > * {
+  min-width: 0 !important;
+  min-height: 58px !important;
+  padding: 7px !important;
+  box-sizing: border-box !important;
+}
+
+#hero-manager-modal .hero-manage-btn {
+  padding: 5px 7px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+
+/* 안내문은 제거하고 설정창처럼 간결하게 */
+#hero-manager-modal .hero-manage-note {
+  display: none !important;
+}
+
+/* 모바일에서도 가로형 유지 */
+@media (max-width: 600px) {
+  #hero-manager-modal {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    padding: 9px !important;
+  }
+
+  #hero-manager-modal .hero-manage-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  #hero-manager-modal .hero-manage-grid > * {
+    min-height: 52px !important;
+    padding: 5px !important;
+  }
+
+  #hero-manager-modal .hero-manage-btn {
+    font-size: 9px !important;
+    padding: 4px 5px !important;
+  }
+
+  #hero-manager-modal .modal-title {
+    font-size: 13px !important;
   }
 }
 </style>
@@ -593,12 +674,12 @@
   </div>
 
   <!-- Hero Manager Modal -->
-  <div class="modal interactive" id="hero-manager-modal" style="display:none; width:min(560px,92vw);">
-    <div class="modal-title">👥 소환영웅 관리</div>
-    <div style="font-size:11px; text-align:center; color:#6d6258; margin-bottom:8px;">구매한 영웅을 각각 소환하거나 숨길 수 있습니다.</div>
+  <div class="modal interactive" id="hero-manager-modal" style="display:none; width:min(330px,88vw); max-height:calc(100vh - 32px); overflow-y:auto;">
+    <div class="modal-title">👥 영웅 관리</div>
     <div id="hero-manager-grid" class="hero-manage-grid"></div>
-    <div class="hero-manage-note">💡 숨긴 영웅은 화면에서 사라지며 영웅 자율사냥도 하지 않습니다.</div>
-    <div style="text-align:center; margin-top:12px;"><button class="btn-small" onclick="closeHeroManager()">닫기</button></div>
+    <div style="text-align:center; margin-top:8px;">
+      <button class="btn-small" onclick="closeHeroManager()">닫기</button>
+    </div>
   </div>
 
   <!-- Shop Modal -->
