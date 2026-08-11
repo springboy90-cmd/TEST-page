@@ -36,6 +36,23 @@
       position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       z-index: 1; 
     }
+    #power-save-screen {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000000;
+      z-index: 10000;
+      flex-direction: column; align-items: center; justify-content: center;
+      color: #78909c;
+    }
+    #power-save-screen.active { display: flex; }
+    #power-save-clock { font-size: 15vw; font-weight: 300; letter-spacing: 2px; color: #90a4ae; font-variant-numeric: tabular-nums; }
+    #power-save-date { font-size: 4vw; color: #546e7a; margin-top: 4px; }
+    #power-save-label { font-size: 3vw; color: #37474f; margin-top: 24px; letter-spacing: 4px; }
+    #power-save-exit-btn {
+      position: absolute; bottom: 24px; right: 24px;
+      background: rgba(255,255,255,0.08); color: #90a4ae; border: 1px solid #37474f;
+      border-radius: 20px; padding: 8px 16px; font-size: 12px; cursor: pointer;
+    }
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; }
     .interactive { pointer-events: auto; }
 
@@ -479,6 +496,13 @@
 </head>
 <body>
 
+  <div id="power-save-screen">
+    <div id="power-save-clock">00:00</div>
+    <div id="power-save-date"></div>
+    <div id="power-save-label">절전 모드 · 사냥 진행 중</div>
+    <button id="power-save-exit-btn" onclick="setPowerSaveMode(false)">게임 화면 보기</button>
+  </div>
+
   <div id="canvas-container"></div>
   <div id="nametag-layer"></div>
 
@@ -576,6 +600,17 @@
         </button>
         <button class="shop-tab" id="btn-quality-normal" onclick="setQualityMode('normal')">
           🔋 일반 모드 (발열 방지)<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">35 FPS / 절전 해상도 / 그림자 OFF</span>
+        </button>
+      </div>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <div style="font-weight: bold; margin-bottom: 8px; font-size: 12px; color: #4e342e;">🌙 절전 모드</div>
+      <div style="display: flex; gap: 8px;">
+        <button class="shop-tab active" id="btn-powersave-off" onclick="setPowerSaveMode(false)">
+          ☀️ 절전 모드 끄기<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">일반 게임 화면 유지</span>
+        </button>
+        <button class="shop-tab" id="btn-powersave-on" onclick="setPowerSaveMode(true)">
+          🌙 절전 모드 켜기<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">화면 최소화, 사냥은 계속 진행</span>
         </button>
       </div>
     </div>
@@ -808,6 +843,45 @@
       shadowMeshes.forEach(mesh => {
         mesh.visible = isHigh;
       });
+      scheduleSave();
+    }
+
+    /* ==========================================
+       절전 모드 (배터리/발열 관리)
+       화면 렌더링만 멈추고 전투/성장 로직은 그대로 진행된다.
+       ========================================== */
+    let isPowerSaveMode = false;
+    let powerSaveClockTimer = null;
+
+    function updatePowerSaveClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const clockEl = document.getElementById('power-save-clock');
+      if (clockEl) clockEl.innerText = `${hh}:${mm}`;
+
+      const dateEl = document.getElementById('power-save-date');
+      if (dateEl) {
+        const days = ['일','월','화','수','목','금','토'];
+        dateEl.innerText = `${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]}) · Lv.${playerState.level} ${playerState.job}`;
+      }
+    }
+
+    function setPowerSaveMode(on) {
+      isPowerSaveMode = on;
+      const screen = document.getElementById('power-save-screen');
+
+      document.getElementById('btn-powersave-on').classList.toggle('active', on);
+      document.getElementById('btn-powersave-off').classList.toggle('active', !on);
+
+      if (on) {
+        updatePowerSaveClock();
+        screen.classList.add('active');
+        if (!powerSaveClockTimer) powerSaveClockTimer = setInterval(updatePowerSaveClock, 1000);
+      } else {
+        screen.classList.remove('active');
+        if (powerSaveClockTimer) { clearInterval(powerSaveClockTimer); powerSaveClockTimer = null; }
+      }
       scheduleSave();
     }
 
@@ -3270,11 +3344,11 @@
       speedCard.innerHTML = `
         <div>
           <div class="item-header"><span>공속 수련 (${playerState.atkSpeedLv}/10)</span></div>
-          <div class="item-desc">1레벨당 공격속도 +2.5%가 가속됩니다. (현재: +${playerState.atkSpeedLv * 2.5}%)</div>
+          <div class="item-desc">1레벨당 공격속도 +5%가 가속됩니다. (현재: +${playerState.atkSpeedLv * 5}%)</div>
         </div>
         <div class="item-footer">
-          <span class="item-price">3,000 G</span>
-          <button class="btn-buy" ${isMaxSpeed || playerState.gold < 3000 ? 'disabled' : ''} onclick="buySkill('atkSpeed')">
+          <span class="item-price">1,000 G</span>
+          <button class="btn-buy" ${isMaxSpeed || playerState.gold < 1000 ? 'disabled' : ''} onclick="buySkill('atkSpeed')">
             ${isMaxSpeed ? '최대 레벨' : '레벨업'}
           </button>
         </div>
@@ -3585,9 +3659,9 @@
         { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, currency: 'gold', type: 'armor', valHp: 250, valDef: 20 }
       ],
       hero: [
-        { id: 'h1', name: '시리', desc: '원거리 공격형 (기본공격 70~90) & 유저 경험치 +10% 버프', price: 40000, currency: 'gold', type: 'hero' },
-        { id: 'h2', name: '의녀장금', desc: '원거리 공격형 (공격력 30~40) & 힐', price: 20000, currency: 'gold', type: 'hero' },
-        { id: 'h3', name: '무녀하나', desc: '근거리 공격형 (기본공격 80-100) & 공/방 버프 (레벨/7)%', price: 50000, currency: 'gold', type: 'hero' }
+        { id: 'h1', name: '시리', desc: '활을 이용한 원거리 공격형 (기본공격 70~90) & 유저 경험치 +10% 버프', price: 40000, currency: 'gold', type: 'hero' },
+        { id: 'h2', name: '의녀장금', desc: '연두색 반타원 에너지 볼트 사격 (공격력 30~40) & 힐', price: 20000, currency: 'gold', type: 'hero' },
+        { id: 'h3', name: '무녀하나', desc: '근거리 공격형 (기본공격 80-100) & 공/방 상시 버프 (레벨/7)%', price: 50000, currency: 'gold', type: 'hero' }
       ]
     };
 
@@ -4217,7 +4291,7 @@
     let isResettingCharacter = false;
 
     function resetCharacterProgress() {
-      const ok = confirm('캐릭터를 모두 초기화할까요?\n초기화 후에는 이전 저장 상태로 되돌릴 수 없습니다.');
+      const ok = confirm('캐릭터의 레벨, 경험치, 골드, 장비, 스킬, 영웅 구매/레벨을 모두 초기화할까요?\n초기화 후에는 이전 저장 상태로 되돌릴 수 없습니다.');
       if (!ok) return;
       isResettingCharacter = true;
       try { localStorage.removeItem(SAVE_KEY); } catch (e) { console.warn(e); }
@@ -4571,6 +4645,20 @@
       requestAnimationFrame(animate);
 
       const now = Date.now();
+
+      if (isPowerSaveMode) {
+        // 절전 모드: 화면 렌더링/이펙트는 모두 건너뛰고, 전투/사냥 로직만 낮은 빈도(초당 1회)로 계속 진행한다.
+        if (now - lastRenderFrameTime < 1000) return;
+        const powerSaveDelta = (now - lastRenderFrameTime) / 1000;
+        lastRenderFrameTime = now;
+        clock.getDelta();
+
+        processMonsterAI(powerSaveDelta, now);
+        processHeroAI(powerSaveDelta, now);
+        processProjectilesAndVfx(powerSaveDelta);
+        return;
+      }
+
       const delta = clock.getDelta();
 
       const frameInterval = 1000 / targetFps;
