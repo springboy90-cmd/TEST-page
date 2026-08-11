@@ -228,7 +228,8 @@
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
       background: var(--panel-bg); border: 3px solid var(--panel-border); border-radius: 16px; 
       padding: 18px; width: 92%; max-width: 480px; max-height: 85vh; display: none; z-index: 100; color: var(--text-main); 
-      box-shadow: 0 8px 25px var(--panel-shadow); overflow: hidden; pointer-events: auto;
+      box-shadow: 0 8px 25px var(--panel-shadow); overflow-y: auto; overflow-x: hidden; pointer-events: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .modal-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 2px dashed var(--panel-border); padding-bottom: 8px; }
     .hero-manage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px; }
@@ -270,6 +271,10 @@
     .stage-card { background: #fff; border: 2px solid var(--panel-border); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
     .stage-card:active { background: #fff8e1; }
     .stage-card.active { border-color: #ff9800; background: #fff3e0; }
+    .stage-card.hadum { background: #1a1a1a; border-color: #d32f2f; }
+    .stage-card.hadum.active { border-color: #ff5252; background: #2a1414; }
+    .stage-card.hadum-locked { background: #eeeeee; border-color: #bdbdbd; cursor: not-allowed; opacity: 0.75; }
+    .stage-divider { font-size: 11px; font-weight: bold; color: #b71c1c; text-align: center; margin: 10px 0 4px; letter-spacing: 1px; }
 
     .skill-section-title { font-size: 11px; font-weight: bold; color: #e65100; margin: 10px 0 6px 0; border-left: 3px solid #ff9800; padding-left: 6px; grid-column: span 2; }
 
@@ -637,7 +642,7 @@
       <button class="btn-small" style="flex:1; background:#e8f5e9; border-color:#81c784; color:#2e7d32;" onclick="saveGame(true)">💾 지금 저장</button>
       <button class="btn-small" style="flex:1; background:#fff3e0; border-color:#ffb74d; color:#e65100;" onclick="resetCharacterProgress()">↻ 캐릭터 초기화</button>
     </div>
-    <div id="save-status" style="text-align:center; font-size:9px; color:#78909c; margin-top:7px;">게임 상태는 자동 저장됩니다.</div>
+    <div id="save-status" style="text-align:center; font-size:9px; color:#78909c; margin-top:7px;">💾 버튼을 눌러 수동으로 저장하세요.</div>
     <div style="text-align: center; margin-top: 8px;">
       <button class="btn-small" onclick="closeSettingsModal()">설정 완료</button>
     </div>
@@ -647,33 +652,65 @@
   <div class="modal interactive" id="stage-modal">
     <div class="modal-title">🏔️ 사냥터 스테이지 선택</div>
     <div class="stage-cards">
-      <div class="stage-card" id="stage-card-1" onclick="selectStage(1)">
+      <div class="stage-card" id="stage-card-1" onclick="selectStage(1, false)">
         <div>
           <div style="font-weight: bold; color: #e65100; font-size: 13px;">🌱 1스테이지: 초보자 사냥터 (공격력 1~200)</div>
           <div style="font-size: 10px; color: #795548;">야옹이, 돼지, 송이모자, 토끼, 왕송이모자(보스) 출현</div>
         </div>
         <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
       </div>
-      <div class="stage-card" id="stage-card-2" onclick="selectStage(2)">
+      <div class="stage-card" id="stage-card-2" onclick="selectStage(2, false)">
         <div>
           <div style="font-weight: bold; color: #6a1b9a; font-size: 13px;">🏔️ 2스테이지: 웅녀동굴 (공격력 250~350)</div>
           <div style="font-size: 10px; color: #795548;">마늘대왕, 병자호랑, 웅양 및 마늘장갑차(보스)</div>
         </div>
         <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
       </div>
-      <div class="stage-card" id="stage-card-3" onclick="selectStage(3)">
+      <div class="stage-card" id="stage-card-3" onclick="selectStage(3, false)">
         <div>
           <div style="font-weight: bold; color: #2e7d32; font-size: 13px;">🎋 3스테이지: 바둑골 산길 (공격력 400~500)</div>
           <div style="font-size: 10px; color: #795548;">주당, 팔광병사, 상두포 및 마대포(보스)</div>
         </div>
         <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
       </div>
-      <div class="stage-card" id="stage-card-4" onclick="selectStage(4)">
+      <div class="stage-card" id="stage-card-4" onclick="selectStage(4, false)">
         <div>
           <div style="font-weight: bold; color: #1565c0; font-size: 13px;">❄️ 4스테이지: 얼음성 (공격력 550~650)</div>
           <div style="font-size: 10px; color: #455a64;">눈토끼, 설녀 및 빙설여왕(보스)</div>
         </div>
         <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
+      </div>
+    </div>
+
+    <div class="stage-divider" id="hadum-divider">🔥 하둠의 영역 (2차 전직 전용 · 몹 공격력·HP·경험치 2배)</div>
+    <div class="stage-cards">
+      <div class="stage-card hadum" id="stage-card-hadum-1" onclick="selectStage(1, true)">
+        <div>
+          <div style="font-weight: bold; color: #ff8a65; font-size: 13px;">🔥 하둠: 초보자 사냥터</div>
+          <div style="font-size: 10px; color: #bcaaa4;">동일 몬스터, 공격력·HP·경험치 2배</div>
+        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #ff8a65;">이동 ➔</div>
+      </div>
+      <div class="stage-card hadum" id="stage-card-hadum-2" onclick="selectStage(2, true)">
+        <div>
+          <div style="font-weight: bold; color: #ff8a65; font-size: 13px;">🔥 하둠: 웅녀동굴</div>
+          <div style="font-size: 10px; color: #bcaaa4;">동일 몬스터, 공격력·HP·경험치 2배</div>
+        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #ff8a65;">이동 ➔</div>
+      </div>
+      <div class="stage-card hadum" id="stage-card-hadum-3" onclick="selectStage(3, true)">
+        <div>
+          <div style="font-weight: bold; color: #ff8a65; font-size: 13px;">🔥 하둠: 바둑골 산길</div>
+          <div style="font-size: 10px; color: #bcaaa4;">동일 몬스터, 공격력·HP·경험치 2배</div>
+        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #ff8a65;">이동 ➔</div>
+      </div>
+      <div class="stage-card hadum" id="stage-card-hadum-4" onclick="selectStage(4, true)">
+        <div>
+          <div style="font-weight: bold; color: #ff8a65; font-size: 13px;">🔥 하둠: 얼음성</div>
+          <div style="font-size: 10px; color: #bcaaa4;">동일 몬스터, 공격력·HP·경험치 2배</div>
+        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #ff8a65;">이동 ➔</div>
       </div>
     </div>
     <div style="text-align: center; margin-top: 10px;">
@@ -762,6 +799,12 @@
     scene.background = new THREE.Color(0x2b241c);
     scene.fog = new THREE.Fog(0x2b241c, 34, 95);
     let currentStage = 1;
+    let currentHadum = false; // 하둠 영역(2차 전직 전용 고난도 스테이지) 진입 여부
+    const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율
+    const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 전용 추가 체력 배율
+    // 하둠 스테이지별 난이도: 유저 공격력 : 몬스터 방어력
+    // 1단계 3.5:1 → 4단계 3:1로 단계적으로 상승
+    const HADUM_DEF_RATIO = { 1: 3.5, 2: 10 / 3, 3: 19 / 6, 4: 3.0 };
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
     const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -862,7 +905,6 @@
       shadowMeshes.forEach(mesh => {
         mesh.visible = isHigh;
       });
-      scheduleSave();
     }
 
     /* ==========================================
@@ -921,7 +963,6 @@
         screen.classList.remove('active');
         if (powerSaveClockTimer) { clearInterval(powerSaveClockTimer); powerSaveClockTimer = null; }
       }
-      scheduleSave();
     }
 
     /* ==========================================
@@ -2865,7 +2906,6 @@
       const btn = document.getElementById('btn-hero-auto');
       btn.innerText = heroAutoHunt ? "영웅 자율사냥: ON" : "영웅 자율사냥: OFF";
       btn.style.background = heroAutoHunt ? "#ffe082" : "#fff9c4";
-      scheduleSave();
     }
 
     let lastRenderFrameTime = 0;
@@ -2930,11 +2970,12 @@
       stage4SnowPoints = null;
     }
 
-    function buildStage1Field() {
+    function buildStage1Field(isHadum = false) {
       clearStageObjects(); clearMonsters();
+      currentHadum = isHadum;
       document.body.style.backgroundColor = '#5c6e52';
       scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
-      document.getElementById('stage-badge').innerText = "초보자 사냥터 ▾";
+      document.getElementById('stage-badge').innerText = isHadum ? "🔥 하둠: 초보자 사냥터 ▾" : "초보자 사냥터 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createBeginnerFieldTexture() });
@@ -3005,9 +3046,9 @@
         else if (type === 'rabbit') mName = '토끼';
 
         monsters.push({
-          id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false,
-          hp: 120, maxHp: 120, goldReward: 180,
-          attackPower: 8, attackRange: 2.0, attackSpeed: 1500,
+          id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false, isHadum,
+          hp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 120, maxHp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 120, goldReward: 180,
+          attackPower: isHadum ? 8 * HADUM_MULT : 8, attackRange: 2.0, attackSpeed: 1500,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.1 ${mName}`, true);
@@ -3021,19 +3062,20 @@
       const bossShadow = createShadowDisk(4.8, 2.5);
 
       monsters.push({
-        id: `monster_20`, stageId: 1, sprite: kingMushroomSprite, shadowDisk: bossShadow, type: '왕송이모자', tier: 1, isBoss: true,
-        hp: 1500, maxHp: 1500, goldReward: 1500,
-        attackPower: 28, attackRange: 3.0, attackSpeed: 1300,
+        id: `monster_20`, stageId: 1, sprite: kingMushroomSprite, shadowDisk: bossShadow, type: '왕송이모자', tier: 1, isBoss: true, isHadum,
+        hp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 1500, maxHp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 1500, goldReward: 1500,
+        attackPower: isHadum ? 28 * HADUM_MULT : 28, attackRange: 3.0, attackSpeed: 1300,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
       createNametagElement(`monster_20`, '대왕', '왕송이모자', false, false, true);
     }
 
-    function buildStage2Cave() {
+    function buildStage2Cave(isHadum = false) {
       clearStageObjects(); clearMonsters();
+      currentHadum = isHadum;
       document.body.style.backgroundColor = '#c5a065';
       scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
-      document.getElementById('stage-badge').innerText = "🏔️ 웅녀동굴 ▾";
+      document.getElementById('stage-badge').innerText = isHadum ? "🔥 하둠: 웅녀동굴 ▾" : "🏔️ 웅녀동굴 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createCaveFloorTexture() });
@@ -3062,9 +3104,9 @@
 
         const mName = type === 'garlic_king' ? '마늘대왕' : (type === 'tiger_patient' ? '병자호랑' : '웅양');
         monsters.push({
-          id: `monster_${i}`, stageId: 2, sprite, shadowDisk: mShadow, type: mName, tier: 2, isBoss: false,
-          hp: 1000, maxHp: 1000, goldReward: 400,
-          attackPower: 30, attackRange: 2.2, attackSpeed: 1400,
+          id: `monster_${i}`, stageId: 2, sprite, shadowDisk: mShadow, type: mName, tier: 2, isBoss: false, isHadum,
+          hp: isHadum ? 1000 * HADUM_MULT : 1000, maxHp: isHadum ? 1000 * HADUM_MULT : 1000, goldReward: 400,
+          attackPower: isHadum ? 30 * HADUM_MULT : 30, attackRange: 2.2, attackSpeed: 1400,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.5 ${mName}`, true);
@@ -3078,19 +3120,20 @@
       const bossShadow = createShadowDisk(5.5, 3.0);
 
       monsters.push({
-        id: `monster_18`, stageId: 2, sprite: bossSprite, shadowDisk: bossShadow, type: '마늘장갑차', tier: 2, isBoss: true,
-        hp: 5000, maxHp: 5000, goldReward: 3000,
-        attackPower: 55, attackRange: 3.5, attackSpeed: 1200,
+        id: `monster_18`, stageId: 2, sprite: bossSprite, shadowDisk: bossShadow, type: '마늘장갑차', tier: 2, isBoss: true, isHadum,
+        hp: isHadum ? 5000 * HADUM_MULT : 5000, maxHp: isHadum ? 5000 * HADUM_MULT : 5000, goldReward: 3000,
+        attackPower: isHadum ? 55 * HADUM_MULT : 55, attackRange: 3.5, attackSpeed: 1200,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
       createNametagElement(`monster_18`, '대왕', '마늘장갑차', false, false, true);
     }
 
-    function buildStage3Baduk() {
+    function buildStage3Baduk(isHadum = false) {
       clearStageObjects(); clearMonsters();
+      currentHadum = isHadum;
       document.body.style.backgroundColor = '#2e7d32';
       scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
-      document.getElementById('stage-badge').innerText = "🎋 바둑골 산길 ▾";
+      document.getElementById('stage-badge').innerText = isHadum ? "🔥 하둠: 바둑골 산길 ▾" : "🎋 바둑골 산길 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
       const floorM = new THREE.MeshBasicMaterial({ map: createBadukFloorTexture() });
@@ -3116,9 +3159,9 @@
 
         const mName = type === 'judang' ? '주당' : (type === 'palgwang' ? '팔광병사' : '상두포');
         monsters.push({
-          id: `monster_${i}`, stageId: 3, sprite, shadowDisk: mShadow, type: mName, tier: 3, isBoss: false,
-          hp: 2200, maxHp: 2200, goldReward: 800,
-          attackPower: 55, attackRange: 2.5, attackSpeed: 1200,
+          id: `monster_${i}`, stageId: 3, sprite, shadowDisk: mShadow, type: mName, tier: 3, isBoss: false, isHadum,
+          hp: isHadum ? 2200 * HADUM_MULT : 2200, maxHp: isHadum ? 2200 * HADUM_MULT : 2200, goldReward: 800,
+          attackPower: isHadum ? 55 * HADUM_MULT : 55, attackRange: 2.5, attackSpeed: 1200,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.40 ${mName}`, true);
@@ -3132,18 +3175,19 @@
       const bossShadow = createShadowDisk(6.0, 3.2);
 
       monsters.push({
-        id: `monster_18`, stageId: 3, sprite: madaepoBoss, shadowDisk: bossShadow, type: '마대포', tier: 3, isBoss: true,
-        hp: 15000, maxHp: 15000, goldReward: 10000,
-        attackPower: 90, attackRange: 4.0, attackSpeed: 1000,
+        id: `monster_18`, stageId: 3, sprite: madaepoBoss, shadowDisk: bossShadow, type: '마대포', tier: 3, isBoss: true, isHadum,
+        hp: isHadum ? 15000 * HADUM_MULT : 15000, maxHp: isHadum ? 15000 * HADUM_MULT : 15000, goldReward: 10000,
+        attackPower: isHadum ? 90 * HADUM_MULT : 90, attackRange: 4.0, attackSpeed: 1000,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
       createNametagElement(`monster_18`, '대장군', '마대포', false, false, true);
     }
 
-    function buildStage4IceCastle() {
+    function buildStage4IceCastle(isHadum = false) {
       clearStageObjects(); clearMonsters();
+      currentHadum = isHadum;
       document.body.style.backgroundColor = '#b8ddea';
-      document.getElementById('stage-badge').innerText = "❄️ 얼음성 ▾";
+      document.getElementById('stage-badge').innerText = isHadum ? "🔥 하둠: 얼음성 ▾" : "❄️ 얼음성 ▾";
       scene.background = new THREE.Color(0x8fb8c9);
       scene.fog = new THREE.Fog(0x9fc8d8, 30, 92);
 
@@ -3184,7 +3228,7 @@
         sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
         scene.add(sprite);
         const mShadow=createShadowDisk(2.7,1.4);
-        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,hp:5400,maxHp:5400,goldReward:1200,attackPower:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?5400*HADUM_MULT:5400,maxHp:isHadum?5400*HADUM_MULT:5400,goldReward:1200,attackPower:isHadum?108*HADUM_MULT:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
         createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
       }
 
@@ -3192,16 +3236,24 @@
       const bossSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture('icequeen',false,0),transparent:true}));
       bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(0,4.1,-10); scene.add(bossSprite);
       const bossShadow=createShadowDisk(7.0,3.6);
-      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,hp:36000,maxHp:36000,goldReward:18000,attackPower:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,isHadum,hp:isHadum?36000*HADUM_MULT:36000,maxHp:isHadum?36000*HADUM_MULT:36000,goldReward:18000,attackPower:isHadum?172*HADUM_MULT:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
       createNametagElement('monster_18','얼음성의 여왕','빙설여왕',false,false,true);
     }
 
-        function openStageModal() {
+    function openStageModal() {
       document.getElementById('stage-modal').style.display = 'block';
+      const isJob2Done = playerState.tier === 3;
+
       ['1', '2', '3', '4'].forEach(sId => {
         const card = document.getElementById(`stage-card-${sId}`);
         if (card) {
-          card.classList.toggle('active', parseInt(sId) === currentStage);
+          card.classList.toggle('active', !currentHadum && parseInt(sId) === currentStage);
+        }
+        const hadumCard = document.getElementById(`stage-card-hadum-${sId}`);
+        if (hadumCard) {
+          hadumCard.classList.toggle('active', currentHadum && parseInt(sId) === currentStage);
+          hadumCard.classList.toggle('hadum-locked', !isJob2Done);
+          hadumCard.onclick = isJob2Done ? () => selectStage(parseInt(sId), true) : () => alert('2차 전직을 완료해야 하둠의 영역에 입장할 수 있습니다.');
         }
       });
     }
@@ -3210,15 +3262,28 @@
       document.getElementById('stage-modal').style.display = 'none';
     }
 
-    function selectStage(stageNum) {
+    function selectStage(stageNum, isHadum = false, keepPosition = false) {
+      if (isHadum && playerState.tier !== 3) {
+        alert('2차 전직을 완료해야 하둠의 영역에 입장할 수 있습니다.');
+        return;
+      }
+
       currentStage = stageNum;
-      if (stageNum === 1) buildStage1Field();
-      else if (stageNum === 2) buildStage2Cave();
-      else if (stageNum === 3) buildStage3Baduk();
-      else if (stageNum === 4) buildStage4IceCastle();
+      if (stageNum === 1) buildStage1Field(isHadum);
+      else if (stageNum === 2) buildStage2Cave(isHadum);
+      else if (stageNum === 3) buildStage3Baduk(isHadum);
+      else if (stageNum === 4) buildStage4IceCastle(isHadum);
+
+      // 스테이지 전환 시 캐릭터를 맵 중앙 스폰 지점으로 되돌린다.
+      // (안 그러면 이전 스테이지에서 서 있던 좌표에 그대로 남아, 새 맵의 지형/몬스터와 위치가 어긋나 보인다.)
+      // 단, 저장된 게임을 불러오는 경우(keepPosition)에는 마지막 위치를 그대로 유지한다.
+      if (!keepPosition) {
+        playerSprite.position.set(0, 1.6, 4);
+      }
+      selectedTarget = null;
+      targetArrowSprite.visible = false;
 
       closeStageModal();
-      scheduleSave();
     }
 
     function getHeroOwned(type) {
@@ -4213,7 +4278,7 @@
     function getMonsterExpReward(monster) {
       if (playerState.level >= playerState.maxLevel) return 0;
 
-      if (playerState.tier >= 3 && monster.tier === 1) {
+      if (playerState.tier >= 3 && monster.tier === 1 && !monster.isHadum) {
         return 0;
       }
 
@@ -4235,7 +4300,7 @@
         ratio *= 8;
       }
 
-      if (monster.stageId === 1) {
+      if (monster.stageId === 1 && !monster.isHadum) {
         const currentAtk = getPlayerAvgAtk();
         if (currentAtk >= 300) {
           return 0; 
@@ -4244,7 +4309,9 @@
         }
       }
 
-      return Math.max(1, Math.round(playerState.maxExp * ratio));
+      let baseExp = Math.max(1, Math.round(playerState.maxExp * ratio));
+      if (monster.isHadum) baseExp *= HADUM_MULT;
+      return baseExp;
     }
 
     function addReward(exp, gold) {
@@ -4298,8 +4365,8 @@
        SAVE / LOAD SYSTEM - LocalStorage
        ========================================== */
     const SAVE_KEY = 'gunju_ui_2_5d_save_v1';
-    let saveTimer = null;
     let isLoadingSave = false;
+    let isResettingCharacter = false;
 
     function collectGameSaveData() {
       return {
@@ -4325,6 +4392,7 @@
           munyeahana: { level:munyeahanaState.level, exp:munyeahanaState.exp, maxExp:munyeahanaState.maxExp, active:!!munyeahanaSprite }
         },
         stage: currentStage,
+        hadum: currentHadum,
         zoom: zoomLevel,
         qualityMode: qualityMode,
         playerPosition: { x: playerSprite.position.x, y: playerSprite.position.y, z: playerSprite.position.z }
@@ -4332,22 +4400,16 @@
     }
 
     function saveGame(showStatus = false) {
-      if (isLoadingSave) return;
+      if (isLoadingSave || isResettingCharacter) return;
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(collectGameSaveData()));
         if (showStatus) {
           const el = document.getElementById('save-status');
-          if (el) { el.textContent = '✓ 현재 상태가 저장되었습니다.'; setTimeout(() => { if (el) el.textContent = '게임 상태는 자동 저장됩니다.'; }, 1800); }
+          if (el) { el.textContent = '✓ 현재 상태가 저장되었습니다.'; setTimeout(() => { if (el) el.textContent = '💾 버튼을 눌러 수동으로 저장하세요.'; }, 1800); }
         }
       } catch (e) {
         console.warn('게임 저장 실패:', e);
       }
-    }
-
-    function scheduleSave() {
-      if (isLoadingSave) return;
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => saveGame(false), 350);
     }
 
     function applyHeroSavedState(state, hero) {
@@ -4390,7 +4452,8 @@
         }
 
         // Stage must be rebuilt after loading the saved stage.
-        selectStage(stage);
+        const savedHadum = !!data.hadum && playerState.tier === 3;
+        selectStage(stage, savedHadum, true);
 
         // Restore owned heroes and their individual visible/hidden state.
         if (playerState.hasSiri && data.heroes && data.heroes.siri && data.heroes.siri.active) spawnSiriHero();
@@ -4406,18 +4469,18 @@
       }
     }
 
-    let isResettingCharacter = false;
-
     function resetCharacterProgress() {
       const ok = confirm('캐릭터의 레벨, 경험치, 골드, 장비, 스킬, 영웅 구매/레벨을 모두 초기화할까요?\n초기화 후에는 이전 저장 상태로 되돌릴 수 없습니다.');
       if (!ok) return;
       isResettingCharacter = true;
       try { localStorage.removeItem(SAVE_KEY); } catch (e) { console.warn(e); }
-      location.reload();
+      // location.reload()는 일부 브라우저(특히 file:// 로 연 로컬 파일)에서 캐시된 페이지 상태를
+      // 그대로 복원해버려, localStorage는 지워졌는데도 화면의 레벨/골드 등은 새로고침 전 값이
+      // 그대로 남아있는 것처럼 보일 수 있다. 현재 URL 뒤에 매번 다른 값을 붙여 완전히 새로운
+      // URL로 이동시키면 캐시된 페이지가 아닌 완전한 재실행이 강제된다.
+      const base = location.href.split('#')[0].replace(/[?&]_reset=\d+/, '');
+      location.href = base + (base.includes('?') ? '&' : '?') + '_reset=' + Date.now();
     }
-
-    window.addEventListener('beforeunload', () => { if (!isResettingCharacter) saveGame(false); });
-    setInterval(() => saveGame(false), 2000);
 
     function updateUI() {
       document.getElementById('player-name').innerText = playerState.name;
@@ -4502,8 +4565,7 @@
       if (joystickTouchId === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joystickTouchId) { updateJoystick(e.changedTouches[i]); break; }
-        scheduleSave();
-    }
+      }
     }, { passive: false });
 
     window.addEventListener('touchend', () => { joystickTouchId = null; joystickVector = { x: 0, y: 0 }; joystickKnob.style.transform = `translate(0, 0)`; });
@@ -4644,9 +4706,17 @@
       const critChance = getCritChance();
       const critMult = getCritMultiplier();
 
+      // 하둠은 스테이지별로 '유저 공격력 : 몬스터 방어력' 비율만 적용한다.
+      // 기존 하둠의 HP/공격력/경험치 2배 설정은 그대로 유지한다.
+      if (currentHadum) {
+        const defRatio = HADUM_DEF_RATIO[currentStage] || 3.5;
+        const monsterDefense = Math.max(1, Math.round(getPlayerAvgAtk() / defRatio));
+        finalDmg = Math.max(1, amount - monsterDefense);
+      }
+
       let isCrit = Math.random() < critChance;
       if (isCrit) {
-        finalDmg = Math.round(amount * critMult);
+        finalDmg = Math.max(1, Math.round(finalDmg * critMult));
         /* 크리티컬 화면 흔들림 효과 (50% 축소 적용) */
         triggerScreenShake(0.35, 0.25);
       }
@@ -4751,7 +4821,7 @@
       updateUI();
     }
 
-    function changeZoom(amount) { zoomLevel = Math.max(0.5, Math.min(2.0, zoomLevel + amount)); scheduleSave(); }
+    function changeZoom(amount) { zoomLevel = Math.max(0.5, Math.min(2.0, zoomLevel + amount)); }
     function addExpDev() { addReward(5000, 5000); }
 
     /* ==========================================
@@ -4895,10 +4965,9 @@
       renderer.render(scene, camera);
     }
 
-    const restoredSave = loadGame();
+    loadGame();
     updateUI();
     onWindowResize();
     animate();
-    if (restoredSave) scheduleSave();
   </script>
 </body>
