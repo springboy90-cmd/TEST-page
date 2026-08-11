@@ -97,7 +97,6 @@
     }
     .btn-skill-badge:active { transform: scale(0.95); }
 
-    /* 캐릭터 상태창 하단 빠른 메뉴 */
     .status-action-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -244,7 +243,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style id="hero-modal-mobile-fix">
-/* 소환영웅 관리 팝업 크기 축소 */
 .hero-modal,
 #hero-modal,
 .hero-management-modal {
@@ -290,7 +288,6 @@
 
 
 <style id="hero-management-size-final">
-/* ===== 소환영웅 관리 팝업 최종 모바일 최적화 ===== */
 .modal-overlay:has(.hero-management),
 .modal-overlay:has(.hero-list),
 .modal-overlay:has(.hero-card),
@@ -355,7 +352,6 @@
   }
 }
 
-/* 닫기 버튼이 팝업 밖으로 밀리지 않도록 */
 .modal-overlay:has(.hero-management) .close,
 .modal-overlay:has(.hero-list) .close,
 .modal-overlay:has(.hero-card) .close,
@@ -413,7 +409,6 @@
 
 
 <style id="hero-manager-horizontal-final">
-/* 영웅관리 = 설정창과 같은 계열의 가로형 팝업 */
 #hero-manager-modal {
   width: min(420px, 90vw) !important;
   max-width: 90vw !important;
@@ -428,7 +423,6 @@
   margin-bottom: 9px !important;
 }
 
-/* 영웅들을 가로로 배치 */
 #hero-manager-modal .hero-manage-grid {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -449,12 +443,10 @@
   white-space: nowrap !important;
 }
 
-/* 안내문은 제거하고 설정창처럼 간결하게 */
 #hero-manager-modal .hero-manage-note {
   display: none !important;
 }
 
-/* 모바일에서도 가로형 유지 */
 @media (max-width: 600px) {
   #hero-manager-modal {
     width: calc(100vw - 20px) !important;
@@ -1241,13 +1233,7 @@
       ctx.restore();
     }
 
-    /* ==========================================
-       고퀄리티 소환영웅 - 의녀장금
-       첨부 원작 레퍼런스의 흰/청색 의녀복, 둥근 청색 의녀관,
-       단정한 올림머리와 붉은 장식 포인트를 기준으로 재구성.
-       512x512 캔버스 + 부드러운 음영/라인으로 확대 시 디테일 유지.
-       ========================================== */
-function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
+    function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const cvs = document.createElement('canvas');
       cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d');
@@ -1302,111 +1288,100 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       ctx.rotate(tilt);
       ctx.translate(-256, 0);
 
-      // Soft character rim light / ground glow.
       const aura = ctx.createRadialGradient(256,410,15,256,410,150);
       aura.addColorStop(0,'rgba(255,105,150,.18)'); aura.addColorStop(1,'rgba(255,105,150,0)');
       ctx.fillStyle=aura; ctx.fillRect(60,250,392,240);
 
       if (isBack) {
-        // Back hair and neck.
         ellipse(256,190,72,78,'#17121b','#09070b',5);
         ellipse(256,172,48,38,'#0b0a0e');
         ellipse(256,208,26,20,'#f4dfd2','#b68f84',2);
 
-        // Red ceremonial robe / back silhouette.
         const robeGrad=ctx.createLinearGradient(155,225,360,455);
         robeGrad.addColorStop(0,'#a9142b'); robeGrad.addColorStop(.45,'#d62b3d'); robeGrad.addColorStop(.8,'#8e0f25'); robeGrad.addColorStop(1,'#5e0c1a');
         poly([[184,220],[328,220],[382,405],[330,470],[182,470],[130,405]],robeGrad,'#4b0b16',6);
-        // White sleeve shapes.
+
         const sleeveGrad=ctx.createLinearGradient(100,260,180,410); sleeveGrad.addColorStop(0,'#fffaf3'); sleeveGrad.addColorStop(1,'#d8d0c9');
         poly([[182,248],[132,270],[105,355],[145,385],[195,320]],sleeveGrad,'#8f7771',4);
         poly([[330,248],[380,270],[407,355],[367,385],[317,320]],sleeveGrad,'#8f7771',4);
-        // Black bow/obi seen from behind.
+
         ellipse(256,305,55,48,'#16151c','#05050a',5);
         ellipse(256,305,30,26,'#342b37','#09070c',3);
         line(256,330,206,420,'#18131b',10); line(256,330,306,420,'#18131b',10);
-        // Red cord ornaments.
+
         line(190,280,142,330,'#b32231',4); line(322,280,370,330,'#b32231',4);
         ellipse(141,331,9,12,'#121017','#05050a',2); ellipse(371,331,9,12,'#121017','#05050a',2);
-        // Sleeves/hands raised in ceremonial pose.
+
         const hand='#d7b9ab';
         ellipse(108,360,15,12,hand,'#805e5b',2); ellipse(404,360,15,12,hand,'#805e5b',2);
         for(let i=-2;i<=2;i++){ line(98+i*5,355,87+i*5,341,'#b99388',3); line(414+i*5,355,425+i*5,341,'#b99388',3); }
 
-        // Large straw umbrella from behind: paper ribs + red flowers.
         const umbrella=ctx.createLinearGradient(105,55,407,205); umbrella.addColorStop(0,'#d9c49a'); umbrella.addColorStop(.5,'#f0ddb0'); umbrella.addColorStop(1,'#b89d6d');
         ctx.beginPath(); ctx.moveTo(84,160); ctx.quadraticCurveTo(256,25,428,160); ctx.quadraticCurveTo(365,182,256,184); ctx.quadraticCurveTo(147,182,84,160); ctx.closePath(); ctx.fillStyle=umbrella; ctx.fill();
         ctx.strokeStyle='#6f573a'; ctx.lineWidth=4; ctx.stroke();
         for(let i=0;i<9;i++){ const x=100+i*39; ctx.beginPath(); ctx.moveTo(256,72); ctx.quadraticCurveTo(x,125,x,160); ctx.stroke(); }
-        // Flower crown on umbrella.
+
         leaf(150,112,28,-.6); leaf(205,90,30,-.2); leaf(300,90,30,.25); leaf(358,112,28,.65);
         camellia(145,104,27,-.2); camellia(205,78,30,.15); camellia(256,67,32,0); camellia(308,78,30,-.15); camellia(367,105,27,.2);
-        // Tassel / central ribs.
+
         line(256,68,256,215,'#5a4630',5); ellipse(256,218,10,15,'#7a1b2b','#4b0b16',2);
       } else {
-        // Face and hair.
         ellipse(256,190,70,82,'#17121b','#08070b',5);
         const hairGrad=ctx.createLinearGradient(195,125,320,250); hairGrad.addColorStop(0,'#342431'); hairGrad.addColorStop(.55,'#0d0b11'); hairGrad.addColorStop(1,'#050409');
         ellipse(256,178,62,70,hairGrad,'#07060a',4);
         const skin=ctx.createLinearGradient(218,165,294,255); skin.addColorStop(0,'#fff4ea'); skin.addColorStop(.55,'#f1d4c8'); skin.addColorStop(1,'#c7978d');
         ellipse(256,205,40,53,skin,'#9f746d',3);
-        // Eyes / brows.
+
         line(231,198,246,195,'#38222b',5); line(266,195,281,198,'#38222b',5);
         ellipse(240,207,5,7,'#161017'); ellipse(272,207,5,7,'#161017');
         ellipse(239,205,1.8,2,'#fff'); ellipse(271,205,1.8,2,'#fff');
         line(252,226,260,226,'#a56f67',2); line(247,238,265,238,'#a01f32',4);
 
-        // Neck.
         poly([[238,247],[274,247],[281,278],[231,278]],skin,'#9f746d',2);
 
-        // Main red hanbok with layered fabric.
         const robeGrad=ctx.createLinearGradient(155,265,365,475); robeGrad.addColorStop(0,'#e24a54'); robeGrad.addColorStop(.35,'#b71f37'); robeGrad.addColorStop(.75,'#8e1027'); robeGrad.addColorStop(1,'#4f0b18');
         poly([[210,266],[302,266],[350,385],[325,470],[187,470],[162,385]],robeGrad,'#4b0b16',6);
-        // White collar and inner garment.
+
         poly([[238,263],[256,292],[274,263],[292,280],[270,320],[242,320],[220,280]],'#fff9f1','#8b6d68',3);
         poly([[247,274],[256,300],[265,274],[267,320],[245,320]],'#f3d8d0','#a77a74',2);
-        // Black obi with red trim.
+
         poly([[180,320],[332,320],[338,360],[174,360]],'#17141b','#07060a',4);
         ctx.fillStyle='#5b1522'; ctx.fillRect(174,330,164,7);
-        // Gold cord and knot.
+
         line(256,324,256,410,'#d6a34a',5); line(256,348,220,372,'#d6a34a',4); line(256,348,292,372,'#d6a34a',4);
         ellipse(256,350,12,12,'#b77b24','#6c4614',3);
 
-        // Sleeves with high-detail folds.
         const sleeve=ctx.createLinearGradient(110,275,205,380); sleeve.addColorStop(0,'#fffdf8'); sleeve.addColorStop(.6,'#e7ded8'); sleeve.addColorStop(1,'#b7aaa4');
-        const leftArmY=330-armLift*55, rightArmY=330-armLift*55;
         poly([[207,274],[166,286],[111,338],[128,384],[183,350],[218,320]],sleeve,'#8b7772',4);
         poly([[305,274],[346,286],[401,338],[384,384],[329,350],[294,320]],sleeve,'#8b7772',4);
-        // Sleeve folds.
+
         for(let i=0;i<4;i++){
           line(170+i*7,300+i*5,126+i*9,350+i*2,'rgba(125,105,100,.42)',3);
           line(342-i*7,300+i*5,386-i*9,350+i*2,'rgba(125,105,100,.42)',3);
         }
-        // Hands / fingers.
+
         const hand='#e4c4b7';
         ellipse(119,371,18,15,hand,'#8f6963',3); ellipse(393,371,18,15,hand,'#8f6963',3);
         for(let i=-2;i<=2;i++){
           line(110+i*5,365,101+i*5,349,'#b38d84',3);
           line(402+i*5,365,411+i*5,349,'#b38d84',3);
         }
-        // Skirt layers and white hem.
+
         poly([[185,350],[327,350],[350,464],[162,464]],'#a9162d','#4b0b16',5);
         poly([[169,430],[343,430],[355,468],[157,468]],'#f7eee7','#9b7d76',3);
-        // Red shoes.
+
         ellipse(215,477,28,14,'#7d1223','#420912',4); ellipse(297,477,28,14,'#7d1223','#420912',4);
 
-        // Umbrella from the front.
         const umbrella=ctx.createLinearGradient(100,60,412,190); umbrella.addColorStop(0,'#d2bc8d'); umbrella.addColorStop(.48,'#f4dfad'); umbrella.addColorStop(1,'#b89a68');
         ctx.beginPath(); ctx.moveTo(76,160); ctx.quadraticCurveTo(256,18,436,160); ctx.quadraticCurveTo(355,181,256,184); ctx.quadraticCurveTo(157,181,76,160); ctx.closePath(); ctx.fillStyle=umbrella; ctx.fill();
         ctx.strokeStyle='#654d34'; ctx.lineWidth=5; ctx.stroke();
         for(let i=0;i<9;i++){ const x=92+i*41; ctx.beginPath(); ctx.moveTo(256,65); ctx.quadraticCurveTo(x,120,x,160); ctx.stroke(); }
-        // Red flower crown / green leaves matching the reference.
+
         leaf(145,108,30,-.55); leaf(195,87,32,-.18); leaf(317,87,32,.18); leaf(367,108,30,.55);
         camellia(142,101,28,-.18); camellia(198,76,31,.12); camellia(256,65,34,0); camellia(314,76,31,-.12); camellia(370,101,28,.18);
-        // Central umbrella shaft and tassel.
+
         line(256,65,256,245,'#5d452e',5); ellipse(256,245,10,15,'#8d1b2b','#4b0b16',3);
 
-        // Attack pose accents: sleeves and a ritual red/white motion trail.
         if(stage>0){
           ctx.globalAlpha = .22 + stage*.03;
           ctx.strokeStyle='#ff4d6d'; ctx.lineWidth=12;
@@ -1428,7 +1403,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       return tex;
     }
 
-        function createJanggeumHighQualityTexture(isBack = false, attackStage = 0) {
+    function createJanggeumHighQualityTexture(isBack = false, attackStage = 0) {
       const cvs = document.createElement('canvas');
       cvs.width = 512; cvs.height = 512;
       const ctx = cvs.getContext('2d');
@@ -1439,20 +1414,16 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       ctx.save();
       ctx.translate(0, 8);
 
-      /* 부드러운 외곽 광원 */
       ctx.shadowColor = 'rgba(20, 45, 70, 0.28)';
       ctx.shadowBlur = px(7);
       ctx.shadowOffsetY = px(5);
 
-      /* 후면 */
       if (isBack) {
-        /* 머리카락/올림머리 */
         ctx.fillStyle = '#2b211d';
         ctx.beginPath(); ctx.ellipse(px(64), px(29), px(18), px(16), 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#171311';
         ctx.beginPath(); ctx.ellipse(px(64), px(23), px(13), px(11), 0, 0, Math.PI*2); ctx.fill();
 
-        /* 의녀관 */
         ctx.shadowBlur = 0;
         const hat = ctx.createLinearGradient(0, px(8), 0, px(23));
         hat.addColorStop(0, '#eef7ff'); hat.addColorStop(0.65, '#d9ebfa'); hat.addColorStop(1, '#a9cde7');
@@ -1462,19 +1433,16 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#4b86bd'; ctx.beginPath(); ctx.ellipse(px(64), px(13), px(7), px(3.5), 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#d8edf9'; ctx.beginPath(); ctx.ellipse(px(64), px(12), px(4.5), px(2), 0, 0, Math.PI*2); ctx.fill();
 
-        /* 푸른 끈 */
         ctx.strokeStyle = '#3978aa'; ctx.lineWidth = px(2.2);
         ctx.beginPath(); ctx.moveTo(px(45),px(18)); ctx.quadraticCurveTo(px(48),px(35),px(56),px(42)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(px(83),px(18)); ctx.quadraticCurveTo(px(80),px(35),px(72),px(42)); ctx.stroke();
 
-        /* 흰색 상의 + 청색 테두리 */
         ctx.shadowColor = 'rgba(25,65,95,.22)'; ctx.shadowBlur = px(5);
         ctx.fillStyle = '#f7fbff';
         ctx.beginPath(); ctx.moveTo(px(45),px(43)); ctx.quadraticCurveTo(px(64),px(37),px(83),px(43));
         ctx.lineTo(px(89),px(75)); ctx.quadraticCurveTo(px(64),px(86),px(39),px(75)); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#8db9d9'; ctx.lineWidth = px(2); ctx.stroke();
 
-        /* 뒤쪽 청색 치마 */
         const skirtBack = ctx.createLinearGradient(0, px(66), 0, px(116));
         skirtBack.addColorStop(0, '#b9d8ee'); skirtBack.addColorStop(.45, '#7fb0d3'); skirtBack.addColorStop(1, '#4f82aa');
         ctx.fillStyle = skirtBack;
@@ -1482,21 +1450,17 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.lineTo(px(101),px(116)); ctx.lineTo(px(27),px(116)); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#3d6f96'; ctx.lineWidth = px(1.5); ctx.stroke();
 
-        /* 뒷주름 */
         ctx.strokeStyle = 'rgba(255,255,255,.48)'; ctx.lineWidth = px(1.2);
         for (let x = 36; x <= 92; x += 9) { ctx.beginPath(); ctx.moveTo(px(x),px(78)); ctx.lineTo(px(x+4),px(111)); ctx.stroke(); }
 
-        /* 소매 */
         ctx.fillStyle = '#f7fbff';
         ctx.beginPath(); ctx.moveTo(px(43),px(48)); ctx.lineTo(px(28),px(69)); ctx.lineTo(px(35),px(77)); ctx.lineTo(px(51),px(58)); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(px(85),px(48)); ctx.lineTo(px(100),px(69)); ctx.lineTo(px(93),px(77)); ctx.lineTo(px(77),px(58)); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#8db9d9'; ctx.stroke();
 
-        /* 신발 */
         ctx.fillStyle = '#f5f7fa'; ctx.beginPath(); ctx.ellipse(px(47),px(118),px(10),px(5),0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = '#4c83ab'; ctx.beginPath(); ctx.ellipse(px(81),px(118),px(10),px(5),0,0,Math.PI*2); ctx.fill();
       } else {
-        /* 목/얼굴 */
         ctx.shadowColor = 'rgba(30,45,55,.22)'; ctx.shadowBlur = px(5);
         ctx.fillStyle = '#f3d0b0';
         ctx.beginPath(); ctx.roundRect(px(57),px(32),px(14),px(18),px(5)); ctx.fill();
@@ -1504,7 +1468,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         skin.addColorStop(0,'#ffe4c7'); skin.addColorStop(.75,'#f3c5a3'); skin.addColorStop(1,'#d99e7f');
         ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(px(64),px(34),px(15),px(18),0,0,Math.PI*2); ctx.fill();
 
-        /* 올림머리 */
         ctx.fillStyle = '#332520';
         ctx.beginPath(); ctx.ellipse(px(64),px(20),px(17),px(15),0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = '#171211'; ctx.beginPath(); ctx.ellipse(px(64),px(14),px(11),px(9),0,0,Math.PI*2); ctx.fill();
@@ -1512,7 +1475,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.beginPath(); ctx.moveTo(px(49),px(24)); ctx.quadraticCurveTo(px(54),px(35),px(55),px(43)); ctx.lineTo(px(48),px(39)); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(px(79),px(24)); ctx.quadraticCurveTo(px(74),px(35),px(73),px(43)); ctx.lineTo(px(80),px(39)); ctx.closePath(); ctx.fill();
 
-        /* 의녀관 - 원작의 둥근 청색 머리장식 */
         ctx.shadowBlur = 0;
         const hat = ctx.createLinearGradient(0,px(4),0,px(23));
         hat.addColorStop(0,'#f6fbff'); hat.addColorStop(.55,'#d9efff'); hat.addColorStop(1,'#9fc6e2');
@@ -1525,17 +1487,14 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.beginPath(); ctx.moveTo(px(45),px(13)); ctx.quadraticCurveTo(px(48),px(28),px(53),px(34)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(px(83),px(13)); ctx.quadraticCurveTo(px(80),px(28),px(75),px(34)); ctx.stroke();
 
-        /* 얼굴 디테일 */
         ctx.fillStyle = '#4b3028';
         ctx.fillRect(px(55),px(32),px(5),px(1.8)); ctx.fillRect(px(68),px(32),px(5),px(1.8));
         ctx.fillStyle = '#3a2520'; ctx.beginPath(); ctx.ellipse(px(58),px(36),px(2),px(1.8),0,0,Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(px(70),px(36),px(2),px(1.8),0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = '#df8f8f'; ctx.beginPath(); ctx.ellipse(px(64),px(42),px(3),px(1.5),0,0,Math.PI); ctx.fill();
 
-        /* 목 */
         ctx.fillStyle = '#f1c4a2'; ctx.fillRect(px(58),px(47),px(12),px(10));
 
-        /* 몸통 - 흰색 의녀복 */
         const coat = ctx.createLinearGradient(0,px(48),0,px(86));
         coat.addColorStop(0,'#ffffff'); coat.addColorStop(.55,'#edf7fc'); coat.addColorStop(1,'#c7ddec');
         ctx.fillStyle = coat;
@@ -1543,7 +1502,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.lineTo(px(89),px(80)); ctx.quadraticCurveTo(px(64),px(91),px(39),px(80)); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#7ba8c9'; ctx.lineWidth = px(1.7); ctx.stroke();
 
-        /* 중앙 청색 여밈/문양 */
         ctx.strokeStyle = '#477da8'; ctx.lineWidth = px(3);
         ctx.beginPath(); ctx.moveTo(px(64),px(50)); ctx.lineTo(px(64),px(80)); ctx.stroke();
         ctx.fillStyle = '#5a8fba';
@@ -1553,7 +1511,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.beginPath(); ctx.moveTo(px(51),px(53)); ctx.lineTo(px(61),px(59)); ctx.lineTo(px(52),px(67)); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(px(77),px(53)); ctx.lineTo(px(67),px(59)); ctx.lineTo(px(76),px(67)); ctx.closePath(); ctx.fill();
 
-        /* 소매 + 손 */
         const sleeve = ctx.createLinearGradient(0,px(50),0,px(79));
         sleeve.addColorStop(0,'#ffffff'); sleeve.addColorStop(1,'#dbeaf4');
         ctx.fillStyle = sleeve;
@@ -1566,18 +1523,15 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           ctx.beginPath(); ctx.ellipse(px(51),px(67),px(5),px(4),-.25,0,Math.PI*2); ctx.fill();
           ctx.beginPath(); ctx.ellipse(px(77),px(67),px(5),px(4),.25,0,Math.PI*2); ctx.fill();
         } else {
-          /* 공격/시전 시 손을 앞으로 모으는 자세 */
           ctx.beginPath(); ctx.ellipse(px(58),px(64),px(5),px(4),-.5,0,Math.PI*2); ctx.fill();
           ctx.beginPath(); ctx.ellipse(px(70),px(64),px(5),px(4),.5,0,Math.PI*2); ctx.fill();
         }
 
-        /* 허리띠 */
         ctx.fillStyle = '#4d83aa'; ctx.fillRect(px(43),px(78),px(42),px(5));
         ctx.fillStyle = '#dcecf7'; ctx.fillRect(px(47),px(79),px(34),px(1.5));
-        ctx.fillStyle = '#b4494e'; ctx.beginPath(); ctx.arc(px(64),px(81),px(4),0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#b45309'; ctx.beginPath(); ctx.arc(px(64),px(81),px(4),0,Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#f1d28a'; ctx.lineWidth = px(1.3); ctx.beginPath(); ctx.arc(px(64),px(81),px(2.2),0,Math.PI*2); ctx.stroke();
 
-        /* 긴 청색 치마 */
         const skirt = ctx.createLinearGradient(0,px(82),0,px(119));
         skirt.addColorStop(0,'#a9cde5'); skirt.addColorStop(.5,'#6f9fc4'); skirt.addColorStop(1,'#416e93');
         ctx.fillStyle = skirt;
@@ -1585,25 +1539,21 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.lineTo(px(99),px(118)); ctx.lineTo(px(29),px(118)); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#365f7e'; ctx.lineWidth = px(1.6); ctx.stroke();
 
-        /* 치마 주름/빛 */
         for (let x=36; x<=92; x+=9) {
           ctx.strokeStyle = (x%18===0) ? 'rgba(255,255,255,.38)' : 'rgba(35,74,105,.25)';
           ctx.lineWidth = px(1.3);
           ctx.beginPath(); ctx.moveTo(px(x),px(88)); ctx.lineTo(px(x+4),px(114)); ctx.stroke();
         }
 
-        /* 붉은 포인트 장식 */
         ctx.fillStyle = '#b54a50';
         ctx.beginPath(); ctx.arc(px(49),px(87),px(2.3),0,Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(px(79),px(87),px(2.3),0,Math.PI*2); ctx.fill();
 
-        /* 신발 */
         ctx.fillStyle = '#f6f8fa'; ctx.beginPath(); ctx.ellipse(px(47),px(119),px(10),px(5),-.08,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = '#5c8fb3'; ctx.beginPath(); ctx.ellipse(px(81),px(119),px(10),px(5),.08,0,Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#365f7e'; ctx.lineWidth = px(1); ctx.stroke();
       }
 
-      /* 공격/시전 효과: 의녀장금의 연두색 에너지와 연결 */
       if (!isBack && attackStage > 0) {
         ctx.shadowColor = 'rgba(126, 220, 120, .75)'; ctx.shadowBlur = px(8);
         ctx.strokeStyle = 'rgba(180, 255, 170, .9)'; ctx.lineWidth = px(2.2);
@@ -1622,12 +1572,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       return texture;
     }
 
-    /* ==========================================
-       고퀄리티 소환영웅 - 시리
-       의녀장금/무녀하나와 동일한 512x512 Canvas Sprite 방식.
-       원본 일러스트는 디자인 레퍼런스로만 사용하고,
-       게임용 실루엣/의상/명암/라인을 새로 그려 독립적인 외관을 구성.
-       ========================================== */
     let siriTextureCache = null;
     let siriBackTextureCache = null;
     const siriTextureStageCache = {};
@@ -1644,7 +1588,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       ctx.clearRect(0, 0, 512, 512);
 
       const S = 4;
-      const px = v => v * S;
       const P = v => v * S;
 
       function ellipse(cx, cy, rx, ry, fill, stroke = null, sw = 1, rot = 0) {
@@ -1675,13 +1618,10 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       ctx.rotate(bodyTilt);
       ctx.translate(-P(64), -P(64));
 
-      /* 은은한 캐릭터 림라이트 */
       ctx.shadowColor = 'rgba(255,220,120,.18)';
       ctx.shadowBlur = P(5);
 
       if (isBack) {
-        /* ===== 후면 ===== */
-        /* 긴 주황색 머리 + 두 갈래 땋은 머리 */
         ctx.shadowBlur = 0;
         ellipse(64, 29, 23, 21, '#d66a2b', '#713315', 1.2);
         path(() => {
@@ -1693,49 +1633,40 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           ctx.quadraticCurveTo(P(83),P(63),P(78),P(49)); ctx.closePath();
         }, '#c95d24', '#713315', 1);
 
-        /* 땋은 머리 */
         for(let i=0;i<6;i++){
           ellipse(36-i*1.1, 51+i*7, 5.2, 6.2, i%2 ? '#d9742f' : '#bb5421', '#713315', .8, -0.18);
           ellipse(92+i*1.1, 51+i*7, 5.2, 6.2, i%2 ? '#d9742f' : '#bb5421', '#713315', .8, 0.18);
         }
 
-        /* 흰색 둥근 모자 */
         const hat = ctx.createLinearGradient(P(38),P(8),P(88),P(38));
         hat.addColorStop(0,'#ffffff'); hat.addColorStop(.55,'#edf0ed'); hat.addColorStop(1,'#cfd6d0');
         ellipse(64, 19, 27, 15, hat, '#aeb7b2', 1.2);
         ellipse(64, 24, 23, 7, '#e7ebe7', '#b6c0ba', .8);
         ellipse(64, 24, 5.2, 2.8, '#f2d35c', '#8f6c1d', .8);
 
-        /* 등 장식과 긴 끈 */
         poly([[42,48],[86,48],[92,91],[64,104],[36,91]], '#eef1ef', '#737d79', 1.3);
         line(64,51,64,94,'#c8a247',1.5);
         line(48,58,80,58,'#d8b75a',1.2);
         line(47,67,81,67,'#d8b75a',1.2);
         line(46,76,82,76,'#d8b75a',1.2);
 
-        /* 허리 장식 */
         poly([[40,88],[88,88],[82,98],[46,98]], '#d9b55a', '#6f5522', 1);
         ellipse(64, 92, 5, 5, '#f2d86d', '#79551c', 1);
 
-        /* 보라색 치맛자락 */
         const skirtBack = ctx.createLinearGradient(0,P(94),0,P(123));
         skirtBack.addColorStop(0,'#77758f'); skirtBack.addColorStop(.5,'#56556e'); skirtBack.addColorStop(1,'#37374d');
         poly([[43,96],[85,96],[98,121],[30,121]], skirtBack, '#353448', 1.5);
         for(let x=39;x<=89;x+=9) line(x,99,x+3,118,'rgba(230,226,242,.28)',1);
 
-        /* 뒤에서 보이는 활 */
         ctx.shadowColor='rgba(244,191,69,.25)'; ctx.shadowBlur=P(4);
         line(101,52,101,111,'#9b641f',2.5);
         ctx.beginPath(); ctx.arc(P(101),P(81),P(28),-1.0,1.0); ctx.strokeStyle='#d39b38'; ctx.lineWidth=P(2.5); ctx.stroke();
         line(101,54,101,108,'#f2e6c8',.8);
         ctx.shadowBlur=0;
 
-        /* 부츠 */
         ellipse(51,119,10,4.5,'#6d4a27','#3b2a1b',1);
         ellipse(77,119,10,4.5,'#6d4a27','#3b2a1b',1);
       } else {
-        /* ===== 전면 ===== */
-        /* 긴 머리 실루엣 */
         ellipse(64, 33, 27, 25, '#d66b2d', '#713315', 1.2);
         path(() => {
           ctx.moveTo(P(43),P(31)); ctx.quadraticCurveTo(P(26),P(44),P(33),P(72));
@@ -1746,34 +1677,27 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           ctx.quadraticCurveTo(P(86),P(61),P(78),P(48)); ctx.closePath();
         }, '#c95d24', '#713315', 1);
 
-        /* 머리카락 하이라이트 */
         line(40,39,34,62,'#f29a4b',1.2); line(88,39,94,62,'#f29a4b',1.2);
 
-        /* 얼굴 */
         const skin = ctx.createRadialGradient(P(57),P(42),P(3),P(64),P(45),P(17));
         skin.addColorStop(0,'#fff5e8'); skin.addColorStop(.72,'#f6d6bd'); skin.addColorStop(1,'#dcae93');
         ellipse(64, 44, 16, 17, skin, '#8f5c49', 1);
-        /* 눈썹/눈 */
         line(53,40,59,39,'#5b382e',1.1); line(69,39,75,40,'#5b382e',1.1);
         ellipse(57,44,2.6,1.8,'#2d2523'); ellipse(71,44,2.6,1.8,'#2d2523');
         ellipse(57.5,43.5,.7,.7,'#ffffff'); ellipse(71.5,43.5,.7,.7,'#ffffff');
         line(61,51,67,51,'#b45f61',1.1);
 
-        /* 흰색 둥근 모자 */
         const hat = ctx.createLinearGradient(P(38),P(7),P(90),P(35));
         hat.addColorStop(0,'#ffffff'); hat.addColorStop(.55,'#edf0ed'); hat.addColorStop(1,'#cdd5d0');
         ellipse(64, 19, 28, 16, hat, '#9ca6a1', 1.3);
         ellipse(64, 25, 24, 7, '#e6ebe7', '#adb7b1', .9);
-        /* 중앙 금속/청록 장식 */
         ellipse(64, 24, 5.5, 3.2, '#d8b54c', '#75581c', .9);
         ellipse(64, 24, 2.2, 1.5, '#58bfc0');
 
-        /* 어깨/상의 */
         const top = ctx.createLinearGradient(P(38),P(57),P(90),P(91));
         top.addColorStop(0,'#ffffff'); top.addColorStop(.5,'#f3f3ef'); top.addColorStop(1,'#d8d9d3');
         poly([[43,58],[53,55],[64,61],[75,55],[85,58],[91,91],[37,91]], top, '#7e8580', 1.2);
 
-        /* 황금 갑주/장식판 */
         const gold = ctx.createLinearGradient(P(50),P(58),P(78),P(82));
         gold.addColorStop(0,'#f4d36d'); gold.addColorStop(.45,'#c8952f'); gold.addColorStop(1,'#80601d');
         poly([[47,59],[57,56],[62,64],[59,82],[49,77]], gold, '#72521b', 1.1);
@@ -1781,24 +1705,20 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ellipse(53,68,3.2,3.2,'#f4df85','#795a1e',.8);
         ellipse(75,68,3.2,3.2,'#f4df85','#795a1e',.8);
 
-        /* 가슴 중앙 끈 */
         line(64,62,64,88,'#b68b2b',2);
         line(57,64,64,72,'#d9b557',1.3); line(71,64,64,72,'#d9b557',1.3);
         ellipse(64,73,3.4,3.4,'#f0d36a','#77581b',.8);
 
-        /* 팔 + 손 */
         const armShift = stage === 1 ? -5 : stage === 2 ? -9 : stage === 3 ? 7 : stage === 4 ? 4 : 0;
         poly([[43,61],[35,69],[39+armShift,78],[47,72]], '#f3f3ef', '#7c827f', 1);
         poly([[85,61],[93,68],[88-armShift,78],[81,72]], '#f3f3ef', '#7c827f', 1);
         ellipse(40+armShift,79,4.5,3.5,'#f4c9aa','#8d604d',.8);
         ellipse(88-armShift,79,4.5,3.5,'#f4c9aa','#8d604d',.8);
 
-        /* 허리띠 */
         ctx.fillStyle='#8c6a28'; ctx.fillRect(P(40),P(84),P(48),P(5));
         ctx.fillStyle='#f0d36a'; ctx.fillRect(P(45),P(85),P(38),P(1.3));
         ellipse(64,86.5,4.3,4.3,'#e9ca5e','#76581e',.8);
 
-        /* 보라색 전통 치마 */
         const skirt = ctx.createLinearGradient(P(32),P(88),P(96),P(121));
         skirt.addColorStop(0,'#8b89a4'); skirt.addColorStop(.48,'#62617b'); skirt.addColorStop(1,'#3d3d55');
         path(() => {
@@ -1812,17 +1732,14 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         for(let x=35;x<=94;x+=9){
           line(x,94,x+5,117,x%18===0?'rgba(245,241,255,.38)':'rgba(24,24,42,.28)',1.1);
         }
-        /* 금색 치맛단 */
         line(32,115,96,115,'#b78a2c',2.2);
         line(37,118,91,118,'rgba(244,216,110,.7)',1);
 
-        /* 다리/부츠 */
         poly([[48,117],[58,117],[55,126],[48,126]], '#dce1e4', '#72797b', .9);
         poly([[70,117],[80,117],[80,126],[73,126]], '#dce1e4', '#72797b', .9);
         ellipse(50,127,8,4,'#65421f','#382516',1);
         ellipse(77,127,8,4,'#65421f','#382516',1);
 
-        /* 활: 시리의 핵심 실루엣 */
         ctx.shadowColor='rgba(248,192,66,.35)'; ctx.shadowBlur=P(5);
         ctx.strokeStyle='#c98b27'; ctx.lineWidth=P(2.5);
         ctx.beginPath(); ctx.arc(P(105),P(78),P(31),-1.02,1.02); ctx.stroke();
@@ -1830,7 +1747,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         line(105,48,105,108,'#f5e7c8',.9);
         line(83,78,105,48,'#7a4c1d',1.2);
         line(83,78,105,108,'#7a4c1d',1.2);
-        /* 화살/당기는 자세 */
+
         const bowPull = stage === 0 ? 0 : stage * 1.4;
         line(78-bowPull,78,109,78,'#f5e8c8',1.1);
         if(stage>0){
@@ -1840,7 +1757,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         }
       }
 
-      /* 깃털과 금색 파티클: 첨부 디자인의 분위기를 게임용으로 재해석 */
       if (!isBack) {
         ctx.globalAlpha = .78;
         ellipse(26,38,2,5,'#e7e3dc',null,0,-.45);
@@ -1889,28 +1805,18 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       return tex;
     }
 
-    /* ==========================================
-       SUMMON HERO VISUAL REGISTRY
-       Each hero owns an independent texture factory.
-       Gameplay state is separate from visual appearance.
-       ========================================== */
     const summonHeroVisuals = {
       siri: (isBack = false, attackStage = 0) => createSiriHeroTexture(isBack, attackStage),
       janggeum: (isBack = false, attackStage = 0) => createJanggeumHighQualityTexture(isBack, attackStage),
       munyeahana: (isBack = false, attackStage = 0) => createMunyeahanaHeroTexture(isBack, attackStage)
     };
 
-    /* ==========================================
-       STAGE 4 - ICE CASTLE VISUALS
-       Reference: user-provided screenshots.
-       ========================================== */
     function createIceCastleFloorTexture() {
       const cvs = document.createElement('canvas'); cvs.width = 1024; cvs.height = 1024;
       const ctx = cvs.getContext('2d');
       const bg = ctx.createLinearGradient(0,0,1024,1024);
       bg.addColorStop(0, '#eefaff'); bg.addColorStop(0.45, '#ccecff'); bg.addColorStop(1, '#9fd1e8');
       ctx.fillStyle = bg; ctx.fillRect(0,0,1024,1024);
-      // Large frosted stone slabs like the reference dungeon floor.
       ctx.strokeStyle = 'rgba(84,150,180,0.42)'; ctx.lineWidth = 5;
       for (let x=-128; x<1152; x+=128) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+128,1024); ctx.stroke(); }
       for (let y=-128; y<1152; y+=128) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(1024,y+128); ctx.stroke(); }
@@ -1960,7 +1866,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const bob = attackStage ? Math.sin(attackStage*0.9)*5 : 0;
       ctx.translate(0,bob);
       if(type==='snowrabbit') {
-        // Blue-white snow rabbit: long ears, red scarf, brown boots, matching the supplied sprite silhouette.
         ctx.fillStyle='#6f8fa6'; ctx.beginPath(); ctx.ellipse(256,295,122,112,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#d9f4ff'; ctx.beginPath(); ctx.ellipse(250,300,102,94,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#4e728a'; ctx.beginPath(); ctx.ellipse(205,175,45,130,-0.15,0,Math.PI*2); ctx.fill();
@@ -1975,28 +1880,24 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle='#f7ffff'; ctx.beginPath(); ctx.ellipse(210,382,35,30,0,0,Math.PI*2); ctx.ellipse(302,382,35,30,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(220,120,18,80,-0.15,0,Math.PI*2); ctx.ellipse(320,120,18,80,0.15,0,Math.PI*2); ctx.fill();
       } else if(type==='snowlady') {
-        // Snow lady: pale face, blue/white robe, long hair and red floral ornament.
         ctx.fillStyle='#243746'; ctx.beginPath(); ctx.ellipse(256,160,105,100,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#f5fbff'; ctx.beginPath(); ctx.ellipse(256,194,78,94,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#5d8ca3'; ctx.beginPath(); ctx.moveTo(154,270); ctx.quadraticCurveTo(256,235,358,270); ctx.lineTo(405,420); ctx.quadraticCurveTo(256,485,107,420); ctx.closePath(); ctx.fill();
         ctx.fillStyle='#dff7ff'; ctx.beginPath(); ctx.moveTo(182,275); ctx.lineTo(256,340); ctx.lineTo(330,275); ctx.lineTo(355,420); ctx.quadraticCurveTo(256,462,157,420); ctx.closePath(); ctx.fill();
         ctx.fillStyle='#1e4257'; ctx.beginPath(); ctx.arc(228,192,9,0,Math.PI*2); ctx.arc(284,192,9,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#d99aa5'; ctx.beginPath(); ctx.arc(256,224,8,0,Math.PI*2); ctx.fill();
-        // Red flower ornament.
         for(let a=0;a<6;a++){ const ang=a*Math.PI/3; const x=320+Math.cos(ang)*28,y=112+Math.sin(ang)*28; ctx.fillStyle='#b83245'; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill(); }
         ctx.fillStyle='#f0c95a'; ctx.beginPath(); ctx.arc(320,112,9,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#2f5c4d'; ctx.beginPath(); ctx.ellipse(345,104,18,9,-0.4,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#7db6ca'; ctx.fillRect(148,300,52,18); ctx.fillRect(312,300,52,18);
         ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.ellipse(170,408,45,22,0,0,Math.PI*2); ctx.ellipse(342,408,45,22,0,0,Math.PI*2); ctx.fill();
       } else {
-        // Boss: Ice Queen, designed from the same frozen-castle palette and sprite language.
         ctx.fillStyle='#35586a'; ctx.beginPath(); ctx.ellipse(256,190,145,150,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#dff8ff'; ctx.beginPath(); ctx.ellipse(256,210,118,130,0,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#8bc8df'; ctx.beginPath(); ctx.moveTo(112,330); ctx.lineTo(400,330); ctx.lineTo(450,470); ctx.lineTo(62,470); ctx.closePath(); ctx.fill();
         ctx.fillStyle='#eafcff'; ctx.beginPath(); ctx.moveTo(154,330); ctx.lineTo(256,410); ctx.lineTo(358,330); ctx.lineTo(385,470); ctx.lineTo(127,470); ctx.closePath(); ctx.fill();
         ctx.fillStyle='#264554'; ctx.beginPath(); ctx.arc(218,205,11,0,Math.PI*2); ctx.arc(294,205,11,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#7aafc0'; ctx.beginPath(); ctx.arc(256,238,10,0,Math.PI*2); ctx.fill();
-        // Crown.
         ctx.fillStyle='#bcefff'; ctx.beginPath(); ctx.moveTo(150,105); ctx.lineTo(185,40); ctx.lineTo(220,92); ctx.lineTo(256,28); ctx.lineTo(292,92); ctx.lineTo(330,40); ctx.lineTo(362,105); ctx.closePath(); ctx.fill();
         ctx.strokeStyle='#4f9bb6'; ctx.lineWidth=8; ctx.stroke();
         ctx.fillStyle='#4a86a0'; ctx.fillRect(148,100,216,26);
@@ -2019,7 +1920,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       ctx.fillStyle=g; ctx.fillRect(0,0,32,32); return new THREE.CanvasTexture(cvs);
     }
 
-        function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
+    function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
       if (summonHeroVisuals[type]) return summonHeroVisuals[type](isBack, attackStage);
       const cvs = document.createElement('canvas');
       cvs.width = 128; cvs.height = 128;
@@ -2202,7 +2103,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           }
         }
       }
-      /* 1차 검사(player_sword) */
       else if (type === 'player_sword') {
         if (isBack) {
           ctx.fillStyle = '#111827';
@@ -2253,7 +2153,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           drawSpearWeapon(ctx, 64, 68, Math.PI / 12, attackStage, false);
         }
       }
-      /* 2차 최종 전직 검성(player_swordmaster) */
       else if (type === 'player_swordmaster') {
         if (isBack) {
           ctx.strokeStyle = 'rgba(0, 240, 255, 0.55)'; ctx.lineWidth = 6;
@@ -2317,7 +2216,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           drawSpearWeapon(ctx, 64, 66, Math.PI / 8, attackStage, true);
         }
       }
-      /* 1차 주술사(player_mage) */
       else if (type === 'player_mage') {
         if (isBack) {
           ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.ellipse(64, 30, 24, 20, 0, 0, Math.PI * 2); ctx.fill();
@@ -2357,7 +2255,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           drawShamanStaff(ctx, 92, 62, Math.PI / 10, attackStage, false);
         }
       }
-      /* 2차 최종 전직 대도사(player_daedosa) */
       else if (type === 'player_daedosa') {
         if (isBack) {
           ctx.strokeStyle = 'rgba(216, 180, 254, 0.65)'; ctx.lineWidth = 6;
@@ -2415,7 +2312,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
           drawShamanStaff(ctx, 92, 62, Math.PI / 10, attackStage, true);
         }
       }
-      /* 야옹이 */
       else if (type === 'cat') {
         ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.ellipse(64, 68, 34, 30, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#d97706'; ctx.beginPath(); ctx.ellipse(64, 68, 28, 24, 0, 0, Math.PI * 2); ctx.fill();
@@ -2435,7 +2331,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.ellipse(98, 76, 12, 6, Math.PI/4, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#78350f'; ctx.fillRect(96, 72, 4, 8);
       } 
-      /* 돼지 */
       else if (type === 'pig') {
         ctx.fillStyle = '#f472b6'; ctx.beginPath(); ctx.ellipse(64, 68, 34, 30, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.ellipse(64, 74, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
@@ -2454,7 +2349,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(94, 46, 9, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.arc(94, 46, 5, 0, Math.PI * 2); ctx.fill();
       }
-      /* 송이모자 */
       else if (type === 'mushroom') {
         ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.ellipse(64, 80, 24, 28, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#16a34a'; ctx.beginPath(); ctx.ellipse(64, 48, 36, 26, 0, 0, Math.PI * 2); ctx.fill();
@@ -2468,7 +2362,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(54, 76, 3, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(74, 76, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.arc(48, 82, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(80, 82, 4, 0, Math.PI * 2); ctx.fill();
       }
-      /* 토끼 */
       else if (type === 'rabbit') {
         ctx.fillStyle = '#fbcfe8'; ctx.beginPath(); ctx.ellipse(64, 70, 28, 26, 0, 0, Math.PI * 2); ctx.fill();
 
@@ -2487,7 +2380,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(54, 66, 3, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(74, 66, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.ellipse(64, 72, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
       }
-      /* 왕송이모자 보스 */
       else if (type === 'boss_king_mushroom') {
         ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.ellipse(64, 75, 38, 40, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#16a34a'; ctx.beginPath(); ctx.ellipse(64, 40, 52, 34, 0, 0, Math.PI * 2); ctx.fill();
@@ -2505,7 +2397,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(50, 72, 5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(78, 72, 5, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#991b1b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(52, 84); ctx.lineTo(76, 84); ctx.stroke();
       }
-      /* 마늘대왕 */
       else if (type === 'garlic_king') {
         ctx.fillStyle = '#15803d';
         ctx.beginPath(); ctx.moveTo(64, 10); ctx.lineTo(54, 30); ctx.lineTo(74, 30); ctx.closePath(); ctx.fill();
@@ -2539,7 +2430,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.beginPath(); ctx.ellipse(45, 85, 12, 6, Math.PI/4, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(83, 85, 12, 6, -Math.PI/4, 0, Math.PI * 2); ctx.fill();
       }
-      /* 병자호랑 */
       else if (type === 'tiger_patient') {
         ctx.fillStyle = '#d97706'; 
         ctx.beginPath(); ctx.ellipse(64, 45, 30, 28, 0, 0, Math.PI * 2); ctx.fill();
@@ -2582,7 +2472,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillRect(95, 60, 6, 60);
         ctx.fillRect(88, 60, 20, 5);
       }
-      /* 웅양 */
       else if (type === 'ungyang') {
         ctx.fillStyle = '#854d0e';
         ctx.beginPath(); ctx.ellipse(64, 60, 36, 42, 0, 0, Math.PI * 2); ctx.fill();
@@ -2622,7 +2511,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
             ctx.beginPath(); ctx.moveTo(gx, gy-10); ctx.lineTo(gx-4, gy-16); ctx.lineTo(gx+4, gy-16); ctx.closePath(); ctx.fill();
         });
       }
-      /* 마늘장갑차 보스 */
       else if (type === 'boss_tank') {
         ctx.fillStyle = '#1f2937';
         ctx.fillRect(10, 80, 108, 35);
@@ -2670,7 +2558,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#15803d';
         ctx.beginPath(); ctx.moveTo(64, -5); ctx.lineTo(58, 5); ctx.lineTo(70, 5); ctx.closePath(); ctx.fill();
       }
-      /* 주당 */
       else if (type === 'judang') {
         ctx.fillStyle = '#1f2937';
         ctx.beginPath(); ctx.ellipse(64, 32, 24, 20, 0, 0, Math.PI * 2); ctx.fill();
@@ -2693,7 +2580,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(94, 58, 12, -Math.PI / 2, Math.PI / 3); ctx.stroke();
       }
-      /* 팔광병사 */
       else if (type === 'palgwang') {
         ctx.fillStyle = '#dc2626';
         ctx.fillRect(36, 28, 56, 75);
@@ -2715,7 +2601,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.beginPath(); ctx.moveTo(22, 10); ctx.lineTo(22, -10); ctx.lineTo(25, 10); ctx.fill();
         ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(28, -5); ctx.lineTo(31, 10); ctx.fill();
       }
-      /* 상두포 */
       else if (type === 'sangdupo') {
         ctx.fillStyle = '#ddd6fe';
         ctx.beginPath(); ctx.ellipse(64, 65, 42, 34, 0, 0, Math.PI * 2); ctx.fill();
@@ -2739,7 +2624,6 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         ctx.fillStyle = '#dc2626'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText('衆', 64, 63);
       }
-      /* 마대포 보스 */
       else if (type === 'madaepo') {
         ctx.fillStyle = '#b45309';
         ctx.beginPath(); ctx.ellipse(64, 70, 44, 28, 0, 0, Math.PI * 2); ctx.fill();
@@ -3010,7 +2894,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
         monsters.push({
           id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false,
           hp: 120, maxHp: 120, goldReward: 180,
-          attackPower: 12, attackRange: 2.0, attackSpeed: 1500,
+          attackPower: 8, attackRange: 2.0, attackSpeed: 1500,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.1 ${mName}`, true);
@@ -3475,6 +3359,38 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       }
 
       updateUI(); 
+    }
+
+    function spawnSparkles(worldPos, colorType = 'swordmaster') {
+      const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
+      const ctx = cvs.getContext('2d');
+
+      const mainColor = colorType === 'daedosa' ? '#d8b4fe' : '#00f0ff';
+      const coreColor = '#ffffff';
+
+      for (let i = 0; i < 10; i++) {
+        const angle = (Math.PI * 2 * i) / 10;
+        const r = 20 + Math.random() * 30;
+        const px = 64 + Math.cos(angle) * r;
+        const py = 64 + Math.sin(angle) * r;
+        const size = 2 + Math.random() * 4;
+        ctx.fillStyle = Math.random() > 0.4 ? mainColor : coreColor;
+        ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI * 2); ctx.fill();
+      }
+
+      const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 40);
+      grad.addColorStop(0, coreColor); grad.addColorStop(0.4, mainColor); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.fill();
+
+      const tex = new THREE.CanvasTexture(cvs); tex.magFilter = THREE.NearestFilter;
+      const vfxMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 1.0 });
+      const vfxSprite = new THREE.Sprite(vfxMat);
+      vfxSprite.scale.set(3.0, 3.0, 1);
+      vfxSprite.position.copy(worldPos).add(new THREE.Vector3(0, 1.2, 0.1));
+      scene.add(vfxSprite);
+
+      activeHitVfx.push({ sprite: vfxSprite, timer: 0, duration: 0.3 });
     }
 
     function spawnHitVfx(worldPos, vfxType, scaleVal = 2.5) {
@@ -4298,14 +4214,17 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       }
     }
 
+    let isResettingCharacter = false;
+
     function resetCharacterProgress() {
       const ok = confirm('캐릭터의 레벨, 경험치, 골드, 장비, 스킬, 영웅 구매/레벨을 모두 초기화할까요?\n초기화 후에는 이전 저장 상태로 되돌릴 수 없습니다.');
       if (!ok) return;
+      isResettingCharacter = true;
       try { localStorage.removeItem(SAVE_KEY); } catch (e) { console.warn(e); }
       location.reload();
     }
 
-    window.addEventListener('beforeunload', () => saveGame(false));
+    window.addEventListener('beforeunload', () => { if (!isResettingCharacter) saveGame(false); });
     setInterval(() => saveGame(false), 2000);
 
     function updateUI() {
@@ -4844,4 +4763,3 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     if (restoredSave) scheduleSave();
   </script>
 </body>
-</html>
