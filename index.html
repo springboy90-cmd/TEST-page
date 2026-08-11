@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>군주의 길 2.5D</title>
+  <title>거상&군주의 길 2.5D</title>
   <meta name="theme-color" content="#fff8e1">
   <style>
     * { 
@@ -146,9 +146,9 @@
     }
 
     .zoom-controls { position: absolute; right: 10px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 15; }
-    .btn-zoom { width: 36px; height: 38px; background: var(--panel-bg); border: 2px solid var(--panel-border); color: var(--text-main); font-size: 16px; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 0 var(--panel-border); }
+    .btn-zoom { width: 30px; height: 30px; background: rgba(255,255,255,0.92); border: 1px solid var(--panel-border); color: var(--text-main); font-size: 18px; font-weight: 700; border-radius: 7px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.12); line-height: 1; }
 
-    #minimap-box { position: absolute; top: 180px; right: 10px; width: 110px; height: 110px; background: rgba(255, 250, 240, 0.95); border: 2px solid var(--panel-border); border-radius: 10px; display: block; overflow: hidden; z-index: 15; box-shadow: 0 4px 10px var(--panel-shadow); }
+    #minimap-box { position: absolute; top: 145px; right: 10px; width: 110px; height: 110px; background: rgba(255, 250, 240, 0.95); border: 2px solid var(--panel-border); border-radius: 10px; display: block; overflow: hidden; z-index: 15; box-shadow: 0 4px 10px var(--panel-shadow); }
     #minimap-canvas { width: 100%; height: 100%; display: block; }
 
     #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px; z-index: 20; pointer-events: auto; }
@@ -305,8 +305,8 @@
     </div>
 
     <div class="zoom-controls interactive">
-      <div class="btn-zoom" onclick="changeZoom(-0.25)">🔍+</div>
-      <div class="btn-zoom" onclick="changeZoom(0.25)">🔍-</div>
+      <div class="btn-zoom" onclick="changeZoom(0.25)" title="확대">+</div>
+      <div class="btn-zoom" onclick="changeZoom(-0.25)" title="축소">−</div>
     </div>
 
     <div id="quick-potions" class="interactive">
@@ -338,14 +338,19 @@
       <div style="font-weight: bold; margin-bottom: 8px; font-size: 12px; color: #4e342e;">📱 모바일 발열 및 그래픽 품질 관리</div>
       <div style="display: flex; gap: 8px;">
         <button class="shop-tab active" id="btn-quality-high" onclick="setQualityMode('high')">
-          ✨ 고화질 모드<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">60 FPS / 고해상도 / 그림자 ON</span>
+          ✨ 고화질 모드<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">50 FPS / 고해상도 / 그림자 ON</span>
         </button>
         <button class="shop-tab" id="btn-quality-normal" onclick="setQualityMode('normal')">
-          🔋 일반 모드 (발열 방지)<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">30 FPS / 절전 해상도 / 그림자 OFF</span>
+          🔋 일반 모드 (발열 방지)<br><span style="font-size: 9px; font-weight: normal; opacity: 0.85;">35 FPS / 절전 해상도 / 그림자 OFF</span>
         </button>
       </div>
     </div>
-    <div style="text-align: center; margin-top: 12px;">
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn-small" style="flex:1; background:#e8f5e9; border-color:#81c784; color:#2e7d32;" onclick="saveGame(true)">💾 지금 저장</button>
+      <button class="btn-small" style="flex:1; background:#fff3e0; border-color:#ffb74d; color:#e65100;" onclick="resetCharacterProgress()">↻ 캐릭터 초기화</button>
+    </div>
+    <div id="save-status" style="text-align:center; font-size:9px; color:#78909c; margin-top:7px;">게임 상태는 자동 저장됩니다.</div>
+    <div style="text-align: center; margin-top: 8px;">
       <button class="btn-small" onclick="closeSettingsModal()">설정 완료</button>
     </div>
   </div>
@@ -484,7 +489,7 @@
 
     /* 그래픽/발열 설정 변수 */
     let qualityMode = 'high';
-    let targetFps = 60;
+    let targetFps = 50;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -562,13 +567,14 @@
       document.getElementById('btn-quality-high').classList.toggle('active', isHigh);
       document.getElementById('btn-quality-normal').classList.toggle('active', !isHigh);
 
-      targetFps = isHigh ? 60 : 30;
+      targetFps = isHigh ? 50 : 35;
       renderer.setPixelRatio(isHigh ? Math.min(window.devicePixelRatio, 1.75) : 1.0);
       renderer.shadowMap.enabled = isHigh;
 
       shadowMeshes.forEach(mesh => {
         mesh.visible = isHigh;
       });
+      scheduleSave();
     }
 
     /* ==========================================
@@ -2620,6 +2626,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const btn = document.getElementById('btn-hero-auto');
       btn.innerText = heroAutoHunt ? "영웅 자율사냥: ON" : "영웅 자율사냥: OFF";
       btn.style.background = heroAutoHunt ? "#ffe082" : "#fff9c4";
+      scheduleSave();
     }
 
     let lastRenderFrameTime = 0;
@@ -2972,6 +2979,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       else if (stageNum === 4) buildStage4IceCastle();
 
       closeStageModal();
+      scheduleSave();
     }
 
     function getHeroOwned(type) {
@@ -3936,6 +3944,128 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       document.getElementById('nametag-layer').appendChild(el); setTimeout(() => el.remove(), 1200);
     }
 
+    /* ==========================================
+       SAVE / LOAD SYSTEM - LocalStorage
+       ========================================== */
+    const SAVE_KEY = 'gunju_ui_2_5d_save_v1';
+    let saveTimer = null;
+    let isLoadingSave = false;
+
+    function collectGameSaveData() {
+      return {
+        version: 1,
+        savedAt: Date.now(),
+        player: {
+          name: playerState.name, title: playerState.title, level: playerState.level,
+          maxLevel: playerState.maxLevel, job: playerState.job, tier: playerState.tier,
+          hp: playerState.hp, maxHp: playerState.maxHp, mp: playerState.mp, maxMp: playerState.maxMp,
+          exp: playerState.exp, maxExp: playerState.maxExp, gold: playerState.gold,
+          talismanLoot: playerState.talismanLoot, talismanLevel: playerState.talismanLevel,
+          baseAttackSpeed: playerState.baseAttackSpeed, attackSpeed: playerState.attackSpeed,
+          weaponAtk: playerState.weaponAtk, defensePower: playerState.defensePower,
+          moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
+          hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
+          hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
+          atkSpeedLv: playerState.atkSpeedLv, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned] : [],
+          skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
+        },
+        heroes: {
+          siri: { level:siriState.level, exp:siriState.exp, maxExp:siriState.maxExp, active:!!siriSprite },
+          janggeum: { level:janggeumState.level, exp:janggeumState.exp, maxExp:janggeumState.maxExp, active:!!janggeumSprite },
+          munyeahana: { level:munyeahanaState.level, exp:munyeahanaState.exp, maxExp:munyeahanaState.maxExp, active:!!munyeahanaSprite }
+        },
+        stage: currentStage,
+        zoom: zoomLevel,
+        qualityMode: qualityMode,
+        playerPosition: { x: playerSprite.position.x, y: playerSprite.position.y, z: playerSprite.position.z }
+      };
+    }
+
+    function saveGame(showStatus = false) {
+      if (isLoadingSave) return;
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(collectGameSaveData()));
+        if (showStatus) {
+          const el = document.getElementById('save-status');
+          if (el) { el.textContent = '✓ 현재 상태가 저장되었습니다.'; setTimeout(() => { if (el) el.textContent = '게임 상태는 자동 저장됩니다.'; }, 1800); }
+        }
+      } catch (e) {
+        console.warn('게임 저장 실패:', e);
+      }
+    }
+
+    function scheduleSave() {
+      if (isLoadingSave) return;
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveGame(false), 350);
+    }
+
+    function applyHeroSavedState(state, hero) {
+      if (!state || !hero) return;
+      hero.level = Math.max(1, Math.min(70, Number(state.level) || 1));
+      hero.exp = Math.max(0, Number(state.exp) || 0);
+      hero.maxExp = Number(state.maxExp) || getRequiredExp(hero.level);
+    }
+
+    function loadGame() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (!data || data.version !== 1 || !data.player) return false;
+
+        isLoadingSave = true;
+        const p = data.player;
+        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','moveSpeed','attackRange','atkSpeedLv'];
+        numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
+        ['name','title','job'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
+        ['hasSiri','hasJanggeum','hasMunyeahana','hasAutoHeal'].forEach(k => { if (typeof p[k] === 'boolean') playerState[k] = p[k]; });
+        if (Array.isArray(p.skillsLearned)) playerState.skillsLearned = [...p.skillsLearned];
+        playerState.skillCooldowns = { s2_1:0, s2_2:0, s2_3:0 };
+        playerState.hp = Math.max(0, Math.min(playerState.hp, playerState.maxHp));
+        playerState.mp = Math.max(0, Math.min(playerState.mp, playerState.maxMp));
+
+        applyHeroSavedState(data.heroes && data.heroes.siri, siriState);
+        applyHeroSavedState(data.heroes && data.heroes.janggeum, janggeumState);
+        applyHeroSavedState(data.heroes && data.heroes.munyeahana, munyeahanaState);
+
+        const stage = Math.max(1, Math.min(4, Number(data.stage) || 1));
+        const savedZoom = Number(data.zoom);
+        if (Number.isFinite(savedZoom)) zoomLevel = Math.max(0.5, Math.min(2.0, savedZoom));
+        if (data.qualityMode === 'high' || data.qualityMode === 'normal') setQualityMode(data.qualityMode);
+
+        if (data.playerPosition) {
+          const x = Number(data.playerPosition.x), y = Number(data.playerPosition.y), z = Number(data.playerPosition.z);
+          if ([x,y,z].every(Number.isFinite)) playerSprite.position.set(x,y,z);
+        }
+
+        // Stage must be rebuilt after loading the saved stage.
+        selectStage(stage);
+
+        // Restore owned heroes and their individual visible/hidden state.
+        if (playerState.hasSiri && data.heroes && data.heroes.siri && data.heroes.siri.active) spawnSiriHero();
+        if (playerState.hasJanggeum && data.heroes && data.heroes.janggeum && data.heroes.janggeum.active) spawnJanggeumHero();
+        if (playerState.hasMunyeahana && data.heroes && data.heroes.munyeahana && data.heroes.munyeahana.active) spawnMunyeahanaHero();
+
+        isLoadingSave = false;
+        return true;
+      } catch (e) {
+        isLoadingSave = false;
+        console.warn('저장 데이터 불러오기 실패:', e);
+        return false;
+      }
+    }
+
+    function resetCharacterProgress() {
+      const ok = confirm('캐릭터의 레벨, 경험치, 골드, 장비, 스킬, 영웅 구매/레벨을 모두 초기화할까요?\n초기화 후에는 이전 저장 상태로 되돌릴 수 없습니다.');
+      if (!ok) return;
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) { console.warn(e); }
+      location.reload();
+    }
+
+    window.addEventListener('beforeunload', () => saveGame(false));
+    setInterval(() => saveGame(false), 2000);
+
     function updateUI() {
       document.getElementById('player-name').innerText = playerState.name;
       document.getElementById('player-lv').innerText = playerState.level >= 70 ? 'Lv.70 (MAX)' : `Lv.${playerState.level}`;
@@ -4019,7 +4149,8 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       if (joystickTouchId === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joystickTouchId) { updateJoystick(e.changedTouches[i]); break; }
-      }
+        scheduleSave();
+    }
     }, { passive: false });
 
     window.addEventListener('touchend', () => { joystickTouchId = null; joystickVector = { x: 0, y: 0 }; joystickKnob.style.transform = `translate(0, 0)`; });
@@ -4140,7 +4271,9 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
 
       triggerAttackAnim();
 
-      if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
+      // 일반 공격 버튼을 누를 때마다 현재 플레이어와 가장 가까운 몬스터를 새로 타겟팅한다.
+      // 기존에 멀리 잡혀 있던 타겟은 공격 버튼을 누르는 순간 교체된다.
+      targetNearestMonster();
       if (selectedTarget && playerSprite.position.distanceTo(selectedTarget.sprite.position) <= playerState.attackRange) {
         if (playerState.job.includes('주술사') || playerState.job.includes('도사') || playerState.job === '대도사') {
           spawnMageOrbProjectile(playerSprite.position, selectedTarget, getPlayerActualDmg(1.0));
@@ -4196,7 +4329,8 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
             showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
           }
         } else {
-          if (Math.random() < 0.4) {
+          // 일반 몬스터 전리품 획득 확률: 기존 40% → 36% (상대 기준 10% 하향)
+          if (Math.random() < 0.36) {
             const normalLootCount = Math.floor(Math.random() * 3) + 1;
             playerState.talismanLoot += normalLootCount;
             showHealText(`+${normalLootCount} 전리품 획득!`, target.sprite.position);
@@ -4264,7 +4398,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       updateUI();
     }
 
-    function changeZoom(amount) { zoomLevel = Math.max(0.5, Math.min(2.0, zoomLevel + amount)); }
+    function changeZoom(amount) { zoomLevel = Math.max(0.5, Math.min(2.0, zoomLevel + amount)); scheduleSave(); }
     function addExpDev() { addReward(5000, 5000); }
 
     /* ==========================================
@@ -4461,9 +4595,11 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       renderer.render(scene, camera);
     }
 
+    const restoredSave = loadGame();
     updateUI();
     onWindowResize();
     animate();
+    if (restoredSave) scheduleSave();
   </script>
 </body>
 </html>
