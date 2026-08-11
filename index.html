@@ -332,6 +332,13 @@
         </div>
         <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
       </div>
+      <div class="stage-card" id="stage-card-4" onclick="selectStage(4)">
+        <div>
+          <div style="font-weight: bold; color: #1565c0; font-size: 13px;">❄️ 4스테이지: 얼음성 (공격력 550~650)</div>
+          <div style="font-size: 10px; color: #455a64;">눈토끼, 설녀 및 빙설여왕(보스)</div>
+        </div>
+        <div style="font-size: 12px; font-weight: bold;">이동 ➔</div>
+      </div>
     </div>
     <div style="text-align: center; margin-top: 10px;">
       <button class="btn-small" onclick="closeStageModal()">창 닫기</button>
@@ -1325,7 +1332,126 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       munyeahana: (isBack = false, attackStage = 0) => createMunyeahanaHeroTexture(isBack, attackStage)
     };
 
-    function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
+    /* ==========================================
+       STAGE 4 - ICE CASTLE VISUALS
+       Reference: user-provided screenshots.
+       ========================================== */
+    function createIceCastleFloorTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 1024; cvs.height = 1024;
+      const ctx = cvs.getContext('2d');
+      const bg = ctx.createLinearGradient(0,0,1024,1024);
+      bg.addColorStop(0, '#eefaff'); bg.addColorStop(0.45, '#ccecff'); bg.addColorStop(1, '#9fd1e8');
+      ctx.fillStyle = bg; ctx.fillRect(0,0,1024,1024);
+      // Large frosted stone slabs like the reference dungeon floor.
+      ctx.strokeStyle = 'rgba(84,150,180,0.42)'; ctx.lineWidth = 5;
+      for (let x=-128; x<1152; x+=128) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+128,1024); ctx.stroke(); }
+      for (let y=-128; y<1152; y+=128) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(1024,y+128); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.62)'; ctx.lineWidth = 3;
+      for (let i=0;i<80;i++) {
+        const x=Math.random()*1024, y=Math.random()*1024, r=20+Math.random()*70;
+        ctx.beginPath(); ctx.arc(x,y,r,Math.random()*Math.PI,Math.random()*Math.PI+1.8); ctx.stroke();
+      }
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3,3);
+      tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+      return tex;
+    }
+
+    function createIceCastleWallTexture() {
+      const cvs = document.createElement('canvas'); cvs.width = 512; cvs.height = 512;
+      const ctx = cvs.getContext('2d');
+      const g = ctx.createLinearGradient(0,0,512,512); g.addColorStop(0,'#eaf9ff'); g.addColorStop(0.5,'#b9dce9'); g.addColorStop(1,'#79aebf');
+      ctx.fillStyle=g; ctx.fillRect(0,0,512,512);
+      ctx.strokeStyle='rgba(64,115,132,0.55)'; ctx.lineWidth=3;
+      for(let y=0;y<512;y+=64){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(512,y); ctx.stroke(); }
+      for(let row=0;row<8;row++){
+        const off=(row%2)*32;
+        for(let x=-64;x<576;x+=64){ ctx.beginPath(); ctx.moveTo(x+off,row*64); ctx.lineTo(x+off,row*64+64); ctx.stroke(); }
+      }
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      for(let i=0;i<45;i++){ const x=Math.random()*512,y=Math.random()*512; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+20+Math.random()*40,y+8); ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.stroke(); }
+      const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace; tex.magFilter=THREE.LinearFilter; tex.minFilter=THREE.LinearMipmapLinearFilter; return tex;
+    }
+
+    function createIcePillarTexture() {
+      const cvs=document.createElement('canvas'); cvs.width=256; cvs.height=512;
+      const ctx=cvs.getContext('2d');
+      const g=ctx.createLinearGradient(0,0,256,0); g.addColorStop(0,'#5d8fa2'); g.addColorStop(0.25,'#dff7ff'); g.addColorStop(0.55,'#a9d9e8'); g.addColorStop(0.8,'#effcff'); g.addColorStop(1,'#527f90');
+      ctx.fillStyle=g; ctx.fillRect(48,70,160,390);
+      ctx.fillStyle='#eafaff'; ctx.beginPath(); ctx.moveTo(40,70); ctx.lineTo(216,70); ctx.lineTo(194,34); ctx.lineTo(62,34); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(75,124,142,0.55)';
+      for(let y=110;y<450;y+=64){ ctx.fillRect(48,y,160,8); }
+      ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.fillRect(74,80,20,360);
+      const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace; tex.magFilter=THREE.LinearFilter; tex.minFilter=THREE.LinearMipmapLinearFilter; return tex;
+    }
+
+    function createIceMonsterTexture(type, isBack=false, attackStage=0) {
+      const cvs=document.createElement('canvas'); cvs.width=512; cvs.height=512;
+      const ctx=cvs.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.clearRect(0,0,512,512);
+      ctx.save();
+      const bob = attackStage ? Math.sin(attackStage*0.9)*5 : 0;
+      ctx.translate(0,bob);
+      if(type==='snowrabbit') {
+        // Blue-white snow rabbit: long ears, red scarf, brown boots, matching the supplied sprite silhouette.
+        ctx.fillStyle='#6f8fa6'; ctx.beginPath(); ctx.ellipse(256,295,122,112,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#d9f4ff'; ctx.beginPath(); ctx.ellipse(250,300,102,94,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#4e728a'; ctx.beginPath(); ctx.ellipse(205,175,45,130,-0.15,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(305,175,45,130,0.15,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#d9f4ff'; ctx.beginPath(); ctx.ellipse(208,177,24,94,-0.15,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(304,177,24,94,0.15,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#a9d4e6'; ctx.beginPath(); ctx.ellipse(255,238,76,72,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#263c4a'; ctx.beginPath(); ctx.arc(230,232,9,0,Math.PI*2); ctx.arc(280,232,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ffedf0'; ctx.beginPath(); ctx.arc(255,258,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#d94155'; ctx.beginPath(); ctx.moveTo(156,285); ctx.quadraticCurveTo(255,330,355,285); ctx.lineTo(344,335); ctx.quadraticCurveTo(255,370,166,335); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#a81f36'; ctx.fillRect(174,320,164,15);
+        ctx.fillStyle='#7c5a36'; ctx.beginPath(); ctx.ellipse(205,408,48,24,0,0,Math.PI*2); ctx.ellipse(307,408,48,24,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#f7ffff'; ctx.beginPath(); ctx.ellipse(210,382,35,30,0,0,Math.PI*2); ctx.ellipse(302,382,35,30,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(220,120,18,80,-0.15,0,Math.PI*2); ctx.ellipse(320,120,18,80,0.15,0,Math.PI*2); ctx.fill();
+      } else if(type==='snowlady') {
+        // Snow lady: pale face, blue/white robe, long hair and red floral ornament.
+        ctx.fillStyle='#243746'; ctx.beginPath(); ctx.ellipse(256,160,105,100,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#f5fbff'; ctx.beginPath(); ctx.ellipse(256,194,78,94,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#5d8ca3'; ctx.beginPath(); ctx.moveTo(154,270); ctx.quadraticCurveTo(256,235,358,270); ctx.lineTo(405,420); ctx.quadraticCurveTo(256,485,107,420); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#dff7ff'; ctx.beginPath(); ctx.moveTo(182,275); ctx.lineTo(256,340); ctx.lineTo(330,275); ctx.lineTo(355,420); ctx.quadraticCurveTo(256,462,157,420); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#1e4257'; ctx.beginPath(); ctx.arc(228,192,9,0,Math.PI*2); ctx.arc(284,192,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#d99aa5'; ctx.beginPath(); ctx.arc(256,224,8,0,Math.PI*2); ctx.fill();
+        // Red flower ornament.
+        for(let a=0;a<6;a++){ const ang=a*Math.PI/3; const x=320+Math.cos(ang)*28,y=112+Math.sin(ang)*28; ctx.fillStyle='#b83245'; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill(); }
+        ctx.fillStyle='#f0c95a'; ctx.beginPath(); ctx.arc(320,112,9,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#2f5c4d'; ctx.beginPath(); ctx.ellipse(345,104,18,9,-0.4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#7db6ca'; ctx.fillRect(148,300,52,18); ctx.fillRect(312,300,52,18);
+        ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.ellipse(170,408,45,22,0,0,Math.PI*2); ctx.ellipse(342,408,45,22,0,0,Math.PI*2); ctx.fill();
+      } else {
+        // Boss: Ice Queen, designed from the same frozen-castle palette and sprite language.
+        ctx.fillStyle='#35586a'; ctx.beginPath(); ctx.ellipse(256,190,145,150,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#dff8ff'; ctx.beginPath(); ctx.ellipse(256,210,118,130,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#8bc8df'; ctx.beginPath(); ctx.moveTo(112,330); ctx.lineTo(400,330); ctx.lineTo(450,470); ctx.lineTo(62,470); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#eafcff'; ctx.beginPath(); ctx.moveTo(154,330); ctx.lineTo(256,410); ctx.lineTo(358,330); ctx.lineTo(385,470); ctx.lineTo(127,470); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#264554'; ctx.beginPath(); ctx.arc(218,205,11,0,Math.PI*2); ctx.arc(294,205,11,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#7aafc0'; ctx.beginPath(); ctx.arc(256,238,10,0,Math.PI*2); ctx.fill();
+        // Crown.
+        ctx.fillStyle='#bcefff'; ctx.beginPath(); ctx.moveTo(150,105); ctx.lineTo(185,40); ctx.lineTo(220,92); ctx.lineTo(256,28); ctx.lineTo(292,92); ctx.lineTo(330,40); ctx.lineTo(362,105); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle='#4f9bb6'; ctx.lineWidth=8; ctx.stroke();
+        ctx.fillStyle='#4a86a0'; ctx.fillRect(148,100,216,26);
+        ctx.fillStyle='#d73d59'; for(let a=0;a<5;a++){ctx.beginPath();ctx.arc(182+a*38,94,10,0,Math.PI*2);ctx.fill();}
+        ctx.fillStyle='#6e99aa'; ctx.beginPath(); ctx.ellipse(90,390,62,30,-0.25,0,Math.PI*2); ctx.ellipse(422,390,62,30,0.25,0,Math.PI*2); ctx.fill();
+      }
+      if(isBack){
+        ctx.globalAlpha=0.92; ctx.fillStyle='rgba(40,90,110,0.55)'; ctx.fillRect(110,120,292,300);
+        ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(256,190,90,115,0,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+      const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace; tex.magFilter=THREE.LinearFilter; tex.minFilter=THREE.LinearMipmapLinearFilter; tex.generateMipmaps=true;
+      tex.anisotropy=(typeof renderer!=='undefined'&&renderer.capabilities)?Math.min(renderer.capabilities.getMaxAnisotropy(),8):1;
+      return tex;
+    }
+
+    function createIceSnowTexture() {
+      const cvs=document.createElement('canvas'); cvs.width=32; cvs.height=32; const ctx=cvs.getContext('2d');
+      const g=ctx.createRadialGradient(16,16,0,16,16,16); g.addColorStop(0,'rgba(255,255,255,0.95)'); g.addColorStop(0.55,'rgba(220,248,255,0.55)'); g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,32,32); return new THREE.CanvasTexture(cvs);
+    }
+
+        function createPixelSpriteTexture(type, isBack = false, attackStage = 0) {
       if (summonHeroVisuals[type]) return summonHeroVisuals[type](isBack, attackStage);
       const cvs = document.createElement('canvas');
       cvs.width = 128; cvs.height = 128;
@@ -2187,6 +2313,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     const floorSize = 84;
     let floorMesh = null;
     let stage1SnowPoints = null;
+    let stage4SnowPoints = null;
     const stageObjects = [];
     const monsters = [];
     const nametags = new Map();
@@ -2233,11 +2360,13 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       stageObjects.length = 0;
       if (floorMesh) scene.remove(floorMesh);
       stage1SnowPoints = null;
+      stage4SnowPoints = null;
     }
 
     function buildStage1Field() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#5c6e52';
+      scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
       document.getElementById('stage-badge').innerText = "초보자 사냥터 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
@@ -2336,6 +2465,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     function buildStage2Cave() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#c5a065';
+      scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
       document.getElementById('stage-badge').innerText = "🏔️ 웅녀동굴 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
@@ -2392,6 +2522,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
     function buildStage3Baduk() {
       clearStageObjects(); clearMonsters();
       document.body.style.backgroundColor = '#2e7d32';
+      scene.background = new THREE.Color(0x2b241c); scene.fog = new THREE.Fog(0x2b241c, 34, 95);
       document.getElementById('stage-badge').innerText = "🎋 바둑골 산길 ▾";
 
       const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
@@ -2442,9 +2573,65 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       createNametagElement(`monster_18`, '대장군', '마대포', false, false, true);
     }
 
-    function openStageModal() {
+    function buildStage4IceCastle() {
+      clearStageObjects(); clearMonsters();
+      document.body.style.backgroundColor = '#b8ddea';
+      document.getElementById('stage-badge').innerText = "❄️ 얼음성 ▾";
+      scene.background = new THREE.Color(0x8fb8c9);
+      scene.fog = new THREE.Fog(0x9fc8d8, 30, 92);
+
+      const floorG = new THREE.PlaneGeometry(floorSize, floorSize);
+      const floorM = new THREE.MeshLambertMaterial({ map: createIceCastleFloorTexture() });
+      floorMesh = new THREE.Mesh(floorG, floorM); floorMesh.rotation.x = -Math.PI / 2; floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // Castle walls and repeating blockwork.
+      const wallTex = createIceCastleWallTexture();
+      const wallMat = new THREE.MeshLambertMaterial({ map: wallTex });
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(72, 12, 1.6), wallMat);
+      backWall.position.set(0, 6, -34); backWall.castShadow = true; backWall.receiveShadow = true; scene.add(backWall); stageObjects.push(backWall);
+      const sideWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 12, 72), wallMat);
+      sideWall.position.set(-34, 6, 0); sideWall.castShadow = true; sideWall.receiveShadow = true; scene.add(sideWall); stageObjects.push(sideWall);
+
+      const pillarTex = createIcePillarTexture();
+      [[-28,-28],[28,-28],[-28,26],[28,26]].forEach(([x,z])=>{
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(1.55,1.9,11,10), new THREE.MeshLambertMaterial({map:pillarTex, transparent:true}));
+        p.position.set(x,5.5,z); p.castShadow=true; p.receiveShadow=true; scene.add(p); stageObjects.push(p);
+      });
+
+      // Snow / ice particles.
+      const snowCount = qualityMode === 'high' ? 150 : 70;
+      const geo = new THREE.BufferGeometry(); const pos = new Float32Array(snowCount*3);
+      for(let i=0;i<snowCount;i++){ pos[i*3]=(Math.random()-0.5)*68; pos[i*3+1]=Math.random()*16+1; pos[i*3+2]=(Math.random()-0.5)*68; }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+      const snow = new THREE.Points(geo,new THREE.PointsMaterial({map:createIceSnowTexture(),size:0.55,transparent:true,opacity:0.78,depthWrite:false}));
+      scene.add(snow); stageObjects.push(snow); stage4SnowPoints=snow;
+
+      // Two normal monsters from the supplied screenshots.
+      const iceTypes=['snowrabbit','snowlady'];
+      const names={'snowrabbit':'눈토끼','snowlady':'설녀'};
+      for(let i=0;i<18;i++){
+        const type=iceTypes[i%iceTypes.length];
+        const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture(type,false,0),transparent:true}));
+        sprite.scale.set(3.4,3.4,1);
+        sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
+        scene.add(sprite);
+        const mShadow=createShadowDisk(2.7,1.4);
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,hp:3600,maxHp:3600,goldReward:1200,attackPower:72,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
+      }
+
+      // Final boss: purpose-built Ice Queen for the castle finale.
+      const bossSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture('icequeen',false,0),transparent:true}));
+      bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(0,4.1,-10); scene.add(bossSprite);
+      const bossShadow=createShadowDisk(7.0,3.6);
+      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,hp:24000,maxHp:24000,goldReward:18000,attackPower:115,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+      createNametagElement('monster_18','얼음성의 여왕','빙설여왕',false,false,true);
+    }
+
+        function openStageModal() {
       document.getElementById('stage-modal').style.display = 'block';
-      ['1', '2', '3'].forEach(sId => {
+      ['1', '2', '3', '4'].forEach(sId => {
         const card = document.getElementById(`stage-card-${sId}`);
         if (card) {
           card.classList.toggle('active', parseInt(sId) === currentStage);
@@ -2461,6 +2648,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       if (stageNum === 1) buildStage1Field();
       else if (stageNum === 2) buildStage2Cave();
       else if (stageNum === 3) buildStage3Baduk();
+      else if (stageNum === 4) buildStage4IceCastle();
 
       closeStageModal();
     }
@@ -2783,7 +2971,7 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       const mapRadius = floorSize / 2;
 
       mCtx.clearRect(0, 0, w, h);
-      mCtx.fillStyle = currentStage === 1 ? '#dca86b' : (currentStage === 2 ? '#c5a065' : '#2e7d32');
+      mCtx.fillStyle = currentStage === 1 ? '#dca86b' : (currentStage === 2 ? '#c5a065' : (currentStage === 3 ? '#2e7d32' : '#8fc9e3'));
       mCtx.fillRect(0, 0, w, h);
 
       const worldToMap = (wx, wz) => ({
@@ -3512,15 +3700,33 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       document.getElementById('btn-auto').innerHTML = isAutoHunt ? "AUTO<br>ON" : "AUTO<br>OFF";
     }
 
+    // 🎯 타겟팅: 플레이어 주변의 가까운 몬스터만 선택한다.
+    // 기존에는 전체 맵의 모든 몬스터를 대상으로 검색하여,
+    // 주변에 몬스터가 없으면 멀리 떨어진 몬스터가 선택되는 문제가 있었다.
+    const TARGET_ACQUIRE_RANGE = 12.0;
+
     function targetNearestMonster() {
-      let nearest = null, minDist = Infinity;
+      let nearest = null;
+      let minDist = TARGET_ACQUIRE_RANGE;
+
       monsters.forEach(m => {
-        if (m.alive) {
-          const d = playerSprite.position.distanceTo(m.sprite.position);
-          if (d < minDist) { minDist = d; nearest = m; }
+        if (!m.alive || !m.sprite) return;
+
+        const d = playerSprite.position.distanceTo(m.sprite.position);
+
+        // 12m 이내에서 가장 가까운 몬스터만 타겟으로 선택
+        if (d <= TARGET_ACQUIRE_RANGE && d < minDist) {
+          minDist = d;
+          nearest = m;
         }
       });
+
       selectedTarget = nearest;
+
+      // 가까운 몬스터가 없으면 기존 원거리 타겟을 유지하지 않고 해제
+      if (!selectedTarget && targetArrowSprite) {
+        targetArrowSprite.visible = false;
+      }
     }
 
     function triggerAttackBtn() {
@@ -3677,6 +3883,17 @@ function createMunyeahanaHeroTexture(isBack = false, attackStage = 0) {
       processMonsterAI(delta, now);
       processHeroAI(delta, now);
       processProjectilesAndVfx(delta);
+
+      if (stage4SnowPoints) {
+        const posAttr4 = stage4SnowPoints.geometry.attributes.position;
+        for (let i = 0; i < posAttr4.count; i++) {
+          let y4 = posAttr4.getY(i) - delta * 1.2;
+          let x4 = posAttr4.getX(i) + Math.sin(now * 0.0007 + i) * delta * 0.35;
+          if (y4 < 0) { y4 = 17; posAttr4.setX(i, (Math.random()-0.5)*68); posAttr4.setZ(i, (Math.random()-0.5)*68); }
+          posAttr4.setY(i, y4); posAttr4.setX(i, x4);
+        }
+        posAttr4.needsUpdate = true;
+      }
 
       if (stage1SnowPoints) {
         const posAttr = stage1SnowPoints.geometry.attributes.position;
