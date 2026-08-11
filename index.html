@@ -48,6 +48,24 @@
     #power-save-clock { font-size: 15vw; font-weight: 300; letter-spacing: 2px; color: #90a4ae; font-variant-numeric: tabular-nums; }
     #power-save-date { font-size: 4vw; color: #546e7a; margin-top: 4px; }
     #power-save-label { font-size: 3vw; color: #37474f; margin-top: 24px; letter-spacing: 4px; }
+    #power-save-death-log {
+      display: none;
+      margin-top: 20px;
+      background: rgba(198, 40, 40, 0.15);
+      border: 1px solid #c62828;
+      color: #ef9a9a;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 3.2vw;
+      text-align: center;
+      animation: powerSaveDeathFade 4s ease-out forwards;
+    }
+    @keyframes powerSaveDeathFade {
+      0% { opacity: 0; transform: translateY(-6px); }
+      10% { opacity: 1; transform: translateY(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
     #power-save-exit-btn {
       position: absolute; bottom: 24px; right: 24px;
       background: rgba(255,255,255,0.08); color: #90a4ae; border: 1px solid #37474f;
@@ -500,6 +518,7 @@
     <div id="power-save-clock">00:00</div>
     <div id="power-save-date"></div>
     <div id="power-save-label">절전 모드 · 사냥 진행 중</div>
+    <div id="power-save-death-log"></div>
     <button id="power-save-exit-btn" onclick="setPowerSaveMode(false)">게임 화면 보기</button>
   </div>
 
@@ -867,6 +886,21 @@
       }
     }
 
+    // 절전 모드 중 캐릭터가 쓰러졌을 때, alert()로 화면을 막지 않고
+    // 절전 화면 위에 잠깐 뜨는 알림 배너로 대신 안내한다.
+    function showPowerSaveDeathAlert() {
+      const el = document.getElementById('power-save-death-log');
+      if (!el) return;
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      el.innerText = `💀 ${hh}:${mm} — 몬스터의 공격에 쓰러져 부활했습니다`;
+      el.style.display = 'block';
+      el.style.animation = 'none';
+      void el.offsetWidth; // 애니메이션 재시작을 위한 강제 리플로우
+      el.style.animation = 'powerSaveDeathFade 4s ease-out forwards';
+    }
+
     function setPowerSaveMode(on) {
       isPowerSaveMode = on;
       const screen = document.getElementById('power-save-screen');
@@ -875,6 +909,11 @@
       document.getElementById('btn-powersave-off').classList.toggle('active', !on);
 
       if (on) {
+        if (!isAutoHunt) {
+          isAutoHunt = true;
+          const autoBtn = document.getElementById('btn-auto');
+          if (autoBtn) autoBtn.innerHTML = "AUTO<br>ON";
+        }
         updatePowerSaveClock();
         screen.classList.add('active');
         if (!powerSaveClockTimer) powerSaveClockTimer = setInterval(updatePowerSaveClock, 1000);
@@ -4079,14 +4118,93 @@
     function monsterAttackPlayer(m) {
       const netDmg = Math.max(1, m.attackPower - Math.floor(getPlayerEffectiveDef() * 0.3));
       playerState.hp -= netDmg;
-      showPlayerDamageText(netDmg, playerSprite.position);
+      if (!isPowerSaveMode) showPlayerDamageText(netDmg, playerSprite.position);
 
       if (playerState.hp <= 0) {
         playerState.hp = playerState.maxHp;
         playerSprite.position.set(0, 1.5, 4);
-        alert("몬스터의 공격에 쓰러졌습니다! 부활합니다.");
+        if (isPowerSaveMode) {
+          showPowerSaveDeathAlert();
+        } else {
+          alert("몬스터의 공격에 쓰러졌습니다! 부활합니다.");
+        }
       }
       updateUI();
+    }
+
+    // 유저 캐릭터 이동 및 자동사냥(오토헌트) 처리.
+    // 오토헌트 ON 상태에서는 필드(맵) 전체 범위에서 몬스터를 찾아 이동/공격한다 (targetNearestMonster가 몬스터 전체를 탐색).
+    // 절전 모드 중에도 이 함수를 호출해 캐릭터가 계속 사냥하도록 한다.
+    function processPlayerMovement(delta, now) {
+      let moveX = joystickVector.x, moveZ = joystickVector.y;
+      if (keys['w'] || keys['arrowup']) moveZ = -1;
+      if (keys['s'] || keys['arrowdown']) moveZ = 1;
+      if (keys['a'] || keys['arrowleft']) moveX = -1;
+      if (keys['d'] || keys['arrowright']) moveX = 1;
+
+      let isMoving = Math.hypot(moveX, moveZ) > 0.1;
+
+      const boundLimit = floorSize / 2 - 2;
+
+      if (isMoving) {
+        playerSprite.position.x += moveX * playerState.moveSpeed * delta;
+        playerSprite.position.z += moveZ * playerState.moveSpeed * delta;
+        playerState.idleTimer = 0;
+
+        playerSprite.position.y = 1.6 + Math.abs(Math.sin(now * 0.016)) * 0.14;
+        playerSprite.material.rotation = Math.sin(now * 0.014) * 0.07;
+
+        if (Math.abs(moveZ) > Math.abs(moveX)) {
+          let newFacing = moveZ < 0 ? 'back' : 'front';
+          if (newFacing !== playerFacing) {
+            playerFacing = newFacing;
+            updatePlayerFacingTexture();
+          }
+        }
+      } else if (isAutoHunt) {
+        if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
+        if (selectedTarget) {
+          const dir = selectedTarget.sprite.position.clone().sub(playerSprite.position);
+          if (dir.length() > playerState.attackRange) {
+            dir.normalize();
+            playerSprite.position.x += dir.x * playerState.moveSpeed * delta;
+            playerSprite.position.z += dir.z * playerState.moveSpeed * delta;
+            
+            playerSprite.position.y = 1.6 + Math.abs(Math.sin(now * 0.016)) * 0.14;
+            playerSprite.material.rotation = Math.sin(now * 0.014) * 0.07;
+
+            let newFacing = dir.z < 0 ? 'back' : 'front';
+            if (newFacing !== playerFacing) {
+              playerFacing = newFacing;
+              updatePlayerFacingTexture();
+            }
+            playerState.idleTimer = 0;
+          } else {
+            triggerAttackBtn();
+            playerState.idleTimer = 0;
+          }
+        }
+      } else {
+        playerSprite.position.y = 1.6;
+        playerSprite.material.rotation = 0;
+        playerSprite.scale.y = 3.2 + Math.sin(now * 0.004) * 0.06;
+
+        if (playerState.hasAutoHeal) {
+          playerState.idleTimer += delta;
+          if (playerState.idleTimer >= 3.0) {
+            playerState.idleTimer = 0;
+            if (playerState.hp < playerState.maxHp) {
+              const healAmt = Math.max(1, Math.round(playerState.maxHp * 0.02));
+              playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
+              showHealText(`+${healAmt} (자동회복)`, playerSprite.position);
+              updateUI();
+            }
+          }
+        }
+      }
+
+      playerSprite.position.x = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.x));
+      playerSprite.position.z = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.z));
     }
 
     /* ==========================================
@@ -4485,7 +4603,7 @@
     }
 
     function targetNearestMonster() {
-      const MAX_TARGET_DISTANCE = 12;
+      const MAX_TARGET_DISTANCE = 100; // 필드 전체 범위를 커버 (몬스터 스폰 범위 최대치보다 넉넉히 크게 설정)
       let nearest = null, minDist = MAX_TARGET_DISTANCE;
       monsters.forEach(m => {
         if (m.alive) {
@@ -4656,6 +4774,7 @@
         processMonsterAI(powerSaveDelta, now);
         processHeroAI(powerSaveDelta, now);
         processProjectilesAndVfx(powerSaveDelta);
+        processPlayerMovement(powerSaveDelta, now);
         return;
       }
 
@@ -4692,75 +4811,7 @@
         posAttr.needsUpdate = true;
       }
 
-      let moveX = joystickVector.x, moveZ = joystickVector.y;
-      if (keys['w'] || keys['arrowup']) moveZ = -1;
-      if (keys['s'] || keys['arrowdown']) moveZ = 1;
-      if (keys['a'] || keys['arrowleft']) moveX = -1;
-      if (keys['d'] || keys['arrowright']) moveX = 1;
-
-      let isMoving = Math.hypot(moveX, moveZ) > 0.1;
-
-      const boundLimit = floorSize / 2 - 2;
-
-      if (isMoving) {
-        playerSprite.position.x += moveX * playerState.moveSpeed * delta;
-        playerSprite.position.z += moveZ * playerState.moveSpeed * delta;
-        playerState.idleTimer = 0;
-
-        playerSprite.position.y = 1.6 + Math.abs(Math.sin(now * 0.016)) * 0.14;
-        playerSprite.material.rotation = Math.sin(now * 0.014) * 0.07;
-
-        if (Math.abs(moveZ) > Math.abs(moveX)) {
-          let newFacing = moveZ < 0 ? 'back' : 'front';
-          if (newFacing !== playerFacing) {
-            playerFacing = newFacing;
-            updatePlayerFacingTexture();
-          }
-        }
-      } else if (isAutoHunt) {
-        if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
-        if (selectedTarget) {
-          const dir = selectedTarget.sprite.position.clone().sub(playerSprite.position);
-          if (dir.length() > playerState.attackRange) {
-            dir.normalize();
-            playerSprite.position.x += dir.x * playerState.moveSpeed * delta;
-            playerSprite.position.z += dir.z * playerState.moveSpeed * delta;
-            
-            playerSprite.position.y = 1.6 + Math.abs(Math.sin(now * 0.016)) * 0.14;
-            playerSprite.material.rotation = Math.sin(now * 0.014) * 0.07;
-
-            let newFacing = dir.z < 0 ? 'back' : 'front';
-            if (newFacing !== playerFacing) {
-              playerFacing = newFacing;
-              updatePlayerFacingTexture();
-            }
-            playerState.idleTimer = 0;
-          } else {
-            triggerAttackBtn();
-            playerState.idleTimer = 0;
-          }
-        }
-      } else {
-        playerSprite.position.y = 1.6;
-        playerSprite.material.rotation = 0;
-        playerSprite.scale.y = 3.2 + Math.sin(now * 0.004) * 0.06;
-
-        if (playerState.hasAutoHeal) {
-          playerState.idleTimer += delta;
-          if (playerState.idleTimer >= 3.0) {
-            playerState.idleTimer = 0;
-            if (playerState.hp < playerState.maxHp) {
-              const healAmt = Math.max(1, Math.round(playerState.maxHp * 0.02));
-              playerState.hp = Math.min(playerState.maxHp, playerState.hp + healAmt);
-              showHealText(`+${healAmt} (자동회복)`, playerSprite.position);
-              updateUI();
-            }
-          }
-        }
-      }
-
-      playerSprite.position.x = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.x));
-      playerSprite.position.z = Math.max(-boundLimit, Math.min(boundLimit, playerSprite.position.z));
+      processPlayerMovement(delta, now);
 
       if (playerShadowDisk) {
         playerShadowDisk.position.set(playerSprite.position.x, 0.02, playerSprite.position.z);
