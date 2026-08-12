@@ -2914,6 +2914,26 @@
       { level: 10, crit: 0.30, mult: 2.50, nextCost: 0, nextRate: 0 }
     ];
 
+    // 무기 강화 테이블: 공격력 1,000 이상 달성 시 노출되는 강화 시스템.
+    // bonus = 해당 강화 단계에서 얻는 공격력 보너스(누적 아님, weaponAtk에 그대로 가산됨)
+    // nextRate = 다음 단계로 강화 시도할 때의 성공확률. 1강 성공 100% / 5강 성공 60% / 10강 성공 20%.
+    const weaponEnhanceTable = [
+      { level: 0, bonus: 0, nextRate: 1.00 },
+      { level: 1, bonus: 10, nextRate: 0.90 },
+      { level: 2, bonus: 18, nextRate: 0.80 },
+      { level: 3, bonus: 26, nextRate: 0.70 },
+      { level: 4, bonus: 35, nextRate: 0.60 },
+      { level: 5, bonus: 45, nextRate: 0.52 },
+      { level: 6, bonus: 60, nextRate: 0.44 },
+      { level: 7, bonus: 78, nextRate: 0.36 },
+      { level: 8, bonus: 100, nextRate: 0.28 },
+      { level: 9, bonus: 122, nextRate: 0.20 },
+      { level: 10, bonus: 150, nextRate: 0 }
+    ];
+    const WEAPON_ENHANCE_UNLOCK_ATK = 1000;
+    const WEAPON_ENHANCE_CORE_COST = 1;
+
+
     const playerState = {
       name: "조선유생", title: "유생", level: 1, maxLevel: 150, job: "평민", tier: 1,
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
@@ -2922,7 +2942,7 @@
       talismanLoot: 0, enhanceCore: 0,
       talismanLevel: 0,
       baseAttackSpeed: 1000, attackSpeed: 1000,
-      weaponAtk: 0, defensePower: 5,
+      weaponAtk: 0, defensePower: 5, weaponEnhanceLv: 0,
       lastAttackTime: 0, moveSpeed: 9, attackRange: 2.5,
       isAttacking: false, attackStage: 0, attackAnimTimer: 0,
       hasSiri: false, hasJanggeum: false, hasMunyeahana: false,
@@ -3034,6 +3054,91 @@
     }
 
     ensureMunyeahanaBuffAura();
+
+    // ===== 무기 +10강 반짝이는 발광 효과 =====
+    // 무기 강화 최대 달성(+10강) 시에만 활성화되는 캐릭터 손 근처 스파클 이펙트.
+    const weaponGlowSparkles = [];
+    let weaponGlowGroup = null;
+
+    function createWeaponGlowSparkTexture() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 64; cvs.height = 64;
+      const ctx = cvs.getContext('2d');
+      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.25, 'rgba(255,247,176,0.95)');
+      grad.addColorStop(0.55, 'rgba(255,215,64,0.55)');
+      grad.addColorStop(1, 'rgba(255,215,64,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+
+      // 십자 별빛 광채
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(32, 6); ctx.lineTo(32, 58); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, 32); ctx.lineTo(58, 32); ctx.stroke();
+
+      return new THREE.CanvasTexture(cvs);
+    }
+
+    function ensureWeaponGlow() {
+      if (weaponGlowGroup) return;
+      const tex = createWeaponGlowSparkTexture();
+      weaponGlowGroup = new THREE.Group();
+
+      const SPARK_COUNT = 4;
+      for (let i = 0; i < SPARK_COUNT; i++) {
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+        const spark = new THREE.Sprite(mat);
+        spark.scale.set(0.9, 0.9, 1);
+        spark.visible = false;
+        weaponGlowSparkles.push({
+          sprite: spark,
+          seed: Math.random() * Math.PI * 2,
+          speed: 1.6 + Math.random() * 1.2,
+          radius: 0.28 + Math.random() * 0.22
+        });
+        weaponGlowGroup.add(spark);
+      }
+
+      scene.add(weaponGlowGroup);
+    }
+
+    function isWeaponMaxEnhanced() {
+      return Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0)) >= 10;
+    }
+
+    // 무기가 대략 위치하는 캐릭터 손 부근 오프셋(정면/후면 공용, 캐릭터 기준 하단 우측).
+    const WEAPON_GLOW_OFFSET = { x: 0.55, y: -0.35, z: 0.05 };
+
+    function updateWeaponGlow() {
+      if (!weaponGlowGroup) return;
+      const active = isWeaponMaxEnhanced();
+      if (!active) {
+        weaponGlowSparkles.forEach(s => { s.sprite.visible = false; });
+        return;
+      }
+      const now = Date.now() * 0.001;
+      const baseX = playerSprite.position.x + WEAPON_GLOW_OFFSET.x;
+      const baseY = playerSprite.position.y + WEAPON_GLOW_OFFSET.y;
+      const baseZ = playerSprite.position.z + WEAPON_GLOW_OFFSET.z;
+
+      weaponGlowSparkles.forEach((s, idx) => {
+        s.sprite.visible = true;
+        const t = now * s.speed + s.seed;
+        s.sprite.position.set(
+          baseX + Math.cos(t) * s.radius,
+          baseY + Math.sin(t * 1.3) * s.radius * 0.6,
+          baseZ + Math.sin(t) * s.radius
+        );
+        const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.2 + idx));
+        s.sprite.material.opacity = twinkle;
+        const scale = 0.55 + 0.45 * twinkle;
+        s.sprite.scale.set(scale, scale, 1);
+      });
+    }
+
+    ensureWeaponGlow();
 
     const targetArrowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createTargetArrowTexture() }));
     targetArrowSprite.scale.set(1.5, 1.5, 1);
@@ -4060,6 +4165,22 @@
           `;
           container.appendChild(coreCard);
           return;
+        } else if (item.type === 'atk') {
+          // 공격력이 1,000 이상이거나 이미 무기 강화를 시작했다면 일반환도/고급환도 구매를 중단한다.
+          if (getPlayerAvgAtk() >= WEAPON_ENHANCE_UNLOCK_ATK || playerState.weaponEnhanceLv > 0) {
+            return;
+          }
+          const isBought = false;
+          const canAfford = playerState.gold >= item.price;
+          const priceLabel = `${item.price.toLocaleString()} G`;
+
+          card.innerHTML = `
+            <div><div class="item-header"><span>${item.name}</span></div><div class="item-desc">${item.desc}</div></div>
+            <div class="item-footer">
+              <span class="item-price">${priceLabel}</span>
+              <button class="btn-buy" ${!canAfford ? 'disabled' : ''} onclick="buyShopItem('${cat}', '${item.id}')">구매하기</button>
+            </div>
+          `;
         } else {
           const isBought = (item.id === 'h1' && playerState.hasSiri) || (item.id === 'h2' && playerState.hasJanggeum) || (item.id === 'h3' && playerState.hasMunyeahana);
           const canAfford = playerState.gold >= item.price;
@@ -4076,6 +4197,47 @@
 
         container.appendChild(card);
       });
+
+      // 공격력 1,000 이상 달성 시 무기 강화 카드를 무기 탭에 추가로 노출한다.
+      // 한 번 강화를 시작했다면(강화 레벨 1 이상) 버프 등으로 공격력이 일시적으로 낮아져도 계속 노출한다.
+      if (cat === 'weapon' && (getPlayerAvgAtk() >= WEAPON_ENHANCE_UNLOCK_ATK || playerState.weaponEnhanceLv > 0)) {
+        const enhLv = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
+        const curData = weaponEnhanceTable[enhLv];
+        const isMaxEnh = enhLv >= 10;
+
+        const enhCard = document.createElement('div'); enhCard.className = 'shop-item-card';
+        let enhDesc = '';
+        let enhPriceLabel = '';
+        let enhBtnText = '';
+        let enhDisabled = false;
+
+        if (isMaxEnh) {
+          enhDesc = `[최대 강화 달성]\n무기 강화 보너스: 공격력 +${curData.bonus}`;
+          enhPriceLabel = 'MAX';
+          enhBtnText = '강화완료';
+          enhDisabled = true;
+        } else {
+          const nextData = weaponEnhanceTable[enhLv + 1];
+          enhDesc = `현재: +${enhLv}강 (공격력 +${curData.bonus})\n➔다음: +${enhLv + 1}강 (공격력 +${nextData.bonus})\n(성공확률 ${Math.round(curData.nextRate * 100)}%)`;
+          enhPriceLabel = `강화의 핵 ${WEAPON_ENHANCE_CORE_COST}개`;
+          enhBtnText = '강화하기';
+          enhDisabled = (playerState.enhanceCore || 0) < WEAPON_ENHANCE_CORE_COST;
+        }
+
+        enhCard.innerHTML = `
+          <div>
+            <div class="item-header"><span>⚔️ 무기 강화 (+${enhLv}/10)</span></div>
+            <div class="item-desc">${enhDesc}</div>
+          </div>
+          <div class="item-footer">
+            <span class="item-price">${enhPriceLabel}</span>
+            <button class="btn-buy" ${enhDisabled ? 'disabled' : ''} onclick="enhanceWeapon()">
+              ${enhBtnText}
+            </button>
+          </div>
+        `;
+        container.appendChild(enhCard);
+      }
     }
 
     const LOOT_TO_CORE_RATE = 50;
@@ -4115,6 +4277,40 @@
       }
 
       updateUI();
+    }
+
+    function enhanceWeapon() {
+      if (getPlayerAvgAtk() < WEAPON_ENHANCE_UNLOCK_ATK && playerState.weaponEnhanceLv <= 0) return;
+
+      const curLvl = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
+      if (curLvl >= 10) return;
+
+      if ((playerState.enhanceCore || 0) < WEAPON_ENHANCE_CORE_COST) {
+        alert('강화의 핵이 부족합니다!');
+        return;
+      }
+
+      const curData = weaponEnhanceTable[curLvl];
+      playerState.enhanceCore -= WEAPON_ENHANCE_CORE_COST;
+
+      const isSuccess = Math.random() < curData.nextRate;
+      if (isSuccess) {
+        // 이전 단계의 보너스를 제거하고 다음 단계 보너스를 새로 적용한다.
+        playerState.weaponAtk -= curData.bonus;
+        playerState.weaponEnhanceLv = curLvl + 1;
+        const nextData = weaponEnhanceTable[playerState.weaponEnhanceLv];
+        playerState.weaponAtk += nextData.bonus;
+        if (playerState.weaponEnhanceLv >= 10) {
+          showHealText(`✨ 무기 +10강 달성! 무기가 발광합니다!`, playerSprite.position);
+        } else {
+          showHealText(`⚔️ 무기 강화 성공! (+${playerState.weaponEnhanceLv})`, playerSprite.position);
+        }
+      } else {
+        showPlayerDamageText(`💥 강화 실패...`, playerSprite.position);
+      }
+
+      updateUI();
+      if (document.getElementById('shop-modal')?.style.display !== 'none') switchShopCategory(currentShopCategory);
     }
 
     function buyShopItem(cat, id) {
@@ -4646,7 +4842,7 @@
           exp: playerState.exp, maxExp: playerState.maxExp, gold: playerState.gold,
           talismanLoot: playerState.talismanLoot, talismanLevel: playerState.talismanLevel, enhanceCore: playerState.enhanceCore,
           baseAttackSpeed: playerState.baseAttackSpeed, attackSpeed: playerState.attackSpeed,
-          weaponAtk: playerState.weaponAtk, defensePower: playerState.defensePower,
+          weaponAtk: playerState.weaponAtk, defensePower: playerState.defensePower, weaponEnhanceLv: playerState.weaponEnhanceLv,
           moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
           hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
           hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
@@ -4695,13 +4891,14 @@
 
         isLoadingSave = true;
         const p = data.player;
-        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
+        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','weaponEnhanceLv','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
         numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
         playerState.maxLevel = 150;
         ['name','title','job'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
         ['hasSiri','hasJanggeum','hasMunyeahana','hasAutoHeal'].forEach(k => { if (typeof p[k] === 'boolean') playerState[k] = p[k]; });
         if (Array.isArray(p.skillsLearned)) playerState.skillsLearned = [...p.skillsLearned].filter(id => id !== 's1_2');
         playerState.firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
+        playerState.weaponEnhanceLv = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
         if (p.skillLv && typeof p.skillLv === 'object') {
           playerState.skillLv.s2_2 = Math.max(0, Math.min(5, Number(p.skillLv.s2_2) || 0));
           playerState.skillLv.s2_3 = Math.max(0, Math.min(5, Number(p.skillLv.s2_3) || 0));
@@ -5296,6 +5493,7 @@
       });
 
       updateMunyeahanaBuffAura();
+      updateWeaponGlow();
       renderer.render(scene, camera);
     }
 
