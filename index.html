@@ -4441,7 +4441,10 @@
           }
         }
       } else if (isAutoHunt) {
-        if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
+        if (!selectedTarget || !selectedTarget.alive ||
+            playerSprite.position.distanceTo(selectedTarget.sprite.position) > 18) {
+          targetNearestMonster(true, selectedTarget);
+        }
         if (selectedTarget) {
           const dir = selectedTarget.sprite.position.clone().sub(playerSprite.position);
           if (dir.length() > playerState.attackRange) {
@@ -4901,32 +4904,68 @@
       document.getElementById('btn-auto').innerHTML = isAutoHunt ? "AUTO<br>ON" : "AUTO<br>OFF";
     }
 
-    function targetNearestMonster() {
-      const MAX_TARGET_DISTANCE = 100; // 필드 전체 범위를 커버 (몬스터 스폰 범위 최대치보다 넉넉히 크게 설정)
-      let nearest = null, minDist = MAX_TARGET_DISTANCE;
+    function targetNearestMonster(preferFront = false, excludeTarget = null) {
+      const MAX_TARGET_DISTANCE = 100;
+      const FRONT_PREFERENCE_DISTANCE = 18;
+      const FRONT_CONE_COS = 0.25; // 전방 약 150도 영역에서 가까운 몬스터 우선
+      let nearest = null;
+      let minDist = MAX_TARGET_DISTANCE + 1;
+      let frontNearest = null;
+      let frontMinDist = FRONT_PREFERENCE_DISTANCE + 1;
+
+      const facingVec = playerFacing === 'back'
+        ? new THREE.Vector3(0, 0, -1)
+        : new THREE.Vector3(0, 0, 1);
+
       monsters.forEach(m => {
-        if (m.alive) {
-          const d = playerSprite.position.distanceTo(m.sprite.position);
-          if (d <= MAX_TARGET_DISTANCE && d < minDist) {
-            minDist = d;
-            nearest = m;
+        if (!m.alive || m.destroyed || m === excludeTarget) return;
+
+        const dx = m.sprite.position.x - playerSprite.position.x;
+        const dz = m.sprite.position.z - playerSprite.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > MAX_TARGET_DISTANCE) return;
+
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = m;
+        }
+
+        if (preferFront && dist <= FRONT_PREFERENCE_DISTANCE && dist > 0.01) {
+          const dot = (dx * facingVec.x + dz * facingVec.z) / dist;
+          if (dot >= FRONT_CONE_COS && dist < frontMinDist) {
+            frontMinDist = dist;
+            frontNearest = m;
           }
         }
       });
-      selectedTarget = nearest;
+
+      selectedTarget = frontNearest || nearest;
+      return selectedTarget;
     }
 
-    function triggerAttackBtn() {
+    function triggerAttackBtn(forceRetarget = true) {
       const now = Date.now();
+
+      // 중요: 타겟 전환은 공격속도 쿨다운과 독립적으로 처리한다.
+      // 따라서 공격 직후 버튼을 눌러도 현재 위치 기준으로 타겟이 즉시 갱신된다.
+      if (forceRetarget) {
+        targetNearestMonster(true);
+      }
+
+      // 기존 타겟이 죽었거나 너무 멀어졌다면 다른 가까운 몬스터로 즉시 교체한다.
+      if (!selectedTarget || !selectedTarget.alive ||
+          playerSprite.position.distanceTo(selectedTarget.sprite.position) > 18) {
+        targetNearestMonster(true, selectedTarget);
+      }
+
+      // 실제 공격 실행만 공격속도 쿨다운의 영향을 받는다.
       if (now - playerState.lastAttackTime < playerState.attackSpeed) return;
       playerState.lastAttackTime = now;
 
       triggerAttackAnim();
 
-      // 일반 공격 버튼을 누를 때마다 현재 플레이어와 가장 가까운 몬스터를 새로 타겟팅한다.
-      // 기존에 멀리 잡혀 있던 타겟은 공격 버튼을 누르는 순간 교체된다.
-      targetNearestMonster();
-      if (selectedTarget && playerSprite.position.distanceTo(selectedTarget.sprite.position) <= playerState.attackRange) {
+      if (selectedTarget && selectedTarget.alive &&
+          playerState.attackRange >= playerSprite.position.distanceTo(selectedTarget.sprite.position)) {
         const firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
         const firstSkillRates = [0, 1.00, 0.825, 0.65, 0.475, 0.30];
         const firstSkillMults = [0, 1.50, 1.875, 2.25, 2.625, 3.00];
