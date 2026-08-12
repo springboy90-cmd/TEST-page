@@ -48,6 +48,8 @@
     #power-save-clock { font-size: 15vw; font-weight: 300; letter-spacing: 2px; color: #90a4ae; font-variant-numeric: tabular-nums; }
     #power-save-date { font-size: 4vw; color: #546e7a; margin-top: 4px; }
     #power-save-label { font-size: 3vw; color: #37474f; margin-top: 24px; letter-spacing: 4px; }
+    #power-save-exp { margin-top: 18px; color: #90a4ae; font-size: 16px; font-weight: 700; }
+    #power-save-status { margin-top: 8px; color: #78909c; font-size: 13px; font-weight: 600; }
     #power-save-death-log {
       display: none;
       margin-top: 20px;
@@ -523,6 +525,8 @@
     <div id="power-save-clock">00:00</div>
     <div id="power-save-date"></div>
     <div id="power-save-label">절전 모드 · 사냥 진행 중</div>
+    <div id="power-save-exp">획득 경험치: 0 EXP</div>
+    <div id="power-save-status">⚔️ 자동사냥 진행 중 · 💀 사망 없음</div>
     <div id="power-save-death-log"></div>
     <button id="power-save-exit-btn" onclick="setPowerSaveMode(false)">게임 화면 보기</button>
   </div>
@@ -802,9 +806,9 @@
     let currentHadum = false; // 하둠 영역(2차 전직 전용 고난도 스테이지) 진입 여부
     const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율
     const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 전용 추가 체력 배율
-    // 하둠 스테이지별 난이도: 유저 공격력 : 몬스터 방어력
-    // 1단계 3.5:1 → 4단계 3:1로 단계적으로 상승
-    const HADUM_DEF_RATIO = { 1: 3.5, 2: 10 / 3, 3: 19 / 6, 4: 3.0 };
+    // 하둠 일반 몬스터 스테이지별 난이도: 유저 공격력 : 몬스터 방어력
+    // Boss 몬스터에는 적용하지 않음
+    const HADUM_DEF_RATIO = { 1: 3.25, 2: 3.1, 3: 3.0, 4: 2.85 };
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
     const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -913,6 +917,10 @@
        ========================================== */
     let isPowerSaveMode = false;
     let powerSaveClockTimer = null;
+    let powerSaveGameTimer = null;
+    let powerSaveSessionExp = 0;
+    let powerSaveLastTick = 0;
+    let powerSaveDeathCount = 0;
 
     function updatePowerSaveClock() {
       const now = new Date();
@@ -926,6 +934,36 @@
         const days = ['일','월','화','수','목','금','토'];
         dateEl.innerText = `${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]}) · Lv.${playerState.level} ${playerState.job}`;
       }
+
+      const expEl = document.getElementById('power-save-exp');
+      if (expEl) expEl.innerText = `획득 경험치: ${powerSaveSessionExp.toLocaleString()} EXP`;
+
+      const statusEl = document.getElementById('power-save-status');
+      if (statusEl) {
+        statusEl.innerText = `⚔️ ${isAutoHunt ? '자동사냥 진행 중' : '자동사냥 대기'} · ${powerSaveDeathCount > 0 ? `💀 ${powerSaveDeathCount}회 사망` : '💀 사망 없음'}`;
+      }
+    }
+
+    function processPowerSaveGameTick() {
+      if (!isPowerSaveMode) return;
+      const now = Date.now();
+      const delta = powerSaveLastTick > 0 ? Math.min(0.5, Math.max(0.05, (now - powerSaveLastTick) / 1000)) : 0.25;
+      powerSaveLastTick = now;
+
+      const beforeExp = playerState.exp;
+      const beforeLevel = playerState.level;
+      processMonsterAI(delta, now);
+      processHeroAI(delta, now);
+      processProjectilesAndVfx(delta);
+      processPlayerMovement(delta, now);
+
+      if (playerState.level > beforeLevel) {
+        // 레벨업 직후 EXP가 다시 0으로 바뀌는 현재 시스템을 고려해 최소한의 누적량을 보정한다.
+        powerSaveSessionExp += Math.max(0, (playerState.maxExp + playerState.exp) - beforeExp);
+      } else {
+        powerSaveSessionExp += Math.max(0, playerState.exp - beforeExp);
+      }
+      updatePowerSaveClock();
     }
 
     // 절전 모드 중 캐릭터가 쓰러졌을 때, alert()로 화면을 막지 않고
@@ -951,17 +989,35 @@
       document.getElementById('btn-powersave-off').classList.toggle('active', !on);
 
       if (on) {
-        if (!isAutoHunt) {
-          isAutoHunt = true;
-          const autoBtn = document.getElementById('btn-auto');
-          if (autoBtn) autoBtn.innerHTML = "AUTO<br>ON";
+        // 절전 모드에서는 유저와 소환영웅 모두 자동사냥을 강제로 활성화한다.
+        isAutoHunt = true;
+        heroAutoHunt = true;
+
+        const autoBtn = document.getElementById('btn-auto');
+        if (autoBtn) autoBtn.innerHTML = 'AUTO<br>ON';
+        const heroAutoBtn = document.getElementById('btn-hero-auto');
+        if (heroAutoBtn) {
+          heroAutoBtn.innerText = '영웅 자율사냥: ON';
+          heroAutoBtn.style.background = '#ffe082';
         }
+
+        if (!siriTarget || !siriTarget.alive) siriTarget = null;
+        if (!janggeumTarget || !janggeumTarget.alive) janggeumTarget = null;
+        if (!munyeahanaTarget || !munyeahanaTarget.alive) munyeahanaTarget = null;
+
+        powerSaveSessionExp = 0;
+        powerSaveDeathCount = 0;
+        powerSaveLastTick = Date.now();
         updatePowerSaveClock();
         screen.classList.add('active');
+
         if (!powerSaveClockTimer) powerSaveClockTimer = setInterval(updatePowerSaveClock, 1000);
+        if (!powerSaveGameTimer) powerSaveGameTimer = setInterval(processPowerSaveGameTick, 250);
       } else {
         screen.classList.remove('active');
         if (powerSaveClockTimer) { clearInterval(powerSaveClockTimer); powerSaveClockTimer = null; }
+        if (powerSaveGameTimer) { clearInterval(powerSaveGameTimer); powerSaveGameTimer = null; }
+        powerSaveLastTick = 0;
       }
     }
 
@@ -4708,8 +4764,8 @@
 
       // 하둠은 스테이지별로 '유저 공격력 : 몬스터 방어력' 비율만 적용한다.
       // 기존 하둠의 HP/공격력/경험치 2배 설정은 그대로 유지한다.
-      if (currentHadum) {
-        const defRatio = HADUM_DEF_RATIO[currentStage] || 3.5;
+      if (currentHadum && !target.isBoss) {
+        const defRatio = HADUM_DEF_RATIO[currentStage] || 3.25;
         const monsterDefense = Math.max(1, Math.round(getPlayerAvgAtk() / defRatio));
         finalDmg = Math.max(1, amount - monsterDefense);
       }
@@ -4835,16 +4891,7 @@
       const now = Date.now();
 
       if (isPowerSaveMode) {
-        // 절전 모드: 화면 렌더링/이펙트는 모두 건너뛰고, 전투/사냥 로직만 낮은 빈도(초당 1회)로 계속 진행한다.
-        if (now - lastRenderFrameTime < 1000) return;
-        const powerSaveDelta = (now - lastRenderFrameTime) / 1000;
-        lastRenderFrameTime = now;
-        clock.getDelta();
-
-        processMonsterAI(powerSaveDelta, now);
-        processHeroAI(powerSaveDelta, now);
-        processProjectilesAndVfx(powerSaveDelta);
-        processPlayerMovement(powerSaveDelta, now);
+        // 절전 모드 전투는 별도 타이머에서 계속 처리하고, 렌더링만 중단한다.
         return;
       }
 
