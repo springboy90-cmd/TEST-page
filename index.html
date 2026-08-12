@@ -2941,6 +2941,31 @@
     const WEAPON_ENHANCE_CORE_COST = 1;
 
 
+    // 1차 전직 스킬 직업별 설정
+    const FIRST_JOB_SKILL_CONFIG = {
+      fighter: {
+        jobs: ['검사', '검성'],
+        minMult: 1.80,
+        maxMult: 2.00,
+        cooldownMs: 1500,
+        mpCost: 15
+      },
+      shaman: {
+        jobs: ['주술사', '대도사'],
+        minMult: 2.80,
+        maxMult: 3.00,
+        cooldownMs: 3000,
+        mpCost: 30
+      }
+    };
+
+    function getFirstJobSkillConfig() {
+      const job = playerState?.job || '';
+      if (FIRST_JOB_SKILL_CONFIG.shaman.jobs.some(j => job.includes(j))) return FIRST_JOB_SKILL_CONFIG.shaman;
+      if (FIRST_JOB_SKILL_CONFIG.fighter.jobs.some(j => job.includes(j))) return FIRST_JOB_SKILL_CONFIG.fighter;
+      return null;
+    }
+
     const playerState = {
       name: "조선유생", title: "유생", level: 1, maxLevel: 150, job: "평민", tier: 1,
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
@@ -2956,7 +2981,7 @@
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
       skillsLearned: [],
       firstSkillLv: 0,
-      skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 },
+      skillCooldowns: { s1_1: 0, s2_1: 0, s2_2: 0, s2_3: 0 },
       skillLv: { s2_2: 0, s2_3: 0 }
     };
 
@@ -3722,7 +3747,7 @@
       speedCard.innerHTML = `
         <div>
           <div class="item-header"><span>공속 수련 (${playerState.atkSpeedLv}/10)</span></div>
-          <div class="item-desc">1레벨당 공격속도 +5%가 가속됩니다. (현재: +${playerState.atkSpeedLv * 5}%)</div>
+          <div class="item-desc">1레벨당 공격속도 +4%가 가속됩니다. (현재: +${playerState.atkSpeedLv * 4}%)</div>
         </div>
         <div class="item-footer">
           <span class="item-price">${isMaxSpeed ? 'MAX' : atkSpeedNextCost.toLocaleString() + ' G'}</span>
@@ -3741,18 +3766,21 @@
       }
       const firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
       const firstSkillRates = [0, 1.00, 0.825, 0.65, 0.475, 0.30];
-      const firstSkillMults = [0, 1.50, 1.875, 2.25, 2.625, 3.00];
       const firstSkillSuccess = firstSkillLv > 0 ? Math.round(firstSkillRates[firstSkillLv] * 100) : 0;
-      const firstSkillMult = firstSkillLv > 0 ? firstSkillMults[firstSkillLv] : 1.50;
+      const firstSkillConfig = getFirstJobSkillConfig();
+      const firstSkillMinMult = firstSkillConfig ? firstSkillConfig.minMult : 1.80;
+      const firstSkillMaxMult = firstSkillConfig ? firstSkillConfig.maxMult : 2.00;
+      const firstSkillCooldown = firstSkillConfig ? firstSkillConfig.cooldownMs / 1000 : 1.5;
+      const firstSkillMpCost = firstSkillConfig ? firstSkillConfig.mpCost : 15;
       const firstSkillCost = 3000;
-      const canUseFirstSkill = playerState.tier >= 2;
+      const canUseFirstSkill = playerState.tier >= 2 && !!firstSkillConfig;
       const isFirstSkillLearned = firstSkillLv > 0;
 
       const firstSkillCard = document.createElement('div'); firstSkillCard.className = 'shop-item-card';
       firstSkillCard.innerHTML = `
         <div>
           <div class="item-header"><span>일격필살 (자동)</span><span>Lv.${Math.max(1, playerState.firstSkillLv || 0)}/5</span></div>
-          <div class="item-desc">일반 공격 시 확률적으로 자동 발동합니다.<br>성공 시 공격력 ${Math.round(firstSkillMult * 100)}% · 성공확률 ${firstSkillSuccess}% · MP 15</div>
+          <div class="item-desc">일반 공격 시 확률적으로 자동 발동합니다.<br>공격력 ${Math.round(firstSkillMinMult * 100)}~${Math.round(firstSkillMaxMult * 100)}% · 성공확률 ${firstSkillSuccess}% · 재사용 ${firstSkillCooldown}초 · MP ${firstSkillMpCost}</div>
         </div>
         <div class="item-footer">
           <span class="item-price">${firstSkillLv >= 5 ? 'MAX' : firstSkillLv === 0 ? firstSkillCost.toLocaleString() + ' G' : firstSkillCost.toLocaleString() + ' G'}</span>
@@ -3950,7 +3978,7 @@
     }
 
     function recalcAttackSpeed() {
-      playerState.attackSpeed = playerState.baseAttackSpeed / (1 + playerState.atkSpeedLv * 0.05);
+      playerState.attackSpeed = playerState.baseAttackSpeed / (1 + playerState.atkSpeedLv * 0.04);
     }
 
     function openJobModal() { document.getElementById('job-modal').style.display = 'block'; }
@@ -3967,12 +3995,13 @@
 
       if (jobName === '검사') {
         playerState.title = '무관';
-        playerState.maxHp += 150; playerState.hp = playerState.maxHp;
-        playerState.weaponAtk += 25; playerState.defensePower += 20; playerState.attackRange = 3.2;
+        playerState.maxHp += 200; playerState.hp = playerState.maxHp;
+        playerState.weaponAtk += 30; playerState.defensePower += 25; playerState.maxMp += 0; playerState.mp = playerState.maxMp; playerState.attackRange = 3.2;
         spriteType = 'player_sword';
       } else if (jobName === '주술사') {
         playerState.title = '도사';
-        playerState.weaponAtk += 45; playerState.defensePower += 5; playerState.attackRange = 9.0;
+        playerState.maxHp += 50; playerState.hp = playerState.maxHp;
+        playerState.weaponAtk += 50; playerState.defensePower += 5; playerState.maxMp += 100; playerState.mp = playerState.maxMp; playerState.attackRange = 9.0;
         spriteType = 'player_mage';
       }
 
@@ -4017,12 +4046,16 @@
       playerState.job = job2Name;
       playerState.tier = 3;
       playerState.title = '대장군';
-      playerState.maxHp += 300; playerState.hp = playerState.maxHp;
-      playerState.weaponAtk += 80; playerState.defensePower += 40;
 
       if (job2Name === '검성' || playerState.job.includes('검사')) {
+        playerState.maxHp += 500; playerState.hp = playerState.maxHp;
+        playerState.weaponAtk += 80; playerState.defensePower += 60;
+        playerState.maxMp += 50; playerState.mp = playerState.maxMp;
         playerState.attackRange = 4.2;
       } else if (job2Name === '대도사' || playerState.job.includes('도사')) {
+        playerState.maxHp += 150; playerState.hp = playerState.maxHp;
+        playerState.weaponAtk += 130; playerState.defensePower += 15;
+        playerState.maxMp += 250; playerState.mp = playerState.maxMp;
         playerState.attackRange = 11.0;
       }
 
@@ -4247,7 +4280,7 @@
       }
     }
 
-    const LOOT_TO_CORE_RATE = 50;
+    const LOOT_TO_CORE_RATE = 20;
 
     function convertLootToCore() {
       const convertible = Math.floor(playerState.talismanLoot / LOOT_TO_CORE_RATE);
@@ -4746,6 +4779,10 @@
     // 스테이지별 일반 몬스터 고정 경험치 테이블 (일반: 1~4스테이지, 하둠: 1~4스테이지)
     const STAGE_NORMAL_EXP = { 1: 20, 2: 40, 3: 60, 4: 80 };
     const STAGE_HADUM_EXP = { 1: 300, 2: 450, 3: 700, 4: 850 };
+    const STAGE_BOSS_EXP = {
+      normal: { 1: 1500, 2: 2500, 3: 4000, 4: 6000 },
+      hadum: { 1: 10500, 2: 13500, 3: 16500, 4: 22500 }
+    };
 
     function getMonsterExpReward(monster) {
       if (playerState.level >= playerState.maxLevel) return 0;
@@ -4767,26 +4804,9 @@
         return table[monster.stageId] || 0;
       }
 
-      // 보스는 기존 비율 기반 산정 방식을 그대로 유지한다.
-      const playerTier = playerState.level < 20 ? 1 : 2;
-      const tierDiff = playerTier - monster.tier;
-
-      let ratio = 0.04;
-      if (tierDiff === 1) {
-        ratio = 0.025;
-      } else if (tierDiff >= 2) {
-        ratio = 0.01;
-      }
-
-      if (monster.tier === 1) {
-        ratio *= 2;
-      }
-
-      ratio *= 8;
-
-      let baseExp = Math.max(1, Math.round(playerState.maxExp * ratio));
-      if (monster.isHadum) baseExp *= HADUM_MULT;
-      return baseExp;
+      // 보스는 스테이지별 고정 경험치를 지급한다.
+      const bossTable = monster.isHadum ? STAGE_BOSS_EXP.hadum : STAGE_BOSS_EXP.normal;
+      return bossTable[monster.stageId] || 0;
     }
 
     function addReward(exp, gold) {
@@ -4861,7 +4881,7 @@
           hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
           hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
           atkSpeedLv: playerState.atkSpeedLv, firstSkillLv: playerState.firstSkillLv, skillLv: { s2_2: playerState.skillLv.s2_2, s2_3: playerState.skillLv.s2_3 }, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned].filter(id => id !== 's1_2') : [],
-          skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
+          skillCooldowns: { s1_1: 0, s2_1: 0, s2_2: 0, s2_3: 0 }
         },
         heroes: {
           siri: { level:siriState.level, exp:siriState.exp, maxExp:siriState.maxExp, active:!!siriSprite },
@@ -4919,7 +4939,7 @@
         }
         if (playerState.skillsLearned.includes('s1_1') && playerState.firstSkillLv === 0) playerState.firstSkillLv = 1;
         ['s2_2','s2_3'].forEach(id => { if (playerState.skillsLearned.includes(id) && playerState.skillLv[id] === 0) playerState.skillLv[id] = 1; });
-        playerState.skillCooldowns = { s2_1:0, s2_2:0, s2_3:0 };
+        playerState.skillCooldowns = { s1_1:0, s2_1:0, s2_2:0, s2_3:0 };
         playerState.hp = Math.max(0, Math.min(playerState.hp, playerState.maxHp));
         playerState.mp = Math.max(0, Math.min(playerState.mp, playerState.maxMp));
 
@@ -5235,12 +5255,15 @@
           playerState.attackRange >= playerSprite.position.distanceTo(selectedTarget.sprite.position)) {
         const firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
         const firstSkillRates = [0, 1.00, 0.825, 0.65, 0.475, 0.30];
-        const firstSkillMults = [0, 1.50, 1.875, 2.25, 2.625, 3.00];
-        const canAutoFirstSkill = firstSkillLv > 0 && playerState.tier >= 2 && Math.random() < firstSkillRates[firstSkillLv];
+        const firstSkillConfig = getFirstJobSkillConfig();
+        const firstSkillReady = !playerState.skillCooldowns.s1_1 || (Date.now() - playerState.skillCooldowns.s1_1 >= (firstSkillConfig?.cooldownMs || 1500));
+        const canAutoFirstSkill = firstSkillLv > 0 && playerState.tier >= 2 && !!firstSkillConfig && firstSkillReady && Math.random() < firstSkillRates[firstSkillLv];
 
-        if (canAutoFirstSkill && playerState.mp >= 15) {
-          consumeSkillMp(15);
-          const skillDmg = getPlayerActualDmg(firstSkillMults[firstSkillLv]);
+        if (canAutoFirstSkill && playerState.mp >= firstSkillConfig.mpCost) {
+          consumeSkillMp(firstSkillConfig.mpCost);
+          playerState.skillCooldowns.s1_1 = Date.now();
+          const skillMult = firstSkillConfig.minMult + Math.random() * (firstSkillConfig.maxMult - firstSkillConfig.minMult);
+          const skillDmg = getPlayerActualDmg(skillMult);
           spawnHitVfx(selectedTarget.sprite.position, 'slash', 3.2);
           applyDamage(selectedTarget, skillDmg);
         } else if (playerState.job.includes('주술사') || playerState.job.includes('도사') || playerState.job === '대도사') {
