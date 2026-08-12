@@ -1,4 +1,6 @@
-<html lang="ko"><head>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
   <title>군주의 길 2.5D</title>
@@ -545,7 +547,7 @@
 </style>
 
 </head>
-<body style="background-color: rgb(184, 221, 234);">
+<body>
 
   <div id="power-save-screen">
     <div id="power-save-clock">00:00</div>
@@ -557,8 +559,8 @@
     <button id="power-save-exit-btn" onclick="setPowerSaveMode(false)">게임 화면 보기</button>
   </div>
 
-  <div id="canvas-container"><canvas width="724" height="1228" style="display: block; width: 414px; height: 702px;"></canvas></div>
-  <div id="nametag-layer"><div class="goonzu-nametag" style="left: 207px; top: 314.986385px;"><div class="tag-title">Lv.69 대장군</div><div class="tag-name">[조선유생]</div></div><div class="goonzu-nametag" style="display: block; left: 51.343944px; top: 558.983331px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_0" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_0" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: 369.166401px; top: -145.569313px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_1" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_1" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -480.827845px; top: -146.324059px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_2" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_2" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -601.372447px; top: 35.212924px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_3" style="display: none; width: 34px; height: 2px; background: rgba(0, 0, 0, 0.5); border-radius: 2px; margin: 1px auto; overflow: hidden;"><div id="hp_bar_monster_3" style="width: 46.195%; height: 100%; background: rgb(229, 57, 53);"></div></div></div><div class="goonzu-nametag" style="display: block; left: -587.83462px; top: 251.056363px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_4" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_4" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -103.16452px; top: 680.352502px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_5" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_5" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -126.744719px; top: 74.77063px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_6" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_6" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -549.501311px; top: 14.075274px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_7" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_7" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: 632.67843px; top: -16.902812px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_8" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_8" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -74.863935px; top: -110.179459px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_9" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_9" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -65.682788px; top: 187.622382px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_10" style="display: block; width: 34px; height: 2px; background: rgba(0, 0, 0, 0.5); border-radius: 2px; margin: 1px auto; overflow: hidden;"><div id="hp_bar_monster_10" style="width: 10.6%; height: 100%; background: rgb(229, 57, 53);"></div></div></div><div class="goonzu-nametag" style="display: block; left: -387.612914px; top: 68.21427px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_11" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_11" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: 263.854326px; top: 793.59504px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_12" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_12" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -407.463843px; top: 455.763801px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_13" style="display: none; width: 34px; height: 2px; background: rgba(0, 0, 0, 0.5); border-radius: 2px; margin: 1px auto; overflow: hidden;"><div id="hp_bar_monster_13" style="width: 15.025%; height: 100%; background: rgb(229, 57, 53);"></div></div></div><div class="goonzu-nametag" style="display: block; left: 301.275367px; top: 138.088792px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_14" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_14" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: 3.340134px; top: -46.834091px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_15" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_15" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: 430.511447px; top: -146.997124px;"><div class="tag-monster">Lv.55 눈토끼</div><div class="monster-hp-bar-container" id="hp_container_monster_16" style="display:none; width:34px; height:2px; background:rgba(0,0,0,0.5); border-radius:2px; margin:1px auto; overflow:hidden;"><div id="hp_bar_monster_16" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="display: block; left: -101.777525px; top: -138.601614px;"><div class="tag-monster">Lv.55 설녀</div><div class="monster-hp-bar-container" id="hp_container_monster_17" style="display: none; width: 34px; height: 2px; background: rgba(0, 0, 0, 0.5); border-radius: 2px; margin: 1px auto; overflow: hidden;"><div id="hp_bar_monster_17" style="width: 0.425%; height: 100%; background: rgb(229, 57, 53);"></div></div></div><div class="goonzu-nametag" style="display: block; left: -53.399379px; top: 265.46426px;"><div class="tag-boss">[BOSS] 빙설여왕</div><div class="monster-hp-bar-container" id="hp_container_monster_18" style="display:none; width:40px; height:3px; background:rgba(0,0,0,0.5); border:1px solid #b71c1c; border-radius:2px; margin:2px auto; overflow:hidden;"><div id="hp_bar_monster_18" style="width:100%; height:100%; background:#e53935;"></div></div></div><div class="goonzu-nametag" style="left: -516.941275px; top: -128.857338px;"><div class="tag-hero">[소환영웅] <span id="hero_lv_hero_siri">Lv.63</span></div><div class="tag-name">시리</div></div><div class="goonzu-nametag" style="left: -500.187685px; top: -127.049245px;"><div class="tag-hero">[소환영웅] <span id="hero_lv_hero_janggeum">Lv.61</span></div><div class="tag-name">의녀장금</div></div><div class="goonzu-nametag" style="left: -354.09776px; top: -179.882391px;"><div class="tag-hero">[소환영웅] <span id="hero_lv_hero_munyeahana">Lv.64</span></div><div class="tag-name">무녀하나</div></div></div>
+  <div id="canvas-container"></div>
+  <div id="nametag-layer"></div>
 
   <div id="ui-layer">
     <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -566,40 +568,40 @@
         <div class="character-info">
           <span>
             <strong id="player-name">조선유생</strong> 
-            <span style="color:#8d6e63;" id="player-lv">Lv.69</span>
+            <span style="color:#8d6e63;" id="player-lv">Lv.1</span>
             <button class="btn-dev-exp" title="레벨업 지원 (+5000 EXP)" onclick="addExpDev()">⚡</button>
           </span>
-          <span class="job-badge" id="player-job">대도사</span>
+          <span class="job-badge" id="player-job">평민</span>
         </div>
         <div class="bar-container">
           <div class="bar-fill hp-bar" id="hp-fill" style="width: 100%;"></div>
-          <div class="bar-text" id="hp-text">19860/19860</div>
+          <div class="bar-text" id="hp-text">100/100</div>
         </div>
         <div class="bar-container">
-          <div class="bar-fill mp-bar" id="mp-fill" style="width: 93.601896%;"></div>
-          <div class="bar-text" id="mp-text">1975/2110</div>
+          <div class="bar-fill mp-bar" id="mp-fill" style="width: 100%;"></div>
+          <div class="bar-text" id="mp-text">50/50</div>
         </div>
         <div class="bar-container">
-          <div class="bar-fill exp-bar" id="exp-fill" style="width: 7%;"></div>
-          <div class="bar-text" id="exp-text">2611/38138 (7%)</div>
+          <div class="bar-fill exp-bar" id="exp-fill" style="width: 0%;"></div>
+          <div class="bar-text" id="exp-text">0/58 (0%)</div>
         </div>
         <div class="stat-rows">
           <div class="stat-row-item">
-            <span class="stat-atk">⚔️<span id="atk-val">1712</span></span>
-            <span class="stat-def">🛡️<span id="def-val">2010</span></span>
-            <span class="stat-crit">💥<span id="crit-val">30</span>%</span>
+            <span class="stat-atk">⚔️<span id="atk-val">15</span></span>
+            <span class="stat-def">🛡️<span id="def-val">5</span></span>
+            <span class="stat-crit">💥<span id="crit-val">5</span>%</span>
           </div>
-          <div class="stat-row-item" id="munyeahana-buff-row" style="display: flex; justify-content: center;">
-            <span class="stat-buff munyeahana-buff-active">✨ 무녀하나 버프 <span id="munyeahana-buff-pct">+9.9%</span> · ⚔️+<span id="munyeahana-atk-buff">154</span> / 🛡️+<span id="munyeahana-def-buff">180</span></span>
+          <div class="stat-row-item" id="munyeahana-buff-row" style="display:none; justify-content:center;">
+            <span class="stat-buff munyeahana-buff-active">✨ 무녀하나 버프 <span id="munyeahana-buff-pct">+0%</span> · ⚔️+<span id="munyeahana-atk-buff">0</span> / 🛡️+<span id="munyeahana-def-buff">0</span></span>
           </div>
           <div class="stat-row-item">
-            <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">🔥 하둠: 얼음성 ▾</span>
+            <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">초보자 사냥터 ▾</span>
             <button class="btn-skill-badge" onclick="openSkillModal()">✨ 스킬</button>
-            <span class="stat-gold"><span id="gold-val">184,020</span> G</span>
+            <span class="stat-gold"><span id="gold-val">200</span> G</span>
           </div>
           <div class="stat-row-item" style="justify-content: flex-end;">
-            <span class="stat-loot">📜 전리품: <span id="loot-val">8</span>개</span>
-            <span class="stat-loot">🔷 강화의 핵: <span id="core-val">1</span>개</span>
+            <span class="stat-loot">📜 전리품: <span id="loot-val">0</span>개</span>
+            <span class="stat-loot">🔷 강화의 핵: <span id="core-val">0</span>개</span>
           </div>
           <div class="status-action-row">
             <button class="status-action-btn status-shop-btn" onclick="openShopModal()">🛒 저자거리 상점</button>
@@ -632,12 +634,12 @@
 
     <div id="joystick-zone">
       <div class="joystick-base" id="joystick-base">
-        <div class="joystick-knob" id="joystick-knob" style="transform: translate(0px, 0px);"></div>
+        <div class="joystick-knob" id="joystick-knob"></div>
       </div>
     </div>
 
     <div id="action-zone">
-      <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>ON</div>
+      <div class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoHunt()">AUTO<br>OFF</div>
       <div class="action-btn btn-target" id="btn-target" onclick="targetNearestMonster()">🎯</div>
       <div class="action-btn btn-attack" id="btn-attack" onclick="triggerAttackBtn()">⚔️</div>
 
@@ -683,7 +685,7 @@
   </div>
 
   <!-- Stage Select Modal -->
-  <div class="modal interactive" id="stage-modal" style="display: none;">
+  <div class="modal interactive" id="stage-modal">
     <div class="modal-title">🏔️ 사냥터 스테이지 선택</div>
     <div class="stage-cards">
       <div class="stage-card" id="stage-card-1" onclick="selectStage(1, false)">
@@ -725,7 +727,7 @@
         </div>
         <div style="font-size: 12px; font-weight: bold; color: #ff8a65;">이동 ➔</div>
       </div>
-      <div class="stage-card hadum active" id="stage-card-hadum-2" onclick="selectStage(2, true)">
+      <div class="stage-card hadum" id="stage-card-hadum-2" onclick="selectStage(2, true)">
         <div>
           <div style="font-weight: bold; color: #ff8a65; font-size: 13px;">🔥 하둠: 웅녀동굴</div>
           <div style="font-size: 10px; color: #bcaaa4;">동일 몬스터, 공격력·HP·경험치 2배</div>
@@ -791,9 +793,9 @@
   </div>
 
   <!-- Hero Manager Modal -->
-  <div class="modal interactive" id="hero-manager-modal" style="display: none; width: min(330px, 88vw); max-height: calc(-32px + 100vh); overflow-y: auto;">
+  <div class="modal interactive" id="hero-manager-modal" style="display:none; width:min(330px,88vw); max-height:calc(100vh - 32px); overflow-y:auto;">
     <div class="modal-title">👥 영웅 관리</div>
-    <div id="hero-manager-grid" class="hero-manage-grid"><div class="hero-manage-card"><div class="hero-icon">🏹</div><div class="hero-name">시리</div><div class="hero-status active">● 소환중</div><div class="hero-desc">원거리 70~90 · 유저 경험치 +10%</div><button class="hero-manage-btn hide" onclick="toggleHeroSummon('siri')">숨기기</button></div><div class="hero-manage-card"><div class="hero-icon">👩🏻‍⚕️</div><div class="hero-name">의녀장금</div><div class="hero-status active">● 소환중</div><div class="hero-desc">원거리 30~40 · 힐 지원</div><button class="hero-manage-btn hide" onclick="toggleHeroSummon('janggeum')">숨기기</button></div><div class="hero-manage-card"><div class="hero-icon">🎎</div><div class="hero-name">무녀하나</div><div class="hero-status active">● 소환중</div><div class="hero-desc">근거리 80~100 · 공/방 버프</div><button class="hero-manage-btn hide" onclick="toggleHeroSummon('munyeahana')">숨기기</button></div></div>
+    <div id="hero-manager-grid" class="hero-manage-grid"></div>
     <div style="text-align:center; margin-top:8px;">
       <button class="btn-small" onclick="closeHeroManager()">닫기</button>
     </div>
@@ -5519,4 +5521,4 @@
     onWindowResize();
     animate();
   </script>
-</body></html>
+</body>
