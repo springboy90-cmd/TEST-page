@@ -119,6 +119,9 @@
     .stat-crit { color: #fb8c00; }
     .stat-gold { color: #f57f17; }
     .stat-loot { color: #8e24aa; }
+    .stat-buff { color: #7b1fa2; font-size: 8px; font-weight: 900; }
+    .munyeahana-buff-active { animation: munyeahanaBuffPulse 1.5s ease-in-out infinite; }
+    @keyframes munyeahanaBuffPulse { 0%,100% { opacity: 0.78; } 50% { opacity: 1; } }
 
     .btn-skill-badge {
       background: #e8eaf6;
@@ -587,6 +590,9 @@
             <span class="stat-atk">⚔️<span id="atk-val">15</span></span>
             <span class="stat-def">🛡️<span id="def-val">5</span></span>
             <span class="stat-crit">💥<span id="crit-val">5</span>%</span>
+          </div>
+          <div class="stat-row-item" id="munyeahana-buff-row" style="display:none; justify-content:center;">
+            <span class="stat-buff munyeahana-buff-active">✨ 무녀하나 버프 <span id="munyeahana-buff-pct">+0%</span> · ⚔️+<span id="munyeahana-atk-buff">0</span> / 🛡️+<span id="munyeahana-def-buff">0</span></span>
           </div>
           <div class="stat-row-item">
             <span class="stage-badge" id="stage-badge" onclick="openStageModal()" title="클릭하여 스테이지 선택">초보자 사냥터 ▾</span>
@@ -2932,21 +2938,42 @@
       return talismanTable[playerState.talismanLevel].mult;
     }
 
+    function isMunyeahanaBuffActive() {
+      return !!munyeahanaSprite;
+    }
+
+    function getMunyeahanaBuffRate() {
+      return isMunyeahanaBuffActive() ? (playerState.level / 7) / 100 : 0;
+    }
+
+    function getPlayerBaseAtk() {
+      return 15 + (playerState.level - 1) * 3 + playerState.weaponAtk;
+    }
+
     function getPlayerAvgAtk() {
-      const baseAvgAtk = 15 + (playerState.level - 1) * 3;
-      let atk = baseAvgAtk + playerState.weaponAtk;
-      if (playerState.hasMunyeahana) {
-        atk *= (1 + (playerState.level / 7) / 100);
+      let atk = getPlayerBaseAtk();
+      if (isMunyeahanaBuffActive()) {
+        atk *= (1 + getMunyeahanaBuffRate());
       }
       return Math.round(atk);
     }
 
     function getPlayerEffectiveDef() {
       let def = playerState.defensePower;
-      if (playerState.hasMunyeahana) {
-        def = Math.round(def * (1 + (playerState.level / 7) / 100));
+      if (isMunyeahanaBuffActive()) {
+        def *= (1 + getMunyeahanaBuffRate());
       }
-      return def;
+      return Math.round(def);
+    }
+
+    function getMunyeahanaAtkBuff() {
+      if (!isMunyeahanaBuffActive()) return 0;
+      return Math.max(0, getPlayerAvgAtk() - Math.round(getPlayerBaseAtk()));
+    }
+
+    function getMunyeahanaDefBuff() {
+      if (!isMunyeahanaBuffActive()) return 0;
+      return Math.max(0, getPlayerEffectiveDef() - playerState.defensePower);
     }
 
     function getPlayerActualDmg(multiplier = 1.0) {
@@ -2960,6 +2987,50 @@
     playerSprite.scale.set(3.2, 3.2, 1);
     playerSprite.position.set(0, 1.6, 4);
     scene.add(playerSprite);
+
+    let munyeahanaBuffAura = null;
+    let munyeahanaBuffAuraBase = 1;
+
+    function createMunyeahanaBuffAuraTexture() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 128; cvs.height = 128;
+      const ctx = cvs.getContext('2d');
+      const grad = ctx.createRadialGradient(64, 64, 8, 64, 64, 58);
+      grad.addColorStop(0, 'rgba(255,245,157,0.72)');
+      grad.addColorStop(0.32, 'rgba(255,224,130,0.38)');
+      grad.addColorStop(0.68, 'rgba(255,193,7,0.16)');
+      grad.addColorStop(1, 'rgba(255,193,7,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(64, 64, 58, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,235,59,0.85)';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(64, 64, 42, 0, Math.PI * 2); ctx.stroke();
+      return new THREE.CanvasTexture(cvs);
+    }
+
+    function ensureMunyeahanaBuffAura() {
+      if (munyeahanaBuffAura) return;
+      const tex = createMunyeahanaBuffAuraTexture();
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.75, depthWrite: false });
+      munyeahanaBuffAura = new THREE.Sprite(mat);
+      munyeahanaBuffAura.scale.set(4.8, 4.8, 1);
+      munyeahanaBuffAura.visible = false;
+      scene.add(munyeahanaBuffAura);
+    }
+
+    function updateMunyeahanaBuffAura() {
+      if (!munyeahanaBuffAura) return;
+      const active = isMunyeahanaBuffActive();
+      munyeahanaBuffAura.visible = active;
+      if (!active) return;
+      munyeahanaBuffAura.position.set(playerSprite.position.x, 2.35, playerSprite.position.z);
+      const pulse = 1 + Math.sin(Date.now() * 0.004) * 0.045;
+      munyeahanaBuffAura.scale.set(4.8 * pulse, 4.8 * pulse, 1);
+      munyeahanaBuffAuraBase = pulse;
+      munyeahanaBuffAura.material.opacity = 0.62 + Math.sin(Date.now() * 0.004) * 0.10;
+    }
+
+    ensureMunyeahanaBuffAura();
 
     const targetArrowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createTargetArrowTexture() }));
     targetArrowSprite.scale.set(1.5, 1.5, 1);
@@ -3416,6 +3487,8 @@
       if (munyeahanaShadow) { scene.remove(munyeahanaShadow); if (munyeahanaShadow.material) munyeahanaShadow.material.dispose(); munyeahanaShadow = null; }
       munyeahanaTarget = null;
       removeHeroNametag('hero_munyeahana');
+      updateMunyeahanaBuffAura();
+      updateUI();
     }
 
     function toggleHeroSummon(type) {
@@ -3486,6 +3559,8 @@
       scene.add(munyeahanaSprite);
       munyeahanaShadow = createShadowDisk(2.0, 1.1);
       createNametagElement('hero_munyeahana', '소환영웅', '무녀하나', false, true);
+      updateMunyeahanaBuffAura();
+      updateUI();
     }
 
     buildStage1Field();
@@ -4618,9 +4693,24 @@
         document.getElementById('exp-text').innerText = `${playerState.exp}/${playerState.maxExp} (${expPct}%)`;
       }
 
-      document.getElementById('atk-val').innerText = Math.round(getPlayerAvgAtk());
-      document.getElementById('def-val').innerText = getPlayerEffectiveDef();
+      const playerAtk = Math.round(getPlayerAvgAtk());
+      const playerDef = getPlayerEffectiveDef();
+      document.getElementById('atk-val').innerText = playerAtk;
+      document.getElementById('def-val').innerText = playerDef;
       document.getElementById('crit-val').innerText = Math.round(getCritChance() * 100);
+
+      const buffRow = document.getElementById('munyeahana-buff-row');
+      const buffPct = document.getElementById('munyeahana-buff-pct');
+      const atkBuffEl = document.getElementById('munyeahana-atk-buff');
+      const defBuffEl = document.getElementById('munyeahana-def-buff');
+      const buffRate = getMunyeahanaBuffRate();
+      if (buffRow && buffPct && atkBuffEl && defBuffEl) {
+        const active = isMunyeahanaBuffActive();
+        buffRow.style.display = active ? 'flex' : 'none';
+        buffPct.innerText = `+${(buffRate * 100).toFixed(1)}%`;
+        atkBuffEl.innerText = getMunyeahanaAtkBuff();
+        defBuffEl.innerText = getMunyeahanaDefBuff();
+      }
       document.getElementById('gold-val').innerText = playerState.gold.toLocaleString();
       document.getElementById('loot-val').innerText = playerState.talismanLoot.toLocaleString();
 
@@ -5079,6 +5169,7 @@
         }
       });
 
+      updateMunyeahanaBuffAura();
       renderer.render(scene, camera);
     }
 
