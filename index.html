@@ -3841,6 +3841,10 @@
     function openJobModal() { document.getElementById('job-modal').style.display = 'block'; }
     function closeJobModal() { document.getElementById('job-modal').style.display = 'none'; }
 
+    function isShamanClass() {
+      return playerState.job === '주술사' || playerState.job === '대도사';
+    }
+
     function selectJob(jobName) {
       playerState.job = jobName;
       playerState.tier = 2;
@@ -3974,7 +3978,9 @@
       ],
       armor: [
         { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8', price: 500, currency: 'gold', type: 'armor', valHp: 100, valDef: 8 },
-        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, currency: 'gold', type: 'armor', valHp: 250, valDef: 20 }
+        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, currency: 'gold', type: 'armor', valHp: 250, valDef: 20 },
+        { id: 'mp1', name: '마력 증대 I', desc: '최대 MP +100 (주술사 계열 전용)', price: 1000, currency: 'gold', type: 'maxMp', valMp: 100, reqShaman: true },
+        { id: 'mp2', name: '마력 증대 II', desc: '최대 MP +200 (주술사 계열 전용)', price: 1900, currency: 'gold', type: 'maxMp', valMp: 200, reqShaman: true }
       ],
       hero: [
         { id: 'h1', name: '시리', desc: '활을 이용한 원거리 공격형 (기본공격 70~90) & 유저 경험치 +10% 버프', price: 40000, currency: 'gold', type: 'hero' },
@@ -3994,7 +4000,7 @@
       });
 
       const container = document.getElementById('shop-items-container'); container.innerHTML = '';
-      shopCatalog[cat].forEach(item => {
+      shopCatalog[cat].filter(item => !item.reqShaman || isShamanClass()).forEach(item => {
         const card = document.createElement('div'); card.className = 'shop-item-card';
 
         if (item.type === 'talisman') {
@@ -4077,6 +4083,10 @@
     function buyShopItem(cat, id) {
       const item = shopCatalog[cat].find(i => i.id === id);
       if (!item || playerState.gold < item.price) return;
+      if (item.reqShaman && !isShamanClass()) {
+        alert('주술사 계열 전직 후 구매할 수 있습니다.');
+        return;
+      }
 
       playerState.gold -= item.price;
 
@@ -4085,6 +4095,7 @@
       else if (id === 'h3') { playerState.hasMunyeahana = true; spawnMunyeahanaHero(); }
       else if (item.type === 'atk') playerState.weaponAtk += item.val;
       else if (item.type === 'armor') { playerState.maxHp += item.valHp; playerState.hp += item.valHp; playerState.defensePower += item.valDef; }
+      else if (item.type === 'maxMp') { playerState.maxMp += item.valMp; playerState.mp += item.valMp; }
 
       updateUI();
       if (item.type === 'hero') {
@@ -4539,9 +4550,11 @@
           playerState.exp -= playerState.maxExp;
           playerState.level++;
           playerState.defensePower += 5;
-          playerState.maxHp += 30;
+          const levelHpGain = isShamanClass() ? 10 : 30;
+          const levelMpGain = isShamanClass() ? 30 : 10;
+          playerState.maxHp += levelHpGain;
           playerState.hp = playerState.maxHp;
-          playerState.maxMp += 10;
+          playerState.maxMp += levelMpGain;
           playerState.mp = playerState.maxMp;
           playerState.maxExp = getRequiredExp(playerState.level);
           showLevelUpEffect();
