@@ -601,6 +601,7 @@
           </div>
           <div class="stat-row-item" style="justify-content: flex-end;">
             <span class="stat-loot">📜 전리품: <span id="loot-val">0</span>개</span>
+            <span class="stat-loot">🔷 강화의 핵: <span id="core-val">0</span>개</span>
           </div>
           <div class="status-action-row">
             <button class="status-action-btn status-shop-btn" onclick="openShopModal()">🛒 저자거리 상점</button>
@@ -2918,7 +2919,7 @@
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
       maxExp: getRequiredExp(1),
       gold: 200, 
-      talismanLoot: 0,
+      talismanLoot: 0, enhanceCore: 0,
       talismanLevel: 0,
       baseAttackSpeed: 1000, attackSpeed: 1000,
       weaponAtk: 0, defensePower: 5,
@@ -3605,14 +3606,15 @@
 
       const speedCard = document.createElement('div'); speedCard.className = 'shop-item-card';
       const isMaxSpeed = playerState.atkSpeedLv >= 10;
+      const atkSpeedNextCost = 1000 + playerState.atkSpeedLv * 500;
       speedCard.innerHTML = `
         <div>
           <div class="item-header"><span>공속 수련 (${playerState.atkSpeedLv}/10)</span></div>
           <div class="item-desc">1레벨당 공격속도 +5%가 가속됩니다. (현재: +${playerState.atkSpeedLv * 5}%)</div>
         </div>
         <div class="item-footer">
-          <span class="item-price">1,000 G</span>
-          <button class="btn-buy" ${isMaxSpeed || playerState.gold < 1000 ? 'disabled' : ''} onclick="buySkill('atkSpeed')">
+          <span class="item-price">${isMaxSpeed ? 'MAX' : atkSpeedNextCost.toLocaleString() + ' G'}</span>
+          <button class="btn-buy" ${isMaxSpeed || playerState.gold < atkSpeedNextCost ? 'disabled' : ''} onclick="buySkill('atkSpeed')">
             ${isMaxSpeed ? '최대 레벨' : '레벨업'}
           </button>
         </div>
@@ -3688,8 +3690,9 @@
         if (playerState.hasAutoHeal || playerState.gold < 2000) return;
         playerState.gold -= 2000; playerState.hasAutoHeal = true;
       } else if (skillType === 'atkSpeed') {
-        if (playerState.atkSpeedLv >= 10 || playerState.gold < 1000) return;
-        playerState.gold -= 1000; playerState.atkSpeedLv++; recalcAttackSpeed();
+        const atkSpeedNextCost = 1000 + playerState.atkSpeedLv * 500;
+        if (playerState.atkSpeedLv >= 10 || playerState.gold < atkSpeedNextCost) return;
+        playerState.gold -= atkSpeedNextCost; playerState.atkSpeedLv++; recalcAttackSpeed();
       }
       updateUI();
       if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
@@ -4039,6 +4042,24 @@
               </button>
             </div>
           `;
+          container.appendChild(card);
+
+          const convertibleCount = Math.floor(playerState.talismanLoot / LOOT_TO_CORE_RATE);
+          const coreCard = document.createElement('div'); coreCard.className = 'shop-item-card';
+          coreCard.innerHTML = `
+            <div>
+              <div class="item-header"><span>🔷 강화의 핵 전환</span></div>
+              <div class="item-desc">전리품 ${LOOT_TO_CORE_RATE}개를 강화의 핵 1개로 전환합니다.\n보유 전리품: ${playerState.talismanLoot.toLocaleString()}개 · 전환 가능: ${convertibleCount}개\n보유 강화의 핵: ${(playerState.enhanceCore || 0).toLocaleString()}개</div>
+            </div>
+            <div class="item-footer">
+              <span class="item-price">전리품 ${LOOT_TO_CORE_RATE}개 → 1개</span>
+              <button class="btn-buy" ${convertibleCount <= 0 ? 'disabled' : ''} onclick="convertLootToCore()">
+                전환하기
+              </button>
+            </div>
+          `;
+          container.appendChild(coreCard);
+          return;
         } else {
           const isBought = (item.id === 'h1' && playerState.hasSiri) || (item.id === 'h2' && playerState.hasJanggeum) || (item.id === 'h3' && playerState.hasMunyeahana);
           const canAfford = playerState.gold >= item.price;
@@ -4055,6 +4076,22 @@
 
         container.appendChild(card);
       });
+    }
+
+    const LOOT_TO_CORE_RATE = 50;
+
+    function convertLootToCore() {
+      const convertible = Math.floor(playerState.talismanLoot / LOOT_TO_CORE_RATE);
+      if (convertible <= 0) {
+        alert(`전리품이 부족합니다! (${LOOT_TO_CORE_RATE}개당 강화의 핵 1개로 전환됩니다)`);
+        return;
+      }
+      playerState.talismanLoot -= convertible * LOOT_TO_CORE_RATE;
+      playerState.enhanceCore = (playerState.enhanceCore || 0) + convertible;
+      showHealText(`🔷 강화의 핵 +${convertible}개 전환!`, playerSprite.position);
+      updateUI();
+      if (document.getElementById('shop-modal')?.style.display !== 'none') switchShopCategory(currentShopCategory);
+      saveGame();
     }
 
     function enhanceTalisman() {
@@ -4607,7 +4644,7 @@
           maxLevel: playerState.maxLevel, job: playerState.job, tier: playerState.tier,
           hp: playerState.hp, maxHp: playerState.maxHp, mp: playerState.mp, maxMp: playerState.maxMp,
           exp: playerState.exp, maxExp: playerState.maxExp, gold: playerState.gold,
-          talismanLoot: playerState.talismanLoot, talismanLevel: playerState.talismanLevel,
+          talismanLoot: playerState.talismanLoot, talismanLevel: playerState.talismanLevel, enhanceCore: playerState.enhanceCore,
           baseAttackSpeed: playerState.baseAttackSpeed, attackSpeed: playerState.attackSpeed,
           weaponAtk: playerState.weaponAtk, defensePower: playerState.defensePower,
           moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
@@ -4658,7 +4695,7 @@
 
         isLoadingSave = true;
         const p = data.player;
-        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
+        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
         numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
         playerState.maxLevel = 150;
         ['name','title','job'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
@@ -4760,6 +4797,8 @@
       }
       document.getElementById('gold-val').innerText = playerState.gold.toLocaleString();
       document.getElementById('loot-val').innerText = playerState.talismanLoot.toLocaleString();
+      const coreValEl = document.getElementById('core-val');
+      if (coreValEl) coreValEl.innerText = (playerState.enhanceCore || 0).toLocaleString();
 
       const pEl = nametags.get('player');
       if (pEl) pEl.querySelector('.tag-title').innerText = `Lv.${playerState.level} ${playerState.title}`;
