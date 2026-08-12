@@ -837,6 +837,7 @@
     let currentHadum = false; // 하둠 영역(2차 전직 전용 고난도 스테이지) 진입 여부
     const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율
     const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 전용 추가 체력 배율
+    const HADUM_HP_EXTRA_MULT = 2; // 하둠 전체 몬스터 현재 HP 추가 2배
     // 하둠 일반 몬스터 스테이지별 난이도: 유저 공격력 : 몬스터 방어력
     // Boss 몬스터에는 적용하지 않음
     const HADUM_DEF_RATIO = { 1: 3.3, 2: 3.2, 3: 3.1, 4: 3.0 };
@@ -2913,7 +2914,7 @@
     ];
 
     const playerState = {
-      name: "조선유생", title: "유생", level: 1, maxLevel: 70, job: "평민", tier: 1,
+      name: "조선유생", title: "유생", level: 1, maxLevel: 150, job: "평민", tier: 1,
       hp: 100, maxHp: 100, mp: 50, maxMp: 50, exp: 0,
       maxExp: getRequiredExp(1),
       gold: 200, 
@@ -2927,7 +2928,8 @@
       hasAutoHeal: false, atkSpeedLv: 0, idleTimer: 0,
       skillsLearned: [],
       firstSkillLv: 0,
-      skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
+      skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 },
+      skillLv: { s2_2: 0, s2_3: 0 }
     };
 
     function getCritChance() {
@@ -3200,7 +3202,7 @@
 
         monsters.push({
           id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false, isHadum,
-          hp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) : 120, maxHp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) : 120, goldReward: 180,
+          hp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) * HADUM_HP_EXTRA_MULT : 120, maxHp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) * HADUM_HP_EXTRA_MULT : 120, goldReward: 180,
           attackPower: isHadum ? 8 * HADUM_MULT : 8, attackRange: 2.0, attackSpeed: 1500,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
@@ -3216,7 +3218,7 @@
 
       monsters.push({
         id: `monster_20`, stageId: 1, sprite: kingMushroomSprite, shadowDisk: bossShadow, type: '왕송이모자', tier: 1, isBoss: true, isHadum,
-        hp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 1500, maxHp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) : 1500, goldReward: 1500,
+        hp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) * HADUM_HP_EXTRA_MULT : 1500, maxHp: isHadum ? Math.round(1500 * HADUM_MULT * HADUM_STAGE1_HP_MULT) * HADUM_HP_EXTRA_MULT : 1500, goldReward: 1500,
         attackPower: isHadum ? 28 * HADUM_MULT : 28, attackRange: 3.0, attackSpeed: 1300,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
@@ -3258,7 +3260,7 @@
         const mName = type === 'garlic_king' ? '마늘대왕' : (type === 'tiger_patient' ? '병자호랑' : '웅양');
         monsters.push({
           id: `monster_${i}`, stageId: 2, sprite, shadowDisk: mShadow, type: mName, tier: 2, isBoss: false, isHadum,
-          hp: isHadum ? 1000 * HADUM_MULT * 2.5 : 1000, maxHp: isHadum ? 1000 * HADUM_MULT * 2.5 : 1000, goldReward: 400,
+          hp: isHadum ? 1000 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 1000, maxHp: isHadum ? 1000 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 1000, goldReward: 400,
           attackPower: isHadum ? 30 * HADUM_MULT : 30, attackRange: 2.2, attackSpeed: 1400,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
@@ -3274,7 +3276,7 @@
 
       monsters.push({
         id: `monster_18`, stageId: 2, sprite: bossSprite, shadowDisk: bossShadow, type: '마늘장갑차', tier: 2, isBoss: true, isHadum,
-        hp: isHadum ? 5000 * HADUM_MULT : 5000, maxHp: isHadum ? 5000 * HADUM_MULT : 5000, goldReward: 3000,
+        hp: isHadum ? 5000 * HADUM_MULT * HADUM_HP_EXTRA_MULT : 5000, maxHp: isHadum ? 5000 * HADUM_MULT * HADUM_HP_EXTRA_MULT : 5000, goldReward: 3000,
         attackPower: isHadum ? 55 * HADUM_MULT : 55, attackRange: 3.5, attackSpeed: 1200,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
@@ -3313,7 +3315,7 @@
         const mName = type === 'judang' ? '주당' : (type === 'palgwang' ? '팔광병사' : '상두포');
         monsters.push({
           id: `monster_${i}`, stageId: 3, sprite, shadowDisk: mShadow, type: mName, tier: 3, isBoss: false, isHadum,
-          hp: isHadum ? 2200 * HADUM_MULT * 2.5 : 2200, maxHp: isHadum ? 2200 * HADUM_MULT * 2.5 : 2200, goldReward: 800,
+          hp: isHadum ? 2200 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 2200, maxHp: isHadum ? 2200 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 2200, goldReward: 800,
           attackPower: isHadum ? 55 * HADUM_MULT : 55, attackRange: 2.5, attackSpeed: 1200,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
@@ -3329,7 +3331,7 @@
 
       monsters.push({
         id: `monster_18`, stageId: 3, sprite: madaepoBoss, shadowDisk: bossShadow, type: '마대포', tier: 3, isBoss: true, isHadum,
-        hp: isHadum ? 15000 * HADUM_MULT : 15000, maxHp: isHadum ? 15000 * HADUM_MULT : 15000, goldReward: 10000,
+        hp: isHadum ? 15000 * HADUM_MULT * HADUM_HP_EXTRA_MULT : 15000, maxHp: isHadum ? 15000 * HADUM_MULT * HADUM_HP_EXTRA_MULT : 15000, goldReward: 10000,
         attackPower: isHadum ? 90 * HADUM_MULT : 90, attackRange: 4.0, attackSpeed: 1000,
         lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
       });
@@ -3381,7 +3383,7 @@
         sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
         scene.add(sprite);
         const mShadow=createShadowDisk(2.7,1.4);
-        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?5400*HADUM_MULT*2.5:5400,maxHp:isHadum?5400*HADUM_MULT*2.5:5400,goldReward:1200,attackPower:isHadum?108*HADUM_MULT:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?5400*HADUM_MULT*2.5 * HADUM_HP_EXTRA_MULT:5400,maxHp:isHadum?5400*HADUM_MULT*2.5 * HADUM_HP_EXTRA_MULT:5400,goldReward:1200,attackPower:isHadum?108*HADUM_MULT:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
         createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
       }
 
@@ -3389,7 +3391,7 @@
       const bossSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture('icequeen',false,0),transparent:true}));
       bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(0,4.1,-10); scene.add(bossSprite);
       const bossShadow=createShadowDisk(7.0,3.6);
-      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,isHadum,hp:isHadum?36000*HADUM_MULT:36000,maxHp:isHadum?36000*HADUM_MULT:36000,goldReward:18000,attackPower:isHadum?172*HADUM_MULT:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+      monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,isHadum,hp:isHadum?36000*HADUM_MULT * HADUM_HP_EXTRA_MULT:36000,maxHp:isHadum?36000*HADUM_MULT * HADUM_HP_EXTRA_MULT:36000,goldReward:18000,attackPower:isHadum?172*HADUM_MULT:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
       createNametagElement('monster_18','얼음성의 여왕','빙설여왕',false,false,true);
     }
 
@@ -3651,24 +3653,29 @@
       container.appendChild(j2Title);
 
       const j2Skills = [
-        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다. (MP 15)', price: 10000, reqTier: 3 },
-        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지. (MP 15)', price: 15000, reqTier: 3 },
-        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다. (MP 15)', price: 20000, reqTier: 3 }
+        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다. (MP 15)', price: 10000, reqTier: 3, maxLv: 1 },
+        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지. (MP 15)', price: 15000, reqTier: 3, maxLv: 5 },
+        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다. (MP 15)', price: 20000, reqTier: 3, maxLv: 5 }
       ];
 
       j2Skills.forEach(sk => {
         const isLearned = playerState.skillsLearned.includes(sk.id);
         const canLearn = playerState.tier >= sk.reqTier;
+        const currentLv = sk.id === 's2_1' ? (isLearned ? 1 : 0) : Math.max(0, Math.min(5, Number(playerState.skillLv[sk.id]) || 0));
+        const isMax = currentLv >= sk.maxLv;
+        const levelDesc = sk.id === 's2_2' || sk.id === 's2_3'
+          ? `현재 Lv.${currentLv}/5 · 공격력 ${[0,100,120,140,160,200][currentLv]}% · MP 15`
+          : sk.desc;
         const card = document.createElement('div'); card.className = 'shop-item-card';
         card.innerHTML = `
           <div>
-            <div class="item-header"><span>${sk.name}</span></div>
-            <div class="item-desc">${sk.desc}</div>
+            <div class="item-header"><span>${sk.name}${sk.maxLv > 1 ? ` (Lv.${currentLv}/5)` : ''}</span></div>
+            <div class="item-desc">${levelDesc}</div>
           </div>
           <div class="item-footer">
-            <span class="item-price">${sk.price.toLocaleString()} G</span>
-            <button class="btn-buy" ${isLearned || !canLearn || playerState.gold < sk.price ? 'disabled' : ''} onclick="buyClassSkill('${sk.id}', ${sk.price})">
-              ${isLearned ? '학습완료' : (canLearn ? '배우기' : '2차전직 필요')}
+            <span class="item-price">${isMax ? '최대 레벨' : `${sk.price.toLocaleString()} G`}</span>
+            <button class="btn-buy" ${isMax || !canLearn || playerState.gold < sk.price ? 'disabled' : ''} onclick="buyClassSkill('${sk.id}', ${sk.price})">
+              ${isMax ? '최대 레벨' : (isLearned ? '레벨업' : (canLearn ? '배우기' : '2차전직 필요'))}
             </button>
           </div>
         `;
@@ -3703,17 +3710,29 @@
         return;
       }
 
-      if (playerState.gold < price || playerState.skillsLearned.includes(skillId)) return;
-      playerState.gold -= price;
-      playerState.skillsLearned.push(skillId);
-      
-      if (skillId.startsWith('s2_')) {
+      if (skillId === 's2_2' || skillId === 's2_3') {
+        if (playerState.tier < 3 || playerState.gold < price) return;
+        const currentLv = Math.max(0, Math.min(5, Number(playerState.skillLv[skillId]) || 0));
+        if (currentLv >= 5) return;
+        playerState.gold -= price;
+        playerState.skillLv[skillId] = currentLv + 1;
+        if (!playerState.skillsLearned.includes(skillId)) playerState.skillsLearned.push(skillId);
         const btn = document.getElementById(`btn-skill-${skillId}`);
         if (btn) btn.style.display = 'flex';
+        updateUI();
+        if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
+        return;
       }
 
-      updateUI();
-      if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
+      if (skillId === 's2_1') {
+        if (playerState.gold < price || playerState.tier < 3 || playerState.skillsLearned.includes(skillId)) return;
+        playerState.gold -= price;
+        playerState.skillsLearned.push(skillId);
+        const btn = document.getElementById(`btn-skill-${skillId}`);
+        if (btn) btn.style.display = 'flex';
+        updateUI();
+        if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
+      }
     }
 
     function spawnSparkles(worldPos, colorType = 'swordmaster') {
@@ -3790,20 +3809,26 @@
           applyDamage(selectedTarget, getPlayerActualDmg(3.0));
         }
       } else if (skillId === 's2_2') {
+        const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_2) || 1));
+        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
+        const mult = multTable[lv];
         spawnHitVfx(playerSprite.position, 'whirlwind', 5.0);
         monsters.forEach(m => {
           if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= 6.0) {
             spawnHitVfx(m.sprite.position, 'slash', 2.2);
-            applyDamage(m, getPlayerActualDmg(2.0));
+            applyDamage(m, getPlayerActualDmg(mult));
           }
         });
       } else if (skillId === 's2_3') {
+        const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_3) || 1));
+        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
+        const mult = multTable[lv];
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         const centerPos = selectedTarget && selectedTarget.alive ? selectedTarget.sprite.position : playerSprite.position;
         spawnHitVfx(centerPos, 'explosion', 6.0);
         monsters.forEach(m => {
           if (m.alive && m.sprite.position.distanceTo(centerPos) <= 8.0) {
-            applyDamage(m, getPlayerActualDmg(2.5));
+            applyDamage(m, getPlayerActualDmg(mult));
           }
         });
       }
@@ -4572,7 +4597,7 @@
           moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
           hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
           hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
-          atkSpeedLv: playerState.atkSpeedLv, firstSkillLv: playerState.firstSkillLv, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned].filter(id => id !== 's1_2') : [],
+          atkSpeedLv: playerState.atkSpeedLv, firstSkillLv: playerState.firstSkillLv, skillLv: { s2_2: playerState.skillLv.s2_2, s2_3: playerState.skillLv.s2_3 }, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned].filter(id => id !== 's1_2') : [],
           skillCooldowns: { s2_1: 0, s2_2: 0, s2_3: 0 }
         },
         heroes: {
@@ -4619,11 +4644,17 @@
         const p = data.player;
         const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
         numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
+        playerState.maxLevel = 150;
         ['name','title','job'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
         ['hasSiri','hasJanggeum','hasMunyeahana','hasAutoHeal'].forEach(k => { if (typeof p[k] === 'boolean') playerState[k] = p[k]; });
         if (Array.isArray(p.skillsLearned)) playerState.skillsLearned = [...p.skillsLearned].filter(id => id !== 's1_2');
         playerState.firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
+        if (p.skillLv && typeof p.skillLv === 'object') {
+          playerState.skillLv.s2_2 = Math.max(0, Math.min(5, Number(p.skillLv.s2_2) || 0));
+          playerState.skillLv.s2_3 = Math.max(0, Math.min(5, Number(p.skillLv.s2_3) || 0));
+        }
         if (playerState.skillsLearned.includes('s1_1') && playerState.firstSkillLv === 0) playerState.firstSkillLv = 1;
+        ['s2_2','s2_3'].forEach(id => { if (playerState.skillsLearned.includes(id) && playerState.skillLv[id] === 0) playerState.skillLv[id] = 1; });
         playerState.skillCooldowns = { s2_1:0, s2_2:0, s2_3:0 };
         playerState.hp = Math.max(0, Math.min(playerState.hp, playerState.maxHp));
         playerState.mp = Math.max(0, Math.min(playerState.mp, playerState.maxMp));
@@ -4675,7 +4706,7 @@
 
     function updateUI() {
       document.getElementById('player-name').innerText = playerState.name;
-      document.getElementById('player-lv').innerText = playerState.level >= 70 ? 'Lv.70 (MAX)' : `Lv.${playerState.level}`;
+      document.getElementById('player-lv').innerText = playerState.level >= playerState.maxLevel ? `Lv.${playerState.maxLevel} (MAX)` : `Lv.${playerState.level}`;
       document.getElementById('player-job').innerText = playerState.job;
 
       document.getElementById('hp-fill').style.width = `${(playerState.hp / playerState.maxHp) * 100}%`;
@@ -4684,7 +4715,7 @@
       document.getElementById('mp-fill').style.width = `${(playerState.mp / playerState.maxMp) * 100}%`;
       document.getElementById('mp-text').innerText = `${playerState.mp}/${playerState.maxMp}`;
 
-      if (playerState.level >= 70) {
+      if (playerState.level >= playerState.maxLevel) {
         document.getElementById('exp-fill').style.width = `100%`;
         document.getElementById('exp-text').innerText = `MAX / MAX (100%)`;
       } else {
