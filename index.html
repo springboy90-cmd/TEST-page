@@ -3561,7 +3561,7 @@
       firstSkillCard.innerHTML = `
         <div>
           <div class="item-header"><span>일격필살 (자동)</span><span>Lv.${Math.max(1, playerState.firstSkillLv || 0)}/5</span></div>
-          <div class="item-desc">일반 공격 시 확률적으로 자동 발동합니다.<br>성공 시 공격력 ${Math.round(firstSkillMult * 100)}% · 성공확률 ${firstSkillSuccess}%</div>
+          <div class="item-desc">일반 공격 시 확률적으로 자동 발동합니다.<br>성공 시 공격력 ${Math.round(firstSkillMult * 100)}% · 성공확률 ${firstSkillSuccess}% · MP 15</div>
         </div>
         <div class="item-footer">
           <span class="item-price">${firstSkillLv >= 5 ? 'MAX' : firstSkillLv === 0 ? firstSkillCost.toLocaleString() + ' G' : firstSkillCost.toLocaleString() + ' G'}</span>
@@ -3576,9 +3576,9 @@
       container.appendChild(j2Title);
 
       const j2Skills = [
-        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다.', price: 10000, reqTier: 3 },
-        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지.', price: 15000, reqTier: 3 },
-        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다.', price: 20000, reqTier: 3 }
+        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다. (MP 15)', price: 10000, reqTier: 3 },
+        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지. (MP 15)', price: 15000, reqTier: 3 },
+        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다. (MP 15)', price: 20000, reqTier: 3 }
       ];
 
       j2Skills.forEach(sk => {
@@ -3609,7 +3609,8 @@
         if (playerState.atkSpeedLv >= 10 || playerState.gold < 1000) return;
         playerState.gold -= 1000; playerState.atkSpeedLv++; recalcAttackSpeed();
       }
-      updateUI(); 
+      updateUI();
+      if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
     }
 
     function buyClassSkill(skillId, price) {
@@ -3623,6 +3624,7 @@
         playerState.firstSkillLv = currentLv + 1;
         if (!playerState.skillsLearned.includes('s1_1')) playerState.skillsLearned.push('s1_1');
         updateUI();
+        if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
         return;
       }
 
@@ -3635,7 +3637,8 @@
         if (btn) btn.style.display = 'flex';
       }
 
-      updateUI(); 
+      updateUI();
+      if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
     }
 
     function spawnSparkles(worldPos, colorType = 'swordmaster') {
@@ -3680,6 +3683,16 @@
       activeHitVfx.push({ sprite: vfxSprite, timer: 0, duration: 0.35 });
     }
 
+    function consumeSkillMp(cost = 15) {
+      if (playerState.mp < cost) {
+        showHealText('MP 부족!', playerSprite.position);
+        return false;
+      }
+      playerState.mp -= cost;
+      updateUI();
+      return true;
+    }
+
     function useActiveSkill(skillId) {
       const now = Date.now();
       if (playerState.skillCooldowns[skillId] && now - playerState.skillCooldowns[skillId] < 3000) {
@@ -3690,6 +3703,8 @@
         alert("스킬 수련원에서 먼저 스킬을 배워야 합니다!");
         return;
       }
+
+      if (!consumeSkillMp(15)) return;
 
       playerState.skillCooldowns[skillId] = now;
 
@@ -4796,7 +4811,8 @@
         const firstSkillMults = [0, 1.50, 1.875, 2.25, 2.625, 3.00];
         const canAutoFirstSkill = firstSkillLv > 0 && playerState.tier >= 2 && Math.random() < firstSkillRates[firstSkillLv];
 
-        if (canAutoFirstSkill) {
+        if (canAutoFirstSkill && playerState.mp >= 15) {
+          consumeSkillMp(15);
           const skillDmg = getPlayerActualDmg(firstSkillMults[firstSkillLv]);
           spawnHitVfx(selectedTarget.sprite.position, 'slash', 3.2);
           applyDamage(selectedTarget, skillDmg);
