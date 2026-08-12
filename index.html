@@ -3610,7 +3610,7 @@
         playerState.gold -= 1000; playerState.atkSpeedLv++; recalcAttackSpeed();
       }
       updateUI();
-      if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
+      if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
     }
 
     function buyClassSkill(skillId, price) {
@@ -3624,7 +3624,7 @@
         playerState.firstSkillLv = currentLv + 1;
         if (!playerState.skillsLearned.includes('s1_1')) playerState.skillsLearned.push('s1_1');
         updateUI();
-        if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
+        if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
         return;
       }
 
@@ -3638,7 +3638,7 @@
       }
 
       updateUI();
-      if (document.getElementById('skill-modal')?.style.display === 'block') renderSkillItems();
+      if (document.getElementById('skill-modal')?.style.display !== 'none') renderSkillItems();
     }
 
     function spawnSparkles(worldPos, colorType = 'swordmaster') {
