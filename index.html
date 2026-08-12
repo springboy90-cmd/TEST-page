@@ -836,12 +836,19 @@
     scene.fog = new THREE.Fog(0x2b241c, 34, 95);
     let currentStage = 1;
     let currentHadum = false; // 하둠 영역(2차 전직 전용 고난도 스테이지) 진입 여부
-    const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율
-    const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 전용 추가 체력 배율
-    const HADUM_HP_EXTRA_MULT = 2; // 하둠 전체 몬스터 현재 HP 추가 2배
-    // 하둠 일반 몬스터 스테이지별 난이도: 유저 공격력 : 몬스터 방어력
-    // Boss 몬스터에는 적용하지 않음
-    const HADUM_DEF_RATIO = { 1: 3.3, 2: 3.2, 3: 3.1, 4: 3.0 };
+    const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율 (보스에 적용)
+    const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 보스 전용 추가 체력 배율
+    const HADUM_HP_EXTRA_MULT = 2; // 하둠 보스 현재 HP 추가 2배
+    // 하둠 스테이지별 일반 몬스터 고정 스탯 (요청 기준표 반영, 방어력은 고정값)
+    // HP: 4,000 / 7,000 / 10,000 / 14,000
+    // 방어력: 250 / 350 / 500 / 650 (유저 공격력에서 그대로 차감되는 고정 방어력)
+    // 공격력: 100 / 120 / 145 / 180
+    const HADUM_NORMAL_STATS = {
+      1: { hp: 4000, atk: 100, def: 250 },
+      2: { hp: 7000, atk: 120, def: 350 },
+      3: { hp: 10000, atk: 145, def: 500 },
+      4: { hp: 14000, atk: 180, def: 650 }
+    };
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
     const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -2930,7 +2937,7 @@
       { level: 9, bonus: 122, nextRate: 0.20 },
       { level: 10, bonus: 150, nextRate: 0 }
     ];
-    const WEAPON_ENHANCE_UNLOCK_ATK = 1000;
+    const WEAPON_ENHANCE_UNLOCK_ATK = 1500;
     const WEAPON_ENHANCE_CORE_COST = 1;
 
 
@@ -3308,8 +3315,8 @@
 
         monsters.push({
           id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false, isHadum,
-          hp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) * HADUM_HP_EXTRA_MULT : 120, maxHp: isHadum ? Math.round(120 * HADUM_MULT * HADUM_STAGE1_HP_MULT * 2) * HADUM_HP_EXTRA_MULT : 120, goldReward: 180,
-          attackPower: isHadum ? 8 * HADUM_MULT : 8, attackRange: 2.0, attackSpeed: 1500,
+          hp: isHadum ? HADUM_NORMAL_STATS[1].hp : 120, maxHp: isHadum ? HADUM_NORMAL_STATS[1].hp : 120, goldReward: 180,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[1].atk : 8, attackRange: 2.0, attackSpeed: 1500,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.1 ${mName}`, true);
@@ -3366,8 +3373,8 @@
         const mName = type === 'garlic_king' ? '마늘대왕' : (type === 'tiger_patient' ? '병자호랑' : '웅양');
         monsters.push({
           id: `monster_${i}`, stageId: 2, sprite, shadowDisk: mShadow, type: mName, tier: 2, isBoss: false, isHadum,
-          hp: isHadum ? 1000 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 1000, maxHp: isHadum ? 1000 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 1000, goldReward: 400,
-          attackPower: isHadum ? 30 * HADUM_MULT : 30, attackRange: 2.2, attackSpeed: 1400,
+          hp: isHadum ? HADUM_NORMAL_STATS[2].hp : 1000, maxHp: isHadum ? HADUM_NORMAL_STATS[2].hp : 1000, goldReward: 400,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[2].atk : 30, attackRange: 2.2, attackSpeed: 1400,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.5 ${mName}`, true);
@@ -3421,8 +3428,8 @@
         const mName = type === 'judang' ? '주당' : (type === 'palgwang' ? '팔광병사' : '상두포');
         monsters.push({
           id: `monster_${i}`, stageId: 3, sprite, shadowDisk: mShadow, type: mName, tier: 3, isBoss: false, isHadum,
-          hp: isHadum ? 2200 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 2200, maxHp: isHadum ? 2200 * HADUM_MULT * 2.5 * HADUM_HP_EXTRA_MULT : 2200, goldReward: 800,
-          attackPower: isHadum ? 55 * HADUM_MULT : 55, attackRange: 2.5, attackSpeed: 1200,
+          hp: isHadum ? HADUM_NORMAL_STATS[3].hp : 2200, maxHp: isHadum ? HADUM_NORMAL_STATS[3].hp : 2200, goldReward: 800,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[3].atk : 55, attackRange: 2.5, attackSpeed: 1200,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.40 ${mName}`, true);
@@ -3489,7 +3496,7 @@
         sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
         scene.add(sprite);
         const mShadow=createShadowDisk(2.7,1.4);
-        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?5400*HADUM_MULT*2.5 * HADUM_HP_EXTRA_MULT:5400,maxHp:isHadum?5400*HADUM_MULT*2.5 * HADUM_HP_EXTRA_MULT:5400,goldReward:1200,attackPower:isHadum?108*HADUM_MULT:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,maxHp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,goldReward:1200,attackPower:isHadum?HADUM_NORMAL_STATS[4].atk:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
         createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
       }
 
@@ -4736,6 +4743,10 @@
     /* ==========================================
        8. EXP CALCULATION & LEVEL UP SYSTEM
        ========================================== */
+    // 스테이지별 일반 몬스터 고정 경험치 테이블 (일반: 1~4스테이지, 하둠: 1~4스테이지)
+    const STAGE_NORMAL_EXP = { 1: 20, 2: 40, 3: 60, 4: 80 };
+    const STAGE_HADUM_EXP = { 1: 150, 2: 200, 3: 250, 4: 300 };
+
     function getMonsterExpReward(monster) {
       if (playerState.level >= playerState.maxLevel) return 0;
 
@@ -4743,6 +4754,20 @@
         return 0;
       }
 
+      if (monster.stageId === 1 && !monster.isHadum) {
+        const currentAtk = getPlayerAvgAtk();
+        if (currentAtk >= 300) {
+          return 0;
+        }
+      }
+
+      // 일반 몬스터(보스 제외)는 스테이지별 고정 경험치를 지급한다.
+      if (!monster.isBoss) {
+        const table = monster.isHadum ? STAGE_HADUM_EXP : STAGE_NORMAL_EXP;
+        return table[monster.stageId] || 0;
+      }
+
+      // 보스는 기존 비율 기반 산정 방식을 그대로 유지한다.
       const playerTier = playerState.level < 20 ? 1 : 2;
       const tierDiff = playerTier - monster.tier;
 
@@ -4757,18 +4782,7 @@
         ratio *= 2;
       }
 
-      if (monster.isBoss) {
-        ratio *= 8;
-      }
-
-      if (monster.stageId === 1 && !monster.isHadum) {
-        const currentAtk = getPlayerAvgAtk();
-        if (currentAtk >= 300) {
-          return 0; 
-        } else if (currentAtk > 200) {
-          ratio *= 0.5; 
-        }
-      }
+      ratio *= 8;
 
       let baseExp = Math.max(1, Math.round(playerState.maxExp * ratio));
       if (monster.isHadum) baseExp *= HADUM_MULT;
@@ -5245,11 +5259,9 @@
       const critChance = getCritChance();
       const critMult = getCritMultiplier();
 
-      // 하둠은 스테이지별로 '유저 공격력 : 몬스터 방어력' 비율만 적용한다.
-      // 기존 하둠의 HP/공격력/경험치 2배 설정은 그대로 유지한다.
+      // 하둠 일반몹은 스테이지별 고정 방어력을 유저 공격력에서 그대로 차감한다.
       if (currentHadum && !target.isBoss) {
-        const defRatio = HADUM_DEF_RATIO[currentStage] || 3.25;
-        const monsterDefense = Math.max(1, Math.round(getPlayerAvgAtk() / defRatio));
+        const monsterDefense = (HADUM_NORMAL_STATS[currentStage] && HADUM_NORMAL_STATS[currentStage].def) || 120;
         finalDmg = Math.max(1, amount - monsterDefense);
       }
 
