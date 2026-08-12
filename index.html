@@ -3263,6 +3263,26 @@
       stage4SnowPoints = null;
     }
 
+    // 보스 젠 위치를 매번 랜덤하게 배치하는 헬퍼.
+    // 플레이어 스폰 지점(0, z=4)과 최소 거리를 두어, 저레벨 유저가 스폰하자마자
+    // 보스와 겹쳐서 즉사하는 문제를 방지한다.
+    const PLAYER_SPAWN_POS = { x: 0, z: 4 };
+    function getRandomBossSpawnPos(minDistFromPlayer = 20, maxRadius = 30) {
+      let x = 0, z = 0;
+      let attempts = 0;
+      do {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = maxRadius * 0.4 + Math.random() * (maxRadius * 0.6);
+        x = Math.cos(angle) * radius;
+        z = Math.sin(angle) * radius;
+        attempts++;
+      } while (
+        Math.hypot(x - PLAYER_SPAWN_POS.x, z - PLAYER_SPAWN_POS.z) < minDistFromPlayer &&
+        attempts < 40
+      );
+      return { x, z };
+    }
+
     function buildStage1Field(isHadum = false) {
       clearStageObjects(); clearMonsters();
       currentHadum = isHadum;
@@ -3321,7 +3341,8 @@
       stage1SnowPoints = snowPoints;
 
       const beginnerTypes = ['cat', 'pig', 'mushroom', 'rabbit'];
-      for (let i = 0; i < 20; i++) {
+      const stage1MobCount = isHadum ? 35 : 20;
+      for (let i = 0; i < stage1MobCount; i++) {
         const type = beginnerTypes[i % beginnerTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(2.6, 2.6, 1);
@@ -3349,7 +3370,8 @@
 
       const kingMushroomSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('boss_king_mushroom') }));
       kingMushroomSprite.scale.set(6.0, 6.0, 1);
-      kingMushroomSprite.position.set(0, 3.0, -2);
+      const kingMushroomPos = getRandomBossSpawnPos();
+      kingMushroomSprite.position.set(kingMushroomPos.x, 3.0, kingMushroomPos.z);
       scene.add(kingMushroomSprite);
 
       const bossShadow = createShadowDisk(4.8, 2.5);
@@ -3383,7 +3405,8 @@
       bearSprite.scale.set(10, 10, 1); bearSprite.position.set(0, 5, -10); scene.add(bearSprite); stageObjects.push(bearSprite);
 
       const caveTypes = ['garlic_king', 'tiger_patient', 'ungyang'];
-      for (let i = 0; i < 18; i++) {
+      const stage2MobCount = isHadum ? 35 : 18;
+      for (let i = 0; i < stage2MobCount; i++) {
         const type = caveTypes[i % caveTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(2.8, 2.8, 1);
@@ -3407,7 +3430,8 @@
 
       const bossSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('boss_tank') }));
       bossSprite.scale.set(6.5, 6.5, 1);
-      bossSprite.position.set(0, 3.25, -2);
+      const bossSpritePos2 = getRandomBossSpawnPos();
+      bossSprite.position.set(bossSpritePos2.x, 3.25, bossSpritePos2.z);
       scene.add(bossSprite);
 
       const bossShadow = createShadowDisk(5.5, 3.0);
@@ -3438,7 +3462,8 @@
       badukAltar.position.set(0, 0.2, -6); scene.add(badukAltar); stageObjects.push(badukAltar);
 
       const badukTypes = ['judang', 'palgwang', 'sangdupo'];
-      for (let i = 0; i < 18; i++) {
+      const stage3MobCount = isHadum ? 35 : 18;
+      for (let i = 0; i < stage3MobCount; i++) {
         const type = badukTypes[i % badukTypes.length];
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture(type) }));
         sprite.scale.set(3.2, 3.2, 1);
@@ -3462,7 +3487,8 @@
 
       const madaepoBoss = new THREE.Sprite(new THREE.SpriteMaterial({ map: createPixelSpriteTexture('madaepo') }));
       madaepoBoss.scale.set(7.0, 7.0, 1);
-      madaepoBoss.position.set(0, 3.5, -4);
+      const madaepoPos = getRandomBossSpawnPos();
+      madaepoBoss.position.set(madaepoPos.x, 3.5, madaepoPos.z);
       scene.add(madaepoBoss);
 
       const bossShadow = createShadowDisk(6.0, 3.2);
@@ -3514,7 +3540,8 @@
       // Two normal monsters from the supplied screenshots.
       const iceTypes=['snowrabbit','snowlady'];
       const names={'snowrabbit':'눈토끼','snowlady':'설녀'};
-      for(let i=0;i<18;i++){
+      const stage4MobCount = isHadum ? 35 : 18;
+      for(let i=0;i<stage4MobCount;i++){
         const type=iceTypes[i%iceTypes.length];
         const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture(type,false,0),transparent:true}));
         sprite.scale.set(3.4,3.4,1);
@@ -3527,7 +3554,8 @@
 
       // Final boss: purpose-built Ice Queen for the castle finale.
       const bossSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:createIceMonsterTexture('icequeen',false,0),transparent:true}));
-      bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(0,4.1,-10); scene.add(bossSprite);
+      const bossSpritePos4 = getRandomBossSpawnPos(24, 33);
+      bossSprite.scale.set(8.2,8.2,1); bossSprite.position.set(bossSpritePos4.x,4.1,bossSpritePos4.z); scene.add(bossSprite);
       const bossShadow=createShadowDisk(7.0,3.6);
       monsters.push({id:'monster_18',stageId:4,sprite:bossSprite,shadowDisk:bossShadow,type:'빙설여왕',tier:4,isBoss:true,isHadum,hp:isHadum?36000*HADUM_MULT * HADUM_HP_EXTRA_MULT:36000,maxHp:isHadum?36000*HADUM_MULT * HADUM_HP_EXTRA_MULT:36000,goldReward:18000,attackPower:isHadum?172*HADUM_MULT:172,attackRange:4.5,attackSpeed:950,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
       createNametagElement('monster_18','얼음성의 여왕','빙설여왕',false,false,true);
