@@ -2936,8 +2936,19 @@
       { level: 7, bonus: 78, nextRate: 0.36 },
       { level: 8, bonus: 100, nextRate: 0.28 },
       { level: 9, bonus: 122, nextRate: 0.20 },
-      { level: 10, bonus: 150, nextRate: 0 }
+      { level: 10, bonus: 150, nextRate: 0.18 },
+      { level: 11, bonus: 180, nextRate: 0.16 },
+      { level: 12, bonus: 215, nextRate: 0.14 },
+      { level: 13, bonus: 255, nextRate: 0.12 },
+      { level: 14, bonus: 300, nextRate: 0.10 },
+      { level: 15, bonus: 350, nextRate: 0.08 },
+      { level: 16, bonus: 410, nextRate: 0.06 },
+      { level: 17, bonus: 480, nextRate: 0.05 },
+      { level: 18, bonus: 560, nextRate: 0.04 },
+      { level: 19, bonus: 650, nextRate: 0.03 },
+      { level: 20, bonus: 750, nextRate: 0 }
     ];
+    const WEAPON_ENHANCE_MAX_LV = 20;
     const WEAPON_ENHANCE_UNLOCK_ATK = 1500;
     const WEAPON_ENHANCE_CORE_COST = 1;
 
@@ -3089,7 +3100,8 @@
     ensureMunyeahanaBuffAura();
 
     // ===== 무기 +10강 반짝이는 발광 효과 =====
-    // 무기 강화 최대 달성(+10강) 시에만 활성화되는 캐릭터 손 근처 스파클 이펙트.
+    // +10강 이상 달성 시 활성화되는 캐릭터 손 근처 스파클 이펙트.
+    // +20강(진짜 최대 강화) 달성 시에는 스파클 개수와 밝기/크기를 2배로 화려하게 표현한다.
     const weaponGlowSparkles = [];
     let weaponGlowGroup = null;
 
@@ -3114,9 +3126,35 @@
       return new THREE.CanvasTexture(cvs);
     }
 
+    // +20강 전용 보너스 스파클용 텍스처 (더 크고 화려한 무지개빛 광채)
+    function createWeaponGlowSparkTextureBonus() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 64; cvs.height = 64;
+      const ctx = cvs.getContext('2d');
+      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.20, 'rgba(255,241,150,0.98)');
+      grad.addColorStop(0.45, 'rgba(255,180,80,0.75)');
+      grad.addColorStop(0.72, 'rgba(255,120,220,0.35)');
+      grad.addColorStop(1, 'rgba(255,120,220,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 3.0;
+      ctx.beginPath(); ctx.moveTo(32, 3); ctx.lineTo(32, 61); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(3, 32); ctx.lineTo(61, 32); ctx.stroke();
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(54, 54); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(54, 10); ctx.lineTo(10, 54); ctx.stroke();
+
+      return new THREE.CanvasTexture(cvs);
+    }
+
     function ensureWeaponGlow() {
       if (weaponGlowGroup) return;
       const tex = createWeaponGlowSparkTexture();
+      const texBonus = createWeaponGlowSparkTextureBonus();
       weaponGlowGroup = new THREE.Group();
 
       const SPARK_COUNT = 4;
@@ -3129,7 +3167,25 @@
           sprite: spark,
           seed: Math.random() * Math.PI * 2,
           speed: 1.6 + Math.random() * 1.2,
-          radius: 0.28 + Math.random() * 0.22
+          radius: 0.28 + Math.random() * 0.22,
+          isBonusTier: false
+        });
+        weaponGlowGroup.add(spark);
+      }
+
+      // +20강 전용 보너스 스파클 (기본 이펙트 위에 추가로 덧붙여 2배 화려하게 연출)
+      const BONUS_SPARK_COUNT = 4;
+      for (let i = 0; i < BONUS_SPARK_COUNT; i++) {
+        const mat = new THREE.SpriteMaterial({ map: texBonus, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+        const spark = new THREE.Sprite(mat);
+        spark.scale.set(1.1, 1.1, 1);
+        spark.visible = false;
+        weaponGlowSparkles.push({
+          sprite: spark,
+          seed: Math.random() * Math.PI * 2,
+          speed: 1.4 + Math.random() * 1.4,
+          radius: 0.42 + Math.random() * 0.3,
+          isBonusTier: true
         });
         weaponGlowGroup.add(spark);
       }
@@ -3137,8 +3193,14 @@
       scene.add(weaponGlowGroup);
     }
 
+    // +10강 이상이면 기본 발광 효과가 켜진다 (기존 사양 유지).
     function isWeaponMaxEnhanced() {
-      return Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0)) >= 10;
+      return Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0)) >= 10;
+    }
+
+    // +20강(진짜 최대 강화) 달성 시 발광 효과를 2배로 화려하게 표현한다.
+    function isWeaponFullyEnhanced() {
+      return Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0)) >= WEAPON_ENHANCE_MAX_LV;
     }
 
     // 무기가 대략 위치하는 캐릭터 손 부근 오프셋(정면/후면 공용, 캐릭터 기준 하단 우측).
@@ -3147,6 +3209,7 @@
     function updateWeaponGlow() {
       if (!weaponGlowGroup) return;
       const active = isWeaponMaxEnhanced();
+      const fullyEnhanced = isWeaponFullyEnhanced();
       if (!active) {
         weaponGlowSparkles.forEach(s => { s.sprite.visible = false; });
         return;
@@ -3157,6 +3220,11 @@
       const baseZ = playerSprite.position.z + WEAPON_GLOW_OFFSET.z;
 
       weaponGlowSparkles.forEach((s, idx) => {
+        // 보너스 스파클(+20강 전용)은 최대 강화 달성 시에만 표시한다.
+        if (s.isBonusTier && !fullyEnhanced) {
+          s.sprite.visible = false;
+          return;
+        }
         s.sprite.visible = true;
         const t = now * s.speed + s.seed;
         s.sprite.position.set(
@@ -3165,8 +3233,10 @@
           baseZ + Math.sin(t) * s.radius
         );
         const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.2 + idx));
-        s.sprite.material.opacity = twinkle;
-        const scale = 0.55 + 0.45 * twinkle;
+        // +20강 달성 시 기본 스파클도 한층 더 밝고 크게 표현해 2배 화려한 느낌을 준다.
+        const intensityMult = fullyEnhanced ? (s.isBonusTier ? 1.3 : 1.6) : 1.0;
+        s.sprite.material.opacity = Math.min(1, twinkle * intensityMult);
+        const scale = (0.55 + 0.45 * twinkle) * intensityMult;
         s.sprite.scale.set(scale, scale, 1);
       });
     }
@@ -4317,9 +4387,9 @@
       // 공격력 1,000 이상 달성 시 무기 강화 카드를 무기 탭에 추가로 노출한다.
       // 한 번 강화를 시작했다면(강화 레벨 1 이상) 버프 등으로 공격력이 일시적으로 낮아져도 계속 노출한다.
       if (cat === 'weapon' && (getPlayerAvgAtk() >= WEAPON_ENHANCE_UNLOCK_ATK || playerState.weaponEnhanceLv > 0)) {
-        const enhLv = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
+        const enhLv = Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0));
         const curData = weaponEnhanceTable[enhLv];
-        const isMaxEnh = enhLv >= 10;
+        const isMaxEnh = enhLv >= WEAPON_ENHANCE_MAX_LV;
 
         const enhCard = document.createElement('div'); enhCard.className = 'shop-item-card';
         let enhDesc = '';
@@ -4342,7 +4412,7 @@
 
         enhCard.innerHTML = `
           <div>
-            <div class="item-header"><span>⚔️ 무기 강화 (+${enhLv}/10)</span></div>
+            <div class="item-header"><span>⚔️ 무기 강화 (+${enhLv}/${WEAPON_ENHANCE_MAX_LV})</span></div>
             <div class="item-desc">${enhDesc}</div>
           </div>
           <div class="item-footer">
@@ -4398,8 +4468,8 @@
     function enhanceWeapon() {
       if (getPlayerAvgAtk() < WEAPON_ENHANCE_UNLOCK_ATK && playerState.weaponEnhanceLv <= 0) return;
 
-      const curLvl = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
-      if (curLvl >= 10) return;
+      const curLvl = Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0));
+      if (curLvl >= WEAPON_ENHANCE_MAX_LV) return;
 
       if ((playerState.enhanceCore || 0) < WEAPON_ENHANCE_CORE_COST) {
         alert('강화의 핵이 부족합니다!');
@@ -4416,7 +4486,9 @@
         playerState.weaponEnhanceLv = curLvl + 1;
         const nextData = weaponEnhanceTable[playerState.weaponEnhanceLv];
         playerState.weaponAtk += nextData.bonus;
-        if (playerState.weaponEnhanceLv >= 10) {
+        if (playerState.weaponEnhanceLv >= WEAPON_ENHANCE_MAX_LV) {
+          showHealText(`🌟 무기 +${WEAPON_ENHANCE_MAX_LV}강 달성! 무기가 화려하게 발광합니다!`, playerSprite.position);
+        } else if (playerState.weaponEnhanceLv >= 10) {
           showHealText(`✨ 무기 +10강 달성! 무기가 발광합니다!`, playerSprite.position);
         } else {
           showHealText(`⚔️ 무기 강화 성공! (+${playerState.weaponEnhanceLv})`, playerSprite.position);
@@ -5043,7 +5115,7 @@
         ['hasSiri','hasJanggeum','hasMunyeahana','hasAutoHeal'].forEach(k => { if (typeof p[k] === 'boolean') playerState[k] = p[k]; });
         if (Array.isArray(p.skillsLearned)) playerState.skillsLearned = [...p.skillsLearned].filter(id => id !== 's1_2');
         playerState.firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
-        playerState.weaponEnhanceLv = Math.max(0, Math.min(10, Number(playerState.weaponEnhanceLv) || 0));
+        playerState.weaponEnhanceLv = Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0));
         if (p.skillLv && typeof p.skillLv === 'object') {
           playerState.skillLv.s2_2 = Math.max(0, Math.min(5, Number(p.skillLv.s2_2) || 0));
           playerState.skillLv.s2_3 = Math.max(0, Math.min(5, Number(p.skillLv.s2_3) || 0));
