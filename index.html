@@ -3613,6 +3613,7 @@
       }
       selectedTarget = null;
       targetArrowSprite.visible = false;
+      autoHuntPatrolTarget = null;
 
       // 소환영웅도 이전 스테이지 좌표에 남지 않도록 유저 캐릭터 곁으로 함께 이동시킨다.
       recallHeroesToPlayer(true);
@@ -4829,6 +4830,36 @@
             triggerAttackBtn(false);
             playerState.idleTimer = 0;
           }
+        } else {
+          // 필드 전체(반경 100)에 살아있는 몬스터가 하나도 없는 경우(리스폰 대기 등).
+          // 가만히 서있지 않고 맵을 순찰하며 몬스터가 다시 나타나길 기다린다.
+          if (!autoHuntPatrolTarget || playerSprite.position.distanceTo(autoHuntPatrolTarget) < 1.5 || now - autoHuntPatrolSetAt > 6000) {
+            const patrolRange = floorSize / 2 - 6;
+            autoHuntPatrolTarget = new THREE.Vector3(
+              (Math.random() - 0.5) * patrolRange * 2,
+              0,
+              (Math.random() - 0.5) * patrolRange * 2
+            );
+            autoHuntPatrolSetAt = now;
+          }
+
+          const patrolDir = autoHuntPatrolTarget.clone().sub(playerSprite.position);
+          patrolDir.y = 0;
+          if (patrolDir.length() > 0.5) {
+            patrolDir.normalize();
+            playerSprite.position.x += patrolDir.x * playerState.moveSpeed * 0.6 * delta;
+            playerSprite.position.z += patrolDir.z * playerState.moveSpeed * 0.6 * delta;
+
+            playerSprite.position.y = 1.6 + Math.abs(Math.sin(now * 0.016)) * 0.14;
+            playerSprite.material.rotation = Math.sin(now * 0.014) * 0.07;
+
+            let newFacing = patrolDir.z < 0 ? 'back' : 'front';
+            if (newFacing !== playerFacing) {
+              playerFacing = newFacing;
+              updatePlayerFacingTexture();
+            }
+          }
+          playerState.idleTimer = 0;
         }
       } else {
         playerSprite.position.y = 1.6;
@@ -5261,6 +5292,9 @@
 
     let selectedTarget = null;
     let isAutoHunt = false;
+    // 자동사냥 중 필드 전체에 몬스터가 하나도 없을 때 순찰할 목적지와 그 설정 시각.
+    let autoHuntPatrolTarget = null;
+    let autoHuntPatrolSetAt = 0;
 
     function toggleAutoHunt() {
       isAutoHunt = !isAutoHunt;
