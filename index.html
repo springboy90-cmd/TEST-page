@@ -614,6 +614,7 @@
         <button class="btn-small btn-job" id="btn-job-modal" style="display: none;" onclick="openJobModal()">📜 1차 전직하기 (Lv.20)</button>
         <button class="btn-small btn-job" id="btn-job2-modal" style="display: none;" onclick="openJob2Modal()">📜 2차 전직하기 (Lv.40)</button>
         <button class="btn-small" style="background:#f3e5f5; border-color:#ce93d8; color:#6a1b9a;" onclick="openHeroManager()">👥 영웅 관리</button>
+        <button class="btn-small" id="btn-hero-recall" onclick="recallHeroesToPlayer()" style="background:#e3f2fd; border-color:#64b5f6; color:#1565c0;">🔔 영웅 호출</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
       </div>
     </div>
@@ -839,15 +840,15 @@
     const HADUM_MULT = 2; // 하둠 영역 몹 공격력/HP/경험치 배율 (보스에 적용)
     const HADUM_STAGE1_HP_MULT = 1.5; // 하둠 초보자 사냥터(1스테이지) 보스 전용 추가 체력 배율
     const HADUM_HP_EXTRA_MULT = 2; // 하둠 보스 현재 HP 추가 2배
-    // 하둠 스테이지별 일반 몬스터 고정 스탯 (요청 기준표 반영, 방어력은 고정값)
-    // HP: 4,000 / 8,000 / 11,000 / 13,500
-    // 방어력: 250 / 400 / 700 / 900 (유저 공격력에서 그대로 차감되는 고정 방어력)
-    // 공격력: 200 / 350 / 500 / 700
+    // 하둠 스테이지별 일반 몬스터 고정 스탯 (요청 기준표 반영)
+    // HP: 4,000 / 8,000 / 12,500 / 20,000
+    // 방어력: 280 / 400 / 850 / 1000 (유저 공격력에서 그대로 차감되는 고정 방어력)
+    // 공격력: 285~315 / 425~455 / 585~715 / 810~990 (공격마다 랜덤)
     const HADUM_NORMAL_STATS = {
-      1: { hp: 4000, atk: 300, def: 250 },
-      2: { hp: 8000, atk: 450, def: 400 },
-      3: { hp: 12500, atk: 650, def: 850 },
-      4: { hp: 20000, atk: 900, def: 1000 }
+      1: { hp: 4000, atkMin: 285, atkMax: 315, def: 280 },
+      2: { hp: 8000, atkMin: 425, atkMax: 455, def: 400 },
+      3: { hp: 12500, atkMin: 585, atkMax: 715, def: 850 },
+      4: { hp: 20000, atkMin: 810, atkMax: 990, def: 1000 }
     };
     let zoomLevel = 1.0;
     const baseCameraOffset = new THREE.Vector3(0, 20, 20);
@@ -3362,7 +3363,10 @@
         monsters.push({
           id: `monster_${i}`, stageId: 1, sprite, shadowDisk: mShadow, type: mName, tier: 1, isBoss: false, isHadum,
           hp: isHadum ? HADUM_NORMAL_STATS[1].hp : 120, maxHp: isHadum ? HADUM_NORMAL_STATS[1].hp : 120, goldReward: 180,
-          attackPower: isHadum ? HADUM_NORMAL_STATS[1].atk : 8, attackRange: 2.0, attackSpeed: 1500,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[1].atkMin : 8,
+          attackPowerMin: isHadum ? HADUM_NORMAL_STATS[1].atkMin : null,
+          attackPowerMax: isHadum ? HADUM_NORMAL_STATS[1].atkMax : null,
+          attackRange: 2.0, attackSpeed: 1500,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.1 ${mName}`, true);
@@ -3422,7 +3426,10 @@
         monsters.push({
           id: `monster_${i}`, stageId: 2, sprite, shadowDisk: mShadow, type: mName, tier: 2, isBoss: false, isHadum,
           hp: isHadum ? HADUM_NORMAL_STATS[2].hp : 1000, maxHp: isHadum ? HADUM_NORMAL_STATS[2].hp : 1000, goldReward: 400,
-          attackPower: isHadum ? HADUM_NORMAL_STATS[2].atk : 30, attackRange: 2.2, attackSpeed: 1400,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[2].atkMin : 30,
+          attackPowerMin: isHadum ? HADUM_NORMAL_STATS[2].atkMin : null,
+          attackPowerMax: isHadum ? HADUM_NORMAL_STATS[2].atkMax : null,
+          attackRange: 2.2, attackSpeed: 1400,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.5 ${mName}`, true);
@@ -3479,7 +3486,10 @@
         monsters.push({
           id: `monster_${i}`, stageId: 3, sprite, shadowDisk: mShadow, type: mName, tier: 3, isBoss: false, isHadum,
           hp: isHadum ? HADUM_NORMAL_STATS[3].hp : 2200, maxHp: isHadum ? HADUM_NORMAL_STATS[3].hp : 2200, goldReward: 800,
-          attackPower: isHadum ? HADUM_NORMAL_STATS[3].atk : 55, attackRange: 2.5, attackSpeed: 1200,
+          attackPower: isHadum ? HADUM_NORMAL_STATS[3].atkMin : 55,
+          attackPowerMin: isHadum ? HADUM_NORMAL_STATS[3].atkMin : null,
+          attackPowerMax: isHadum ? HADUM_NORMAL_STATS[3].atkMax : null,
+          attackRange: 2.5, attackSpeed: 1200,
           lastAttackTime: 0, alive: true, destroyed: false, roamDir: new THREE.Vector3(), roamTimer: 0
         });
         createNametagElement(`monster_${i}`, '', `Lv.40 ${mName}`, true);
@@ -3548,7 +3558,7 @@
         sprite.position.set((Math.random()-0.5)*60,1.7,(Math.random()-0.5)*60);
         scene.add(sprite);
         const mShadow=createShadowDisk(2.7,1.4);
-        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,maxHp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,goldReward:1200,attackPower:isHadum?HADUM_NORMAL_STATS[4].atk:108,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
+        monsters.push({id:`monster_${i}`,stageId:4,sprite,shadowDisk:mShadow,type:names[type],tier:4,isBoss:false,isHadum,hp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,maxHp:isHadum?HADUM_NORMAL_STATS[4].hp:5400,goldReward:1200,attackPower:isHadum?HADUM_NORMAL_STATS[4].atkMin:108,attackPowerMin:isHadum?HADUM_NORMAL_STATS[4].atkMin:null,attackPowerMax:isHadum?HADUM_NORMAL_STATS[4].atkMax:null,attackRange:2.6,attackSpeed:1150,lastAttackTime:0,alive:true,destroyed:false,roamDir:new THREE.Vector3(),roamTimer:0});
         createNametagElement(`monster_${i}`,'',`Lv.55 ${names[type]}`,true);
       }
 
@@ -3603,6 +3613,9 @@
       }
       selectedTarget = null;
       targetArrowSprite.visible = false;
+
+      // 소환영웅도 이전 스테이지 좌표에 남지 않도록 유저 캐릭터 곁으로 함께 이동시킨다.
+      recallHeroesToPlayer(true);
 
       closeStageModal();
     }
@@ -3666,6 +3679,40 @@
       else if (type === 'munyeahana') { getHeroActive(type) ? hideMunyeahanaHero() : spawnMunyeahanaHero(); }
       renderHeroManager();
       updateUI();
+    }
+
+    // 소환영웅 호출: 필드를 배회하다 멀리 떨어진 영웅들을 유저 캐릭터 근처로 즉시 불러온다.
+    // 스테이지 이동 직후 영웅이 이전 위치에 남아 혼자 돌아다니는 문제를 사용자가 직접 해소할 수 있게 한다.
+    // silent=true일 경우(스테이지 자동 전환 시) 영웅이 없어도 알림을 띄우지 않는다.
+    function recallHeroesToPlayer(silent = false) {
+      const recallOffsets = [
+        new THREE.Vector3(-1.8, 0, 1.2),
+        new THREE.Vector3(1.8, 0, 1.2),
+        new THREE.Vector3(0, 0, 2.2)
+      ];
+      let recalledCount = 0;
+
+      if (siriSprite) {
+        siriSprite.position.copy(playerSprite.position).add(recallOffsets[0]);
+        siriTarget = null;
+        recalledCount++;
+      }
+      if (janggeumSprite) {
+        janggeumSprite.position.copy(playerSprite.position).add(recallOffsets[1]);
+        janggeumTarget = null;
+        recalledCount++;
+      }
+      if (munyeahanaSprite) {
+        munyeahanaSprite.position.copy(playerSprite.position).add(recallOffsets[2]);
+        munyeahanaTarget = null;
+        recalledCount++;
+      }
+
+      if (recalledCount > 0 && !silent) {
+        showHealText('🔔 소환영웅 호출!', playerSprite.position);
+      } else if (recalledCount === 0 && !silent) {
+        alert('현재 소환된 영웅이 없습니다. 영웅 관리에서 먼저 소환해주세요.');
+      }
     }
 
     function openHeroManager() {
@@ -4707,7 +4754,12 @@
     }
 
     function monsterAttackPlayer(m) {
-      const netDmg = Math.max(1, m.attackPower - Math.floor(getPlayerEffectiveDef() * 0.3));
+      // 공격력 범위(attackPowerMin~attackPowerMax)가 지정된 몬스터는 매 공격마다 랜덤 데미지를 굴린다.
+      // 범위가 없는 기존 몬스터/보스는 기존 방식(attackPower 고정값)을 그대로 사용한다.
+      const rawAtk = (m.attackPowerMin != null && m.attackPowerMax != null)
+        ? Math.floor(Math.random() * (m.attackPowerMax - m.attackPowerMin + 1)) + m.attackPowerMin
+        : m.attackPower;
+      const netDmg = Math.max(1, rawAtk - Math.floor(getPlayerEffectiveDef() * 0.3));
       playerState.hp -= netDmg;
       if (!isPowerSaveMode) showPlayerDamageText(netDmg, playerSprite.position);
 
