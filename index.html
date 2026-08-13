@@ -4229,6 +4229,17 @@
 
     function closeJob2Modal() { document.getElementById('job2-modal').style.display = 'none'; }
 
+    // 배운 2차 스킬(s2_1~s2_3)에 맞춰 화면 하단 스킬 버튼의 표시 여부를 다시 적용한다.
+    // 2차 전직 순간뿐 아니라, 저장된 게임을 불러올 때도 반드시 호출되어야 한다.
+    // (안 그러면 새로고침 시 인라인 style이 초기화되어 CSS 기본값인 display:none으로 되돌아가 버튼이 사라진다.)
+    function refreshSkillButtonVisibility() {
+      ['s2_1', 's2_2', 's2_3'].forEach(skId => {
+        const btn = document.getElementById(`btn-skill-${skId}`);
+        if (!btn) return;
+        btn.style.display = playerState.skillsLearned.includes(skId) ? 'flex' : 'none';
+      });
+    }
+
     function selectJob2(job2Name) {
       playerState.job = job2Name;
       playerState.tier = 3;
@@ -4248,12 +4259,7 @@
 
       document.getElementById('btn-job2-modal').style.display = "none";
       
-      ['s2_1', 's2_2', 's2_3'].forEach(skId => {
-        if (playerState.skillsLearned.includes(skId)) {
-          const btn = document.getElementById(`btn-skill-${skId}`);
-          if (btn) btn.style.display = 'flex';
-        }
-      });
+      refreshSkillButtonVisibility();
 
       updatePlayerFacingTexture();
       updateUI(); closeJob2Modal();
@@ -5324,6 +5330,7 @@
         playerState.hp = Math.max(0, Math.min(playerState.hp, playerState.maxHp));
         playerState.mp = Math.max(0, Math.min(playerState.mp, playerState.maxMp));
         ensureDailyReset();
+        refreshSkillButtonVisibility();
 
         applyHeroSavedState(data.heroes && data.heroes.siri, siriState);
         applyHeroSavedState(data.heroes && data.heroes.janggeum, janggeumState);
