@@ -613,6 +613,7 @@
       <div class="top-right-controls interactive">
         <button class="btn-small btn-job" id="btn-job-modal" style="display: none;" onclick="openJobModal()">📜 1차 전직하기 (Lv.20)</button>
         <button class="btn-small btn-job" id="btn-job2-modal" style="display: none;" onclick="openJob2Modal()">📜 2차 전직하기 (Lv.40)</button>
+        <button class="btn-small btn-job" id="btn-job-change" style="display: none; background:#fff3e0; border-color:#ffb74d; color:#e65100;" onclick="openJobChangeModal()">🔄 직업 변경</button>
         <button class="btn-small" style="background:#f3e5f5; border-color:#ce93d8; color:#6a1b9a;" onclick="openHeroManager()">👥 영웅 관리</button>
         <button class="btn-small" id="btn-hero-recall" onclick="recallHeroesToPlayer()" style="background:#e3f2fd; border-color:#64b5f6; color:#1565c0;">🔔 영웅 호출</button>
         <button class="btn-small" id="btn-hero-auto" onclick="toggleHeroAutoHunt()" style="background: #fff9c4; border-color: #fbc02d; color: #f57f17;">영웅 자율사냥: OFF</button>
@@ -790,6 +791,17 @@
     <div class="job-cards" id="job2-cards-container"></div>
     <div style="text-align: center;">
       <button class="btn-small" onclick="closeJob2Modal()">창 닫기</button>
+    </div>
+  </div>
+
+  <!-- Job Change Modal -->
+  <div class="modal interactive" id="job-change-modal">
+    <div class="modal-title">🔄 직업 변경</div>
+    <div id="job-change-desc" style="text-align:center; font-size:11px; color:#6d4c41; margin-bottom:8px;"></div>
+    <div class="job-cards" id="job-change-cards-container"></div>
+    <div style="text-align:center; margin-top:8px; font-size:10px; color:#795548;">첫 1회 무료 · 이후 1차: 1,000,000G + 강화의 핵 10개 / 2차: 3,000,000G + 강화의 핵 30개</div>
+    <div style="text-align:center; margin-top:8px;">
+      <button class="btn-small" onclick="closeJobChangeModal()">창 닫기</button>
     </div>
   </div>
 
@@ -3035,7 +3047,8 @@
       skillCooldowns: { s1_1: 0, s2_1: 0, s2_2: 0, s2_3: 0 },
       skillLv: { s2_2: 0, s2_3: 0 },
       martialTrainingLv: 0, shamanStudyLv: 0,
-      dailyCoreBought: 0, dailyResetDate: ''
+      dailyCoreBought: 0, dailyResetDate: '',
+      jobChangeCount: 0
     };
 
     function getCritChance() {
@@ -3978,19 +3991,13 @@
       `;
       container.appendChild(firstSkillCard);
 
-      const isShaman2 = playerState.job === '대도사';
-      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title';
-      j2Title.innerText = isShaman2 ? '🔮 대도사 2차 전직 전용 스킬' : '⚔️ 검성 2차 전직 전용 스킬';
+      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬 (단일 1개 / 범위 2개)';
       container.appendChild(j2Title);
 
-      const j2Skills = isShaman2 ? [
-        { id: 's2_1', icon: '🔥', name: '멸천화 (단일)', desc: '8m 단일 대상에 거대한 화염탄을 집중합니다. 공격력 450~500% · MP 50 · 재사용 5초', price: 10000, reqTier: 3, maxLv: 1 },
-        { id: 's2_2', icon: '☄️', name: '화염폭우 (범위)', desc: '8m 원형 범위에 화염 운석을 연속 낙하시킵니다. 공격력 220~260% · MP 40 · 재사용 5초', price: 15000, reqTier: 3, maxLv: 5 },
-        { id: 's2_3', icon: '✨', name: '천지개벽 (대범위)', desc: '12m 원형에 거대한 마법진과 폭발을 일으킵니다. 공격력 300~350% · MP 70 · 재사용 10초', price: 20000, reqTier: 3, maxLv: 5 }
-      ] : [
-        { id: 's2_1', icon: '⚡', name: '오의: 뇌전참 (단일)', desc: '3m 단일 대상에 번개 검격을 가합니다. 공격력 350~400% · MP 30 · 재사용 3초', price: 10000, reqTier: 3, maxLv: 1 },
-        { id: 's2_2', icon: '🌀', name: '회풍참 (범위)', desc: '주변 6m를 회전 검기로 베어냅니다. 공격력 180~220% · MP 25 · 재사용 4초', price: 15000, reqTier: 3, maxLv: 5 },
-        { id: 's2_3', icon: '⚔️', name: '천검난무 (전방)', desc: '전방 8m 부채꼴로 다중 검기를 발사합니다. 공격력 250~300% · MP 40 · 재사용 7초', price: 20000, reqTier: 3, maxLv: 5 }
+      const j2Skills = [
+        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다. (MP 15)', price: 10000, reqTier: 3, maxLv: 1 },
+        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지. (MP 15)', price: 15000, reqTier: 3, maxLv: 5 },
+        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다. (MP 15)', price: 20000, reqTier: 3, maxLv: 5 }
       ];
 
       j2Skills.forEach(sk => {
@@ -3998,11 +4005,13 @@
         const canLearn = playerState.tier >= sk.reqTier;
         const currentLv = sk.id === 's2_1' ? (isLearned ? 1 : 0) : Math.max(0, Math.min(5, Number(playerState.skillLv[sk.id]) || 0));
         const isMax = currentLv >= sk.maxLv;
-        const levelDesc = sk.maxLv > 1 ? `${sk.desc} · 현재 Lv.${currentLv}/5` : sk.desc;
+        const levelDesc = sk.id === 's2_2' || sk.id === 's2_3'
+          ? `현재 Lv.${currentLv}/5 · 공격력 ${[0,100,120,140,160,200][currentLv]}% · MP 15`
+          : sk.desc;
         const card = document.createElement('div'); card.className = 'shop-item-card';
         card.innerHTML = `
           <div>
-            <div class="item-header"><span style="display:flex;align-items:center;gap:6px"><span style="font-size:20px;line-height:1">${sk.icon}</span>${sk.name}${sk.maxLv > 1 ? ` (Lv.${currentLv}/5)` : ''}</span></div>
+            <div class="item-header"><span>${sk.name}${sk.maxLv > 1 ? ` (Lv.${currentLv}/5)` : ''}</span></div>
             <div class="item-desc">${levelDesc}</div>
           </div>
           <div class="item-footer">
@@ -4123,63 +4132,45 @@
 
     function useActiveSkill(skillId) {
       const now = Date.now();
-      const skillConfig = playerState.job === '대도사' ? {
-        s2_1: { cooldown: 5000, mp: 50 },
-        s2_2: { cooldown: 5000, mp: 40 },
-        s2_3: { cooldown: 10000, mp: 70 }
-      } : {
-        s2_1: { cooldown: 3000, mp: 30 },
-        s2_2: { cooldown: 4000, mp: 25 },
-        s2_3: { cooldown: 7000, mp: 40 }
-      };
-      const cfg = skillConfig[skillId];
-      if (!cfg) return;
-
-      if (playerState.skillCooldowns[skillId] && now - playerState.skillCooldowns[skillId] < cfg.cooldown) return;
+      if (playerState.skillCooldowns[skillId] && now - playerState.skillCooldowns[skillId] < 3000) {
+        return;
+      }
 
       if (!playerState.skillsLearned.includes(skillId)) {
         alert("스킬 수련원에서 먼저 스킬을 배워야 합니다!");
         return;
       }
 
-      if (!consumeSkillMp(cfg.mp)) return;
-      playerState.skillCooldowns[skillId] = now;
+      if (!consumeSkillMp(15)) return;
 
-      const isShaman2 = playerState.job === '대도사';
+      playerState.skillCooldowns[skillId] = now;
 
       if (skillId === 's2_1') {
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         if (selectedTarget && selectedTarget.alive) {
-          const mult = (isShaman2 ? 4.50 : 3.50) + Math.random() * 0.50;
-          spawnHitVfx(selectedTarget.sprite.position, isShaman2 ? 'explosion' : 'lightning', isShaman2 ? 4.5 : 3.8);
-          applyDamage(selectedTarget, getPlayerActualDmg(mult));
+          spawnHitVfx(selectedTarget.sprite.position, 'lightning', 3.5);
+          applyDamage(selectedTarget, getPlayerActualDmg(3.0));
         }
       } else if (skillId === 's2_2') {
         const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_2) || 1));
-        const multTable = isShaman2
-          ? [0, 2.20, 2.30, 2.40, 2.50, 2.60]
-          : [0, 1.80, 1.90, 2.00, 2.10, 2.20];
+        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
         const mult = multTable[lv];
-        const range = 8.0;
-        spawnHitVfx(playerSprite.position, isShaman2 ? 'explosion' : 'whirlwind', isShaman2 ? 6.0 : 5.0);
+        spawnHitVfx(playerSprite.position, 'whirlwind', 5.0);
         monsters.forEach(m => {
-          if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= range) {
-            spawnHitVfx(m.sprite.position, isShaman2 ? 'explosion' : 'slash', isShaman2 ? 2.5 : 2.2);
+          if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= 6.0) {
+            spawnHitVfx(m.sprite.position, 'slash', 2.2);
             applyDamage(m, getPlayerActualDmg(mult));
           }
         });
       } else if (skillId === 's2_3') {
         const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_3) || 1));
-        const multTable = isShaman2
-          ? [0, 3.00, 3.10, 3.20, 3.30, 3.50]
-          : [0, 2.50, 2.60, 2.70, 2.80, 3.00];
+        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
         const mult = multTable[lv];
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         const centerPos = selectedTarget && selectedTarget.alive ? selectedTarget.sprite.position : playerSprite.position;
-        const range = isShaman2 ? 12.0 : 8.0;
-        spawnHitVfx(centerPos, 'explosion', isShaman2 ? 8.0 : 6.5);
+        spawnHitVfx(centerPos, 'explosion', 6.0);
         monsters.forEach(m => {
-          if (m.alive && m.sprite.position.distanceTo(centerPos) <= range) {
+          if (m.alive && m.sprite.position.distanceTo(centerPos) <= 8.0) {
             applyDamage(m, getPlayerActualDmg(mult));
           }
         });
@@ -4188,6 +4179,102 @@
 
     function recalcAttackSpeed() {
       playerState.attackSpeed = playerState.baseAttackSpeed / (1 + playerState.atkSpeedLv * 0.04);
+    }
+
+    const JOB_CHANGE_COSTS = {
+      first: { gold: 1000000, core: 10 },
+      second: { gold: 3000000, core: 30 }
+    };
+
+    const JOB_STAT_BONUSES = {
+      검사:  { hp: 200, atk: 30, def: 25, mp: 0, range: 3.2, title: '무관', sprite: 'player_sword' },
+      주술사:{ hp: 50,  atk: 50, def: 5,  mp: 100, range: 9.0, title: '도사', sprite: 'player_mage' },
+      검성:  { hp: 700, atk: 110, def: 85, mp: 50, range: 4.2, title: '대장군', sprite: 'player_sword' },
+      대도사:{ hp: 200, atk: 180, def: 20, mp: 350, range: 11.0, title: '대장군', sprite: 'player_mage' }
+    };
+
+    function getJobBaseFamily(job) {
+      return (job === '검사' || job === '검성') ? '검사' : (job === '주술사' || job === '대도사' ? '주술사' : null);
+    }
+
+    function getJobAppliedBonus(job) {
+      if (job === '검사' || job === '주술사') return JOB_STAT_BONUSES[job];
+      if (job === '검성') {
+        const a = JOB_STAT_BONUSES.검사, b = JOB_STAT_BONUSES.검성;
+        return { hp:a.hp+b.hp, atk:a.atk+b.atk, def:a.def+b.def, mp:a.mp+b.mp, range:b.range, title:b.title, sprite:b.sprite };
+      }
+      if (job === '대도사') {
+        const a = JOB_STAT_BONUSES.주술사, b = JOB_STAT_BONUSES.대도사;
+        return { hp:a.hp+b.hp, atk:a.atk+b.atk, def:a.def+b.def, mp:a.mp+b.mp, range:b.range, title:b.title, sprite:b.sprite };
+      }
+      return { hp:0, atk:0, def:0, mp:0, range:2.5, title:'유생', sprite:'player_beginner' };
+    }
+
+    function setPlayerJobVisuals(jobName) {
+      const cfg = JOB_STAT_BONUSES[jobName] || JOB_STAT_BONUSES[getJobBaseFamily(jobName)] || JOB_STAT_BONUSES.검사;
+      const spriteType = cfg.sprite || 'player_beginner';
+      const mapTex = createPixelSpriteTexture(spriteType, playerFacing === 'back');
+      playerSprite.material.map = mapTex;
+      playerSprite.material.needsUpdate = true;
+    }
+
+    function applyJobStatsTransition(oldJob, newJob) {
+      const oldB = getJobAppliedBonus(oldJob), newB = getJobAppliedBonus(newJob);
+      playerState.maxHp = Math.max(1, playerState.maxHp - oldB.hp + newB.hp);
+      playerState.maxMp = Math.max(1, playerState.maxMp - oldB.mp + newB.mp);
+      playerState.weaponAtk = Math.max(0, playerState.weaponAtk - oldB.atk + newB.atk);
+      playerState.defensePower = Math.max(0, playerState.defensePower - oldB.def + newB.def);
+      playerState.hp = playerState.maxHp;
+      playerState.mp = playerState.maxMp;
+      playerState.attackRange = newB.range;
+      playerState.title = newB.title;
+    }
+
+    function openJobChangeModal() {
+      if (playerState.tier < 2) return;
+      const container = document.getElementById('job-change-cards-container');
+      const desc = document.getElementById('job-change-desc');
+      container.innerHTML = '';
+      const isFirst = playerState.jobChangeCount === 0;
+      const cost = playerState.tier >= 3 ? JOB_CHANGE_COSTS.second : JOB_CHANGE_COSTS.first;
+      desc.innerText = isFirst ? '첫 번째 직업 변경은 무료입니다. 변경 후에도 레벨·무기·강화·패시브는 유지됩니다.' : `현재 변경 비용: ${cost.gold.toLocaleString()}G + 강화의 핵 ${cost.core}개 (재변경 대기시간 없음)`;
+      const options = playerState.tier >= 3
+        ? (playerState.job === '검성' ? [{name:'대도사', icon:'🔮', desc:'광역 마법 딜러'}] : [{name:'검성', icon:'⚔️', desc:'근접 물리 딜러'}])
+        : (playerState.job === '검사' ? [{name:'주술사', icon:'🔮', desc:'광역 마법 딜러'}] : [{name:'검사', icon:'⚔️', desc:'근접 물리 딜러'}]);
+      options.forEach(opt => {
+        const card = document.createElement('div');
+        card.className = 'job-card';
+        card.onclick = () => changeJob(opt.name);
+        card.innerHTML = `<div style="font-size:22px;">${opt.icon}</div><div style="font-weight:bold;color:#e65100;font-size:12px;">${opt.name}</div><div style="font-size:10px;color:#795548;">${opt.desc}</div>`;
+        container.appendChild(card);
+      });
+      document.getElementById('job-change-modal').style.display = 'block';
+    }
+
+    function closeJobChangeModal() { document.getElementById('job-change-modal').style.display = 'none'; }
+
+    function changeJob(newJob) {
+      if (playerState.tier < 2) return;
+      if (newJob === playerState.job) return;
+      const isFirstChange = playerState.jobChangeCount === 0;
+      const cost = playerState.tier >= 3 ? JOB_CHANGE_COSTS.second : JOB_CHANGE_COSTS.first;
+      if (!isFirstChange) {
+        if (playerState.gold < cost.gold) { alert(`게임머니가 부족합니다. (${cost.gold.toLocaleString()}G 필요)`); return; }
+        if ((playerState.enhanceCore || 0) < cost.core) { alert(`강화의 핵이 부족합니다. (${cost.core}개 필요)`); return; }
+        playerState.gold -= cost.gold;
+        playerState.enhanceCore -= cost.core;
+      }
+      const oldJob = playerState.job;
+      applyJobStatsTransition(oldJob, newJob);
+      playerState.job = newJob;
+      playerState.jobChangeCount += 1;
+      setPlayerJobVisuals(newJob);
+      refreshSkillButtonVisibility();
+      updateUI();
+      closeJobChangeModal();
+      saveGame();
+      alert(`🔄 직업 변경 완료! ${oldJob} → ${newJob}
+레벨·무기·강화·패시브·스킬 강화 수치는 유지됩니다.`);
     }
 
     function openJobModal() { document.getElementById('job-modal').style.display = 'block'; }
@@ -4255,15 +4342,10 @@
     // 2차 전직 순간뿐 아니라, 저장된 게임을 불러올 때도 반드시 호출되어야 한다.
     // (안 그러면 새로고침 시 인라인 style이 초기화되어 CSS 기본값인 display:none으로 되돌아가 버튼이 사라진다.)
     function refreshSkillButtonVisibility() {
-      const labels = playerState.job === '대도사'
-        ? { s2_1: '🔥<br>멸천화', s2_2: '☄️<br>화염폭우', s2_3: '✨<br>천지개벽' }
-        : { s2_1: '⚡<br>뇌전참', s2_2: '🌀<br>회풍참', s2_3: '⚔️<br>천검난무' };
-
       ['s2_1', 's2_2', 's2_3'].forEach(skId => {
         const btn = document.getElementById(`btn-skill-${skId}`);
         if (!btn) return;
         btn.style.display = playerState.skillsLearned.includes(skId) ? 'flex' : 'none';
-        btn.innerHTML = labels[skId];
       });
     }
 
@@ -5291,7 +5373,7 @@
           moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
           hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
           hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
-          atkSpeedLv: playerState.atkSpeedLv, firstSkillLv: playerState.firstSkillLv, skillLv: { s2_2: playerState.skillLv.s2_2, s2_3: playerState.skillLv.s2_3 }, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned].filter(id => id !== 's1_2') : [],
+          atkSpeedLv: playerState.atkSpeedLv, firstSkillLv: playerState.firstSkillLv, jobChangeCount: playerState.jobChangeCount, skillLv: { s2_2: playerState.skillLv.s2_2, s2_3: playerState.skillLv.s2_3 }, skillsLearned: Array.isArray(playerState.skillsLearned) ? [...playerState.skillsLearned].filter(id => id !== 's1_2') : [],
           skillCooldowns: { s1_1: 0, s2_1: 0, s2_2: 0, s2_3: 0 }
         },
         heroes: {
@@ -5336,7 +5418,7 @@
 
         isLoadingSave = true;
         const p = data.player;
-        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','weaponEnhanceLv','moveSpeed','attackRange','atkSpeedLv','firstSkillLv','martialTrainingLv','shamanStudyLv','dailyCoreBought'];
+        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','weaponEnhanceLv','moveSpeed','attackRange','atkSpeedLv','firstSkillLv','martialTrainingLv','shamanStudyLv','dailyCoreBought','jobChangeCount'];
         numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
         playerState.maxLevel = 150;
         ['name','title','job','dailyResetDate'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
@@ -5347,6 +5429,7 @@
         playerState.martialTrainingLv = Math.max(0, Math.min(CLASS_TRAINING_MAX_LV, Number(playerState.martialTrainingLv) || 0));
         playerState.shamanStudyLv = Math.max(0, Math.min(CLASS_TRAINING_MAX_LV, Number(playerState.shamanStudyLv) || 0));
         playerState.dailyCoreBought = Math.max(0, Number(playerState.dailyCoreBought) || 0);
+        playerState.jobChangeCount = Math.max(0, Number(playerState.jobChangeCount) || 0);
         if (p.skillLv && typeof p.skillLv === 'object') {
           playerState.skillLv.s2_2 = Math.max(0, Math.min(5, Number(p.skillLv.s2_2) || 0));
           playerState.skillLv.s2_3 = Math.max(0, Math.min(5, Number(p.skillLv.s2_3) || 0));
@@ -5465,6 +5548,7 @@
 
       const jobBtn = document.getElementById('btn-job-modal');
       const job2Btn = document.getElementById('btn-job2-modal');
+      const jobChangeBtn = document.getElementById('btn-job-change');
 
       if (playerState.level >= 20 && playerState.tier === 1) {
         jobBtn.style.display = "block";
@@ -5476,6 +5560,7 @@
         jobBtn.style.display = "none";
         job2Btn.style.display = "none";
       }
+      if (jobChangeBtn) jobChangeBtn.style.display = playerState.tier >= 2 ? "block" : "none";
 
       const shopModal = document.getElementById('shop-modal');
       if (shopModal && shopModal.style.display === 'block') {
