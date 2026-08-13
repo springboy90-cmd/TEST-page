@@ -809,6 +809,7 @@
       <div class="shop-tab active" id="tab-weapon" onclick="switchShopCategory('weapon')">무기/부적</div>
       <div class="shop-tab" id="tab-armor" onclick="switchShopCategory('armor')">방어구</div>
       <div class="shop-tab" id="tab-hero" onclick="switchShopCategory('hero')">소환영웅</div>
+      <div class="shop-tab" id="tab-enhance" onclick="switchShopCategory('enhance')">강화상점</div>
     </div>
     <div class="shop-items-grid" id="shop-items-container"></div>
     <div style="text-align: center; margin-top: 12px;">
@@ -2952,6 +2953,44 @@
     const WEAPON_ENHANCE_UNLOCK_ATK = 1500;
     const WEAPON_ENHANCE_CORE_COST = 1;
 
+    // ===== 강화상점: 강화의 핵 판매 (일일 구매 제한) =====
+    const CORE_SHOP_ITEMS = [
+      { id: 'core1', qty: 1, price: 10000 },
+      { id: 'core10', qty: 10, price: 90000 },
+      { id: 'core50', qty: 50, price: 440000 }
+    ];
+    const CORE_SHOP_DAILY_LIMIT = 50;
+
+    // 날짜가 바뀌면(자정 경과) 일일 구매 카운트를 리셋한다.
+    function ensureDailyReset() {
+      const todayStr = new Date().toDateString();
+      if (playerState.dailyResetDate !== todayStr) {
+        playerState.dailyResetDate = todayStr;
+        playerState.dailyCoreBought = 0;
+      }
+    }
+
+    // ===== 무공단련(검사 계열) / 주술연구(주술사 계열) =====
+    // 1차 전직(tier >= 2) 완료 시에만 노출되는 계열별 영구 강화. 최대 +50강.
+    // 1업당 상승: 검사(무공단련) - 공격력+5, HP+30, 방어+2 / 주술사(주술연구) - 공격력+5, MP+30, 방어+2
+    // 비용: 1강 5,000G 시작, 1업당 +1,000G씩 증가 (매 강화 100% 성공하는 유료 강화)
+    const CLASS_TRAINING_MAX_LV = 50;
+    const CLASS_TRAINING_BASE_COST = 5000;
+    const CLASS_TRAINING_COST_STEP = 1000;
+
+    function getClassTrainingCost(nextLv) {
+      // nextLv=1이면 1강 비용(5,000G), nextLv=2면 2강 비용(6,000G) ...
+      return CLASS_TRAINING_BASE_COST + (nextLv - 1) * CLASS_TRAINING_COST_STEP;
+    }
+
+    // 1차 전직 완료 후 어느 계열(검사/주술사)인지 판별. 2차 전직 이후에도 계열은 유지된다.
+    function getTrainingClassType() {
+      if (playerState.tier < 2) return null;
+      if (isShamanClass()) return 'shaman';
+      if (playerState.job === '검사' || playerState.job.includes('검')) return 'fighter';
+      return null;
+    }
+
 
     // 1차 전직 스킬 직업별 설정
     const FIRST_JOB_SKILL_CONFIG = {
@@ -2994,7 +3033,9 @@
       skillsLearned: [],
       firstSkillLv: 0,
       skillCooldowns: { s1_1: 0, s2_1: 0, s2_2: 0, s2_3: 0 },
-      skillLv: { s2_2: 0, s2_3: 0 }
+      skillLv: { s2_2: 0, s2_3: 0 },
+      martialTrainingLv: 0, shamanStudyLv: 0,
+      dailyCoreBought: 0, dailyResetDate: ''
     };
 
     function getCritChance() {
@@ -4271,8 +4312,8 @@
         { id: 'c1', name: '부적: 필살의 기운', desc: '크리티컬 강화', type: 'talisman' }
       ],
       armor: [
-        { id: 'a1', name: '철갑 도포', desc: '최대 체력 +100, 방어력 +8', price: 500, currency: 'gold', type: 'armor', valHp: 100, valDef: 8 },
-        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +250, 방어력 +20', price: 1500, currency: 'gold', type: 'armor', valHp: 250, valDef: 20 },
+        { id: 'a1', name: '철갑 도포', desc: '최대 체력 +80, 방어력 +6', price: 500, currency: 'gold', type: 'armor', valHp: 80, valDef: 6 },
+        { id: 'a2', name: '조선 두정갑', desc: '최대 체력 +180, 방어력 +14', price: 1500, currency: 'gold', type: 'armor', valHp: 180, valDef: 14 },
         { id: 'mp1', name: '마력 증대 I', desc: '최대 MP +100 (주술사 계열 전용)', price: 1000, currency: 'gold', type: 'maxMp', valMp: 100, reqShaman: true },
         { id: 'mp2', name: '마력 증대 II', desc: '최대 MP +200 (주술사 계열 전용)', price: 1900, currency: 'gold', type: 'maxMp', valMp: 200, reqShaman: true }
       ],
@@ -4288,12 +4329,18 @@
 
     function switchShopCategory(cat) {
       currentShopCategory = cat;
-      ['weapon', 'armor', 'hero'].forEach(c => {
+      ['weapon', 'armor', 'hero', 'enhance'].forEach(c => {
         const el = document.getElementById(`tab-${c}`);
         if (el) el.classList.toggle('active', c === cat);
       });
 
       const container = document.getElementById('shop-items-container'); container.innerHTML = '';
+
+      if (cat === 'enhance') {
+        renderEnhanceShop(container);
+        return;
+      }
+
       shopCatalog[cat].filter(item => !item.reqShaman || isShamanClass()).forEach(item => {
         const card = document.createElement('div'); card.className = 'shop-item-card';
 
@@ -4424,6 +4471,53 @@
         `;
         container.appendChild(enhCard);
       }
+
+      // 1차 전직(tier >= 2) 완료 시 계열별 영구 강화 카드를 무기 탭에 노출한다.
+      if (cat === 'weapon') {
+        const classType = getTrainingClassType();
+        if (classType) {
+          const isFighter = classType === 'fighter';
+          const curLvl = isFighter ? playerState.martialTrainingLv : playerState.shamanStudyLv;
+          const isMaxTraining = curLvl >= CLASS_TRAINING_MAX_LV;
+          const nextLv = curLvl + 1;
+          const nextCost = getClassTrainingCost(nextLv);
+
+          const trainingCard = document.createElement('div'); trainingCard.className = 'shop-item-card';
+          const trainingName = isFighter ? '💪 무공단련' : '🔮 주술연구';
+          const secondStatLabel = isFighter ? 'HP' : 'MP';
+
+          let trainingDesc = '';
+          let trainingPriceLabel = '';
+          let trainingBtnText = '';
+          let trainingDisabled = false;
+
+          if (isMaxTraining) {
+            trainingDesc = `[최대 강화 달성]\n1업당 공격력 +5, ${secondStatLabel} +30, 방어력 +2`;
+            trainingPriceLabel = 'MAX';
+            trainingBtnText = '강화완료';
+            trainingDisabled = true;
+          } else {
+            trainingDesc = `현재: +${curLvl} (1업당 공격력 +5, ${secondStatLabel} +30, 방어력 +2)\n➔다음: +${nextLv}`;
+            trainingPriceLabel = `${nextCost.toLocaleString()} G`;
+            trainingBtnText = '강화하기';
+            trainingDisabled = playerState.gold < nextCost;
+          }
+
+          trainingCard.innerHTML = `
+            <div>
+              <div class="item-header"><span>${trainingName} (+${curLvl}/${CLASS_TRAINING_MAX_LV})</span></div>
+              <div class="item-desc">${trainingDesc}</div>
+            </div>
+            <div class="item-footer">
+              <span class="item-price">${trainingPriceLabel}</span>
+              <button class="btn-buy" ${trainingDisabled ? 'disabled' : ''} onclick="enhanceClassTraining()">
+                ${trainingBtnText}
+              </button>
+            </div>
+          `;
+          container.appendChild(trainingCard);
+        }
+      }
     }
 
     const LOOT_TO_CORE_RATE = 20;
@@ -4495,6 +4589,105 @@
         }
       } else {
         showPlayerDamageText(`💥 강화 실패...`, playerSprite.position);
+      }
+
+      updateUI();
+      if (document.getElementById('shop-modal')?.style.display !== 'none') switchShopCategory(currentShopCategory);
+    }
+
+    // ===== 강화상점: 강화의 핵 판매 =====
+    function renderEnhanceShop(container) {
+      ensureDailyReset();
+
+      const infoCard = document.createElement('div');
+      infoCard.className = 'shop-item-card';
+      infoCard.style.gridColumn = '1 / -1';
+      infoCard.innerHTML = `
+        <div>
+          <div class="item-header"><span>💎 강화의 핵 상점</span></div>
+          <div class="item-desc">오늘 구매: ${playerState.dailyCoreBought}/${CORE_SHOP_DAILY_LIMIT}개 (자정 기준 초기화)</div>
+        </div>
+      `;
+      container.appendChild(infoCard);
+
+      CORE_SHOP_ITEMS.forEach(item => {
+        const card = document.createElement('div'); card.className = 'shop-item-card';
+        const remain = CORE_SHOP_DAILY_LIMIT - playerState.dailyCoreBought;
+        const canAfford = playerState.gold >= item.price;
+        const canBuyQty = remain >= item.qty;
+        const isDisabled = !canAfford || !canBuyQty;
+
+        let reasonText = '';
+        if (!canBuyQty) reasonText = '일일 구매 한도 초과';
+        else if (!canAfford) reasonText = '골드 부족';
+
+        card.innerHTML = `
+          <div>
+            <div class="item-header"><span>강화의 핵 ×${item.qty}</span></div>
+            <div class="item-desc">${reasonText ? `[${reasonText}]` : `강화의 핵 ${item.qty}개를 즉시 지급받습니다.`}</div>
+          </div>
+          <div class="item-footer">
+            <span class="item-price">${item.price.toLocaleString()} G</span>
+            <button class="btn-buy" ${isDisabled ? 'disabled' : ''} onclick="buyEnhanceCore('${item.id}')">구매하기</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function buyEnhanceCore(itemId) {
+      ensureDailyReset();
+      const item = CORE_SHOP_ITEMS.find(i => i.id === itemId);
+      if (!item) return;
+
+      const remain = CORE_SHOP_DAILY_LIMIT - playerState.dailyCoreBought;
+      if (remain < item.qty) {
+        alert(`일일 구매 한도(${CORE_SHOP_DAILY_LIMIT}개)를 초과했습니다. 내일 다시 구매해주세요.`);
+        return;
+      }
+      if (playerState.gold < item.price) {
+        alert('골드가 부족합니다!');
+        return;
+      }
+
+      playerState.gold -= item.price;
+      playerState.enhanceCore = (playerState.enhanceCore || 0) + item.qty;
+      playerState.dailyCoreBought += item.qty;
+
+      showHealText(`+${item.qty} 강화의 핵 구매!`, playerSprite.position);
+      updateUI();
+      if (document.getElementById('shop-modal')?.style.display !== 'none') switchShopCategory(currentShopCategory);
+    }
+
+    // ===== 무공단련(검사) / 주술연구(주술사) =====
+    function enhanceClassTraining() {
+      const classType = getTrainingClassType();
+      if (!classType) return;
+
+      const curLvl = classType === 'fighter' ? playerState.martialTrainingLv : playerState.shamanStudyLv;
+      if (curLvl >= CLASS_TRAINING_MAX_LV) return;
+
+      const nextLv = curLvl + 1;
+      const cost = getClassTrainingCost(nextLv);
+      if (playerState.gold < cost) {
+        alert('골드가 부족합니다!');
+        return;
+      }
+
+      playerState.gold -= cost;
+      playerState.weaponAtk += 5;
+      playerState.defensePower += 2;
+
+      if (classType === 'fighter') {
+        playerState.martialTrainingLv = nextLv;
+        playerState.maxHp += 30;
+        playerState.hp += 30;
+        showHealText(`💪 무공단련 성공! (+${nextLv})`, playerSprite.position);
+      } else {
+        playerState.shamanStudyLv = nextLv;
+        playerState.maxMp += 30;
+        playerState.mp += 30;
+        showHealText(`🔮 주술연구 성공! (+${nextLv})`, playerSprite.position);
       }
 
       updateUI();
@@ -5060,6 +5253,8 @@
           talismanLoot: playerState.talismanLoot, talismanLevel: playerState.talismanLevel, enhanceCore: playerState.enhanceCore,
           baseAttackSpeed: playerState.baseAttackSpeed, attackSpeed: playerState.attackSpeed,
           weaponAtk: playerState.weaponAtk, defensePower: playerState.defensePower, weaponEnhanceLv: playerState.weaponEnhanceLv,
+          martialTrainingLv: playerState.martialTrainingLv, shamanStudyLv: playerState.shamanStudyLv,
+          dailyCoreBought: playerState.dailyCoreBought, dailyResetDate: playerState.dailyResetDate,
           moveSpeed: playerState.moveSpeed, attackRange: playerState.attackRange,
           hasSiri: playerState.hasSiri, hasJanggeum: playerState.hasJanggeum,
           hasMunyeahana: playerState.hasMunyeahana, hasAutoHeal: playerState.hasAutoHeal,
@@ -5108,14 +5303,17 @@
 
         isLoadingSave = true;
         const p = data.player;
-        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','weaponEnhanceLv','moveSpeed','attackRange','atkSpeedLv','firstSkillLv'];
+        const numericFields = ['level','maxLevel','tier','hp','maxHp','mp','maxMp','exp','maxExp','gold','talismanLoot','talismanLevel','enhanceCore','baseAttackSpeed','attackSpeed','weaponAtk','defensePower','weaponEnhanceLv','moveSpeed','attackRange','atkSpeedLv','firstSkillLv','martialTrainingLv','shamanStudyLv','dailyCoreBought'];
         numericFields.forEach(k => { if (p[k] !== undefined && Number.isFinite(Number(p[k]))) playerState[k] = Number(p[k]); });
         playerState.maxLevel = 150;
-        ['name','title','job'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
+        ['name','title','job','dailyResetDate'].forEach(k => { if (typeof p[k] === 'string') playerState[k] = p[k]; });
         ['hasSiri','hasJanggeum','hasMunyeahana','hasAutoHeal'].forEach(k => { if (typeof p[k] === 'boolean') playerState[k] = p[k]; });
         if (Array.isArray(p.skillsLearned)) playerState.skillsLearned = [...p.skillsLearned].filter(id => id !== 's1_2');
         playerState.firstSkillLv = Math.max(0, Math.min(5, Number(playerState.firstSkillLv) || 0));
         playerState.weaponEnhanceLv = Math.max(0, Math.min(WEAPON_ENHANCE_MAX_LV, Number(playerState.weaponEnhanceLv) || 0));
+        playerState.martialTrainingLv = Math.max(0, Math.min(CLASS_TRAINING_MAX_LV, Number(playerState.martialTrainingLv) || 0));
+        playerState.shamanStudyLv = Math.max(0, Math.min(CLASS_TRAINING_MAX_LV, Number(playerState.shamanStudyLv) || 0));
+        playerState.dailyCoreBought = Math.max(0, Number(playerState.dailyCoreBought) || 0);
         if (p.skillLv && typeof p.skillLv === 'object') {
           playerState.skillLv.s2_2 = Math.max(0, Math.min(5, Number(p.skillLv.s2_2) || 0));
           playerState.skillLv.s2_3 = Math.max(0, Math.min(5, Number(p.skillLv.s2_3) || 0));
@@ -5125,6 +5323,7 @@
         playerState.skillCooldowns = { s1_1:0, s2_1:0, s2_2:0, s2_3:0 };
         playerState.hp = Math.max(0, Math.min(playerState.hp, playerState.maxHp));
         playerState.mp = Math.max(0, Math.min(playerState.mp, playerState.maxMp));
+        ensureDailyReset();
 
         applyHeroSavedState(data.heroes && data.heroes.siri, siriState);
         applyHeroSavedState(data.heroes && data.heroes.janggeum, janggeumState);
