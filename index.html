@@ -5442,28 +5442,51 @@
         }
 
         // ===== 전리품 보상 =====
-        // 일반몹: 30% 확률로 1~2개.
-        // 보스: 5% 확률로 0개 / 70% 확률로 4~6개 / 25% 확률로 10개.
+        // 일반몹(비하둠): 25% 확률로 전리품 1개.
+        // 일반몹(하둠): 30% 확률로 전리품 2개.
+        // 보스(비하둠): 5% 확률 0개 / 70% 확률 4~6개 / 25% 확률 10개.
+        // 보스(하둠): 50% 확률 전리품 1개 / 45% 확률 전리품 8~12개 / 5% 확률 강화의 핵 1개.
         if (target.isBoss) {
-          const rand = Math.random();
-          let lootCount = 0;
-          if (rand < 0.05) {
-            lootCount = 0;
-          } else if (rand < 0.75) {
-            lootCount = Math.floor(Math.random() * 3) + 4; // 4~6개
+          if (target.isHadum) {
+            const rand = Math.random();
+            if (rand < 0.50) {
+              playerState.talismanLoot += 1;
+              showHealText('+1 전리품 획득!', target.sprite.position);
+            } else if (rand < 0.95) {
+              const lootCount = Math.floor(Math.random() * 5) + 8; // 8~12개
+              playerState.talismanLoot += lootCount;
+              showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
+            } else {
+              playerState.enhanceCore = (playerState.enhanceCore || 0) + 1;
+              showHealText('+1 강화의 핵 획득!', target.sprite.position);
+            }
           } else {
-            lootCount = 10;
-          }
+            const rand = Math.random();
+            let lootCount = 0;
+            if (rand < 0.05) {
+              lootCount = 0;
+            } else if (rand < 0.75) {
+              lootCount = Math.floor(Math.random() * 3) + 4; // 4~6개
+            } else {
+              lootCount = 10;
+            }
 
-          if (lootCount > 0) {
-            playerState.talismanLoot += lootCount;
-            showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
+            if (lootCount > 0) {
+              playerState.talismanLoot += lootCount;
+              showHealText(`+${lootCount} 전리품 획득!`, target.sprite.position);
+            }
           }
         } else {
-          if (Math.random() < 0.30) {
-            const normalLootCount = Math.floor(Math.random() * 2) + 1; // 1~2개
-            playerState.talismanLoot += normalLootCount;
-            showHealText(`+${normalLootCount} 전리품 획득!`, target.sprite.position);
+          if (target.isHadum) {
+            if (Math.random() < 0.30) {
+              playerState.talismanLoot += 2;
+              showHealText('+2 전리품 획득!', target.sprite.position);
+            }
+          } else {
+            if (Math.random() < 0.25) {
+              playerState.talismanLoot += 1;
+              showHealText('+1 전리품 획득!', target.sprite.position);
+            }
           }
         }
 
