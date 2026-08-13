@@ -3978,13 +3978,19 @@
       `;
       container.appendChild(firstSkillCard);
 
-      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title'; j2Title.innerText = '🔥 2차 전직 전용 스킬 (단일 1개 / 범위 2개)';
+      const isShaman2 = playerState.job === '대도사';
+      const j2Title = document.createElement('div'); j2Title.className = 'skill-section-title';
+      j2Title.innerText = isShaman2 ? '🔮 대도사 2차 전직 전용 스킬' : '⚔️ 검성 2차 전직 전용 스킬';
       container.appendChild(j2Title);
 
-      const j2Skills = [
-        { id: 's2_1', name: '오의: 뇌전참 (단일)', desc: '단일 대상에게 3.0배의 뇌전 데미지를 입힙니다. (MP 15)', price: 10000, reqTier: 3, maxLv: 1 },
-        { id: 's2_2', name: '회풍참 (범위 1)', desc: '주변 6m 이내의 모든 적에게 범위 데미지. (MP 15)', price: 15000, reqTier: 3, maxLv: 5 },
-        { id: 's2_3', name: '폭열천상 (범위 2)', desc: '넓은 지역에 화염 폭발 범위 데미지를 가합니다. (MP 15)', price: 20000, reqTier: 3, maxLv: 5 }
+      const j2Skills = isShaman2 ? [
+        { id: 's2_1', icon: '🔥', name: '멸천화 (단일)', desc: '8m 단일 대상에 거대한 화염탄을 집중합니다. 공격력 450~500% · MP 50 · 재사용 5초', price: 10000, reqTier: 3, maxLv: 1 },
+        { id: 's2_2', icon: '☄️', name: '화염폭우 (범위)', desc: '8m 원형 범위에 화염 운석을 연속 낙하시킵니다. 공격력 220~260% · MP 40 · 재사용 5초', price: 15000, reqTier: 3, maxLv: 5 },
+        { id: 's2_3', icon: '✨', name: '천지개벽 (대범위)', desc: '12m 원형에 거대한 마법진과 폭발을 일으킵니다. 공격력 300~350% · MP 70 · 재사용 10초', price: 20000, reqTier: 3, maxLv: 5 }
+      ] : [
+        { id: 's2_1', icon: '⚡', name: '오의: 뇌전참 (단일)', desc: '3m 단일 대상에 번개 검격을 가합니다. 공격력 350~400% · MP 30 · 재사용 3초', price: 10000, reqTier: 3, maxLv: 1 },
+        { id: 's2_2', icon: '🌀', name: '회풍참 (범위)', desc: '주변 6m를 회전 검기로 베어냅니다. 공격력 180~220% · MP 25 · 재사용 4초', price: 15000, reqTier: 3, maxLv: 5 },
+        { id: 's2_3', icon: '⚔️', name: '천검난무 (전방)', desc: '전방 8m 부채꼴로 다중 검기를 발사합니다. 공격력 250~300% · MP 40 · 재사용 7초', price: 20000, reqTier: 3, maxLv: 5 }
       ];
 
       j2Skills.forEach(sk => {
@@ -3992,13 +3998,11 @@
         const canLearn = playerState.tier >= sk.reqTier;
         const currentLv = sk.id === 's2_1' ? (isLearned ? 1 : 0) : Math.max(0, Math.min(5, Number(playerState.skillLv[sk.id]) || 0));
         const isMax = currentLv >= sk.maxLv;
-        const levelDesc = sk.id === 's2_2' || sk.id === 's2_3'
-          ? `현재 Lv.${currentLv}/5 · 공격력 ${[0,100,120,140,160,200][currentLv]}% · MP 15`
-          : sk.desc;
+        const levelDesc = sk.maxLv > 1 ? `${sk.desc} · 현재 Lv.${currentLv}/5` : sk.desc;
         const card = document.createElement('div'); card.className = 'shop-item-card';
         card.innerHTML = `
           <div>
-            <div class="item-header"><span>${sk.name}${sk.maxLv > 1 ? ` (Lv.${currentLv}/5)` : ''}</span></div>
+            <div class="item-header"><span style="display:flex;align-items:center;gap:6px"><span style="font-size:20px;line-height:1">${sk.icon}</span>${sk.name}${sk.maxLv > 1 ? ` (Lv.${currentLv}/5)` : ''}</span></div>
             <div class="item-desc">${levelDesc}</div>
           </div>
           <div class="item-footer">
@@ -4119,45 +4123,63 @@
 
     function useActiveSkill(skillId) {
       const now = Date.now();
-      if (playerState.skillCooldowns[skillId] && now - playerState.skillCooldowns[skillId] < 3000) {
-        return;
-      }
+      const skillConfig = playerState.job === '대도사' ? {
+        s2_1: { cooldown: 5000, mp: 50 },
+        s2_2: { cooldown: 5000, mp: 40 },
+        s2_3: { cooldown: 10000, mp: 70 }
+      } : {
+        s2_1: { cooldown: 3000, mp: 30 },
+        s2_2: { cooldown: 4000, mp: 25 },
+        s2_3: { cooldown: 7000, mp: 40 }
+      };
+      const cfg = skillConfig[skillId];
+      if (!cfg) return;
+
+      if (playerState.skillCooldowns[skillId] && now - playerState.skillCooldowns[skillId] < cfg.cooldown) return;
 
       if (!playerState.skillsLearned.includes(skillId)) {
         alert("스킬 수련원에서 먼저 스킬을 배워야 합니다!");
         return;
       }
 
-      if (!consumeSkillMp(15)) return;
-
+      if (!consumeSkillMp(cfg.mp)) return;
       playerState.skillCooldowns[skillId] = now;
+
+      const isShaman2 = playerState.job === '대도사';
 
       if (skillId === 's2_1') {
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         if (selectedTarget && selectedTarget.alive) {
-          spawnHitVfx(selectedTarget.sprite.position, 'lightning', 3.5);
-          applyDamage(selectedTarget, getPlayerActualDmg(3.0));
+          const mult = (isShaman2 ? 4.50 : 3.50) + Math.random() * 0.50;
+          spawnHitVfx(selectedTarget.sprite.position, isShaman2 ? 'explosion' : 'lightning', isShaman2 ? 4.5 : 3.8);
+          applyDamage(selectedTarget, getPlayerActualDmg(mult));
         }
       } else if (skillId === 's2_2') {
         const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_2) || 1));
-        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
+        const multTable = isShaman2
+          ? [0, 2.20, 2.30, 2.40, 2.50, 2.60]
+          : [0, 1.80, 1.90, 2.00, 2.10, 2.20];
         const mult = multTable[lv];
-        spawnHitVfx(playerSprite.position, 'whirlwind', 5.0);
+        const range = 8.0;
+        spawnHitVfx(playerSprite.position, isShaman2 ? 'explosion' : 'whirlwind', isShaman2 ? 6.0 : 5.0);
         monsters.forEach(m => {
-          if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= 6.0) {
-            spawnHitVfx(m.sprite.position, 'slash', 2.2);
+          if (m.alive && playerSprite.position.distanceTo(m.sprite.position) <= range) {
+            spawnHitVfx(m.sprite.position, isShaman2 ? 'explosion' : 'slash', isShaman2 ? 2.5 : 2.2);
             applyDamage(m, getPlayerActualDmg(mult));
           }
         });
       } else if (skillId === 's2_3') {
         const lv = Math.max(1, Math.min(5, Number(playerState.skillLv.s2_3) || 1));
-        const multTable = [0, 1.00, 1.20, 1.40, 1.60, 2.00];
+        const multTable = isShaman2
+          ? [0, 3.00, 3.10, 3.20, 3.30, 3.50]
+          : [0, 2.50, 2.60, 2.70, 2.80, 3.00];
         const mult = multTable[lv];
         if (!selectedTarget || !selectedTarget.alive) targetNearestMonster();
         const centerPos = selectedTarget && selectedTarget.alive ? selectedTarget.sprite.position : playerSprite.position;
-        spawnHitVfx(centerPos, 'explosion', 6.0);
+        const range = isShaman2 ? 12.0 : 8.0;
+        spawnHitVfx(centerPos, 'explosion', isShaman2 ? 8.0 : 6.5);
         monsters.forEach(m => {
-          if (m.alive && m.sprite.position.distanceTo(centerPos) <= 8.0) {
+          if (m.alive && m.sprite.position.distanceTo(centerPos) <= range) {
             applyDamage(m, getPlayerActualDmg(mult));
           }
         });
@@ -4233,10 +4255,15 @@
     // 2차 전직 순간뿐 아니라, 저장된 게임을 불러올 때도 반드시 호출되어야 한다.
     // (안 그러면 새로고침 시 인라인 style이 초기화되어 CSS 기본값인 display:none으로 되돌아가 버튼이 사라진다.)
     function refreshSkillButtonVisibility() {
+      const labels = playerState.job === '대도사'
+        ? { s2_1: '🔥<br>멸천화', s2_2: '☄️<br>화염폭우', s2_3: '✨<br>천지개벽' }
+        : { s2_1: '⚡<br>뇌전참', s2_2: '🌀<br>회풍참', s2_3: '⚔️<br>천검난무' };
+
       ['s2_1', 's2_2', 's2_3'].forEach(skId => {
         const btn = document.getElementById(`btn-skill-${skId}`);
         if (!btn) return;
         btn.style.display = playerState.skillsLearned.includes(skId) ? 'flex' : 'none';
+        btn.innerHTML = labels[skId];
       });
     }
 
