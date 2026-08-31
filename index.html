@@ -1302,7 +1302,7 @@ html,body{overflow-x:hidden!important}#wc-modal *{box-sizing:border-box!importan
           </div>
           <div class="stat-row-item" id="weapon-enhance-action-row" style="display:flex; justify-content:center; margin-top:3px;">
             <button class="status-action-btn" onclick="openWeaponEnhanceModal()" style="width:100%;padding:7px 10px;font-size:11px;background:#e3f2fd;border-color:#64b5f6;color:#1565c0;font-weight:900;">⚒️ 무기 강화 · 파수꾼 부위 강화</button>
-          <button class="status-action-btn" onclick="openWeaponPotentialModal()" style="width:100%;padding:7px 10px;font-size:11px;background:#f3e5f5;border-color:#ab47bc;color:#6a1b9a;font-weight:900;margin-top:4px;">✨ 무기 잠재력 · 각인</button>
+          <button class="status-action-btn" onclick="openWeaponPotentialModal()" style="display:block;width:100%;padding:7px 10px;font-size:11px;background:#f3e5f5;border-color:#ab47bc;color:#6a1b9a;font-weight:900;margin-top:4px;">✨ 무기 잠재력 · 각인</button>
           </div>
           <div class="status-action-row">
             <button class="status-action-btn status-shop-btn" onclick="openShopModal()">🛒 저자거리 상점</button>
@@ -5156,12 +5156,11 @@ window.playerState = playerState;
     }
 
     function getPlayerBaseAtk() {
-      return 15 + (playerState.level - 1) * 3 + playerState.weaponAtk + getEquippedSubWeaponAtk() + getWeaponPotentialFlatAtk();
+      return 15 + (playerState.level - 1) * 3 + playerState.weaponAtk + getEquippedSubWeaponAtk();
     }
 
     function getPlayerAvgAtk() {
       let atk = getPlayerBaseAtk();
-      atk *= (1 + getWeaponPotentialAtkPercent());
       if (typeof getCloverCombatBonus === "function") atk *= (1 + getCloverCombatBonus());
       if (isMunyeahanaBuffActive()) {
         atk *= (1 + getMunyeahanaBuffRate());
@@ -13261,12 +13260,12 @@ document.addEventListener('DOMContentLoaded',function(){
   while(w.potential.length>n)w.potential.pop(); while(w.engraving.length<n)w.engraving.pop();
  }
  window.initWeaponPotential=initWeaponPotential;
- function getW(){try{if(typeof sync==='function')sync();}catch(e){} return window.st&&st.weapon?st.weapon:null}
+ function getW(){ try{ const w=window.playerState?.weaponCrafting?.weapon; if(w) return w; }catch(e){} try{ if(typeof st!=='undefined' && st.weapon) return st.weapon; }catch(e){} return null }
  window.getWeaponPotentialFlatAtk=function(){const w=getW(); if(!w)return 0; initWeaponPotential(w); return [...w.potential,...w.engraving].filter(x=>x&&x.id==='atk').reduce((a,x)=>a+Number(x.value||0),0)};
  window.getWeaponPotentialAtkPercent=function(){const w=getW(); if(!w)return 0; initWeaponPotential(w); return [...w.potential,...w.engraving].filter(x=>x&&x.id==='atkPct').reduce((a,x)=>a+Number(x.value||0),0)/100};
  function mats(){ if(window.playerState){playerState.craftingMaterials=playerState.craftingMaterials||{iron:0,wood:0,core:0,refined:0,boss:0,divine:0,potentialDust:0,engravingStone:0}; return playerState.craftingMaterials;} return {} }
  function gold(){return Number(window.playerState?.gold||0)}
- function saveAll(){try{if(typeof save==='function')save(); else if(typeof saveGame==='function')saveGame();}catch(e){} try{if(typeof render==='function')render();}catch(e){} try{if(typeof updateUI==='function')updateUI();}catch(e){}}
+ function saveAll(){try{if(typeof save==='function')save(); else if(typeof saveGame==='function')saveGame();}catch(e){} try{if(typeof updateUI==='function')updateUI();}catch(e){}}
  function label(w){return (typeof getWeaponDisplayName==='function'?getWeaponDisplayName(w):(w.name||'무기'))}
  window.openWeaponPotentialModal=function(){const m=document.getElementById('wpp-modal'); if(!m)return; m.style.display='flex'; renderWPP();}
  window.closeWeaponPotentialModal=function(){const m=document.getElementById('wpp-modal');if(m)m.style.display='none'}
