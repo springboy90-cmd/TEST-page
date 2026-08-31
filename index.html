@@ -13252,7 +13252,7 @@ function fmt(x){if(!x)return '-';const o=POT.concat(ENG).find(a=>a.id===x.id);re
 function grade(w){return ({normal:'일반',high:'고급',new:'신품',fine:'호품',masterpiece:'명품'})[w.grade]||w.grade||'무기'}
 function icon(w){try{return (window.G&&window.G[w.grade]&&window.G[w.grade].i)||'🗡️'}catch(e){return '🗡️'}}
 function save(){try{if(typeof window.save==='function')window.save()}catch(e){}try{if(typeof window.updateUI==='function')window.updateUI()}catch(e){}}
-function render(){const box=document.getElementById('wpp-body');if(!box)return;try{const w=weapon();if(!w){box.innerHTML='<div class="wpp-empty">현재 장착 중인 제작무기가 없습니다.</div>';return}ensure(w);const n=slots(w),m=inv();let h='<div class="wpp-card"><div class="wpp-title">'+icon(w)+' '+String(w.name||'제작무기')+' · '+grade(w)+'</div><div class="wpp-sub">현재 장착한 제작무기의 잠재력과 각인을 관리합니다.</div><div class="wpp-mats">🔹 각인석 '+Number(m.engravingStone||0).toLocaleString()+'</div></div>';if(!n){h+='<div class="wpp-empty">현재 무기 등급에는 잠재력 슬롯이 없습니다.<br>신품부터 잠재력 슬롯이 열립니다.</div>';box.innerHTML=h;return}h+='<div class="wpp-card"><div class="wpp-title">잠재력</div><div class="wpp-slots">';for(let i=0;i<n;i++)h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(w.potential[i])+'</span></div></div>';h+='</div></div><div class="wpp-card"><div class="wpp-title">각인</div><div class="wpp-sub">각인석 1개 + 50,000 G · 슬롯당 1회</div><div class="wpp-slots">';const g=Number(state().gold||0);for(let i=0;i<n;i++){const e=w.engraving[i],can=!e&&Number(m.engravingStone||0)>=1&&g>=50000;let btn=e?'<span class="wpp-good">'+fmt(e)+'</span>':'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button type="button" class="wpp-btn" onclick="window.__WPP.engrave('+i+')" '+(can?'':'disabled')+'>각인하기</button><small style="color:'+(can?'#9ccc65':'#aaa')+'">'+(can?'각인 가능':'각인석 1개 + 50,000 G 필요 · 초기화: 각인석 2개 + 100,000 G')+'</small></div>';h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span>'+btn+'</div></div>'}h+='</div></div>';box.innerHTML=h}catch(err){console.error('WPP render error:',err);box.innerHTML='<div class="wpp-empty">무기 정보를 불러오는 중 오류가 발생했습니다.<br>게임 플레이는 계속할 수 있습니다.</div>'}}
+function render(){const box=document.getElementById('wpp-body');if(!box)return;try{const w=weapon();if(!w){box.innerHTML='<div class="wpp-empty">현재 장착 중인 제작무기가 없습니다.</div>';return}ensure(w);const n=slots(w),m=inv();let h='<div class="wpp-card"><div class="wpp-title">'+icon(w)+' '+String(w.name||'제작무기')+' · '+grade(w)+'</div><div class="wpp-sub">현재 장착한 제작무기의 잠재력과 각인을 관리합니다.</div><div class="wpp-mats">🔹 각인석 '+Number(m.engravingStone||0).toLocaleString()+'</div></div>';if(!n){h+='<div class="wpp-empty">현재 무기 등급에는 잠재력 슬롯이 없습니다.<br>신품부터 잠재력 슬롯이 열립니다.</div>';box.innerHTML=h;return}h+='<div class="wpp-card"><div class="wpp-title">잠재력</div><div class="wpp-slots">';for(let i=0;i<n;i++)h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(w.potential[i])+'</span></div></div>';h+='</div></div><div class="wpp-card"><div class="wpp-title">각인</div><div class="wpp-sub">각인석 1개 + 50,000 G · 각인 완료 슬롯을 누르면 초기화</div><div class="wpp-slots">';const g=Number(state().gold||0);for(let i=0;i<n;i++){const e=w.engraving[i],can=!e&&Number(m.engravingStone||0)>=1&&g>=50000;let btn=e?'<span class="wpp-good">'+fmt(e)+'</span>':'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button type="button" class="wpp-btn" onclick="window.__WPP.engrave('+i+')" '+(can?'':'disabled')+'>각인하기</button><small style="color:'+(can?'#9ccc65':'#aaa')+'">'+(can?'각인 가능':'각인석 1개 + 50,000 G 필요 · 초기화: 각인석 2개 + 100,000 G')+'</small></div>';h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span>'+btn+'</div></div>'}h+='</div></div>';box.innerHTML=h}catch(err){console.error('WPP render error:',err);box.innerHTML='<div class="wpp-empty">무기 정보를 불러오는 중 오류가 발생했습니다.<br>게임 플레이는 계속할 수 있습니다.</div>'}}
 window.__WPP={engrave:function(i){try{const w=weapon();if(!w)return;ensure(w);const n=slots(w),m=inv(),ps=state();if(i<0||i>=n||!w.potential[i])return;if(w.engraving[i])return alert('이미 각인된 슬롯입니다.');if(Number(m.engravingStone||0)<1)return alert('각인석이 부족합니다.');if(Number(ps.gold||0)<50000)return alert('게임머니가 부족합니다. (50,000 G 필요)');m.engravingStone=Number(m.engravingStone)-1;ps.gold=Number(ps.gold)-50000;const o=ENG[Math.floor(Math.random()*ENG.length)];w.engraving[i]={id:o.id,value:o.roll()};save();render()}catch(err){console.error('WPP engraving error:',err);alert('각인 처리 중 오류가 발생했습니다.')}},render:render};
 window.openWeaponPotentialModal=function(){const modal=document.getElementById('wpp-modal');if(!modal)return;modal.style.display='flex';try{window.requestAnimationFrame(function(){render()})}catch(e){render()}};
 window.closeWeaponPotentialModal=function(){const m=document.getElementById('wpp-modal');if(m)m.style.display='none'};
@@ -13286,7 +13286,11 @@ function patch(){
  const box=document.getElementById('wpp-body');if(!box)return;
  box.querySelectorAll('.v8-eng-slot').forEach((el)=>{el.onclick=null;});
  box.querySelectorAll('.v8-eng-slot').forEach(el=>{
-   const i=Number(el.dataset.slot);el.onclick=function(e){if(e.target.tagName==='BUTTON')return;const w=weapon();if(w&&w.engraving&&w.engraving[i])reset(i)};
+   const i=Number(el.dataset.slot);el.onclick=function(e){
+     if(e.target.closest('button,a,input,select,textarea'))return;
+     const w=weapon();
+     if(w&&w.engraving&&w.engraving[i])reset(i);
+   };
    el.style.cursor='pointer';el.title='각인이 있으면 눌러서 초기화할 수 있습니다.';
  });
 }
@@ -13352,8 +13356,20 @@ const obs=new MutationObserver(()=>patch());obs.observe(document.body,{childList
   function bag(){
     try{
       const raw=localStorage.getItem(key());
-      const arr=raw?JSON.parse(raw):[];
-      return Array.isArray(arr)?arr.filter(x=>x&&typeof x==='object').slice(0,BAG_MAX):[];
+      const parsed=raw?JSON.parse(raw):[];
+      if(!Array.isArray(parsed)) return [];
+      const arr=parsed.filter(x=>x&&typeof x==='object').slice(0,BAG_MAX);
+      let changed=false;
+      arr.forEach(w=>{
+        if(!w.__bagId){
+          w.__bagId='wb_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+          changed=true;
+        }
+      });
+      if(changed){
+        try{localStorage.setItem(key(),JSON.stringify(arr));}catch(e){}
+      }
+      return arr;
     }catch(e){ return []; }
   }
   function saveBag(arr){
@@ -13505,11 +13521,12 @@ const obs=new MutationObserver(()=>patch());obs.observe(document.body,{childList
       const div=document.createElement('div');
       div.className='wbag-item';
       const color=(window.G&&window.G[w.grade]&&window.G[w.grade].c)||'#ddd';
+      const id=String(w.__bagId);
       div.innerHTML=
         `<div class="wbag-icon">${icon(w)}</div>`+
         `<div class="wbag-name" style="color:${color}">${gradeName(w)} ${weaponLabel(w)}</div>`+
         `<div class="wbag-meta">공격력 ${atk(w).toLocaleString()}<br>${enhanceText(w)}<br>${potentialText(w)}</div>`+
-        `<div class="wbag-actions"><button type="button" onclick="window.__WB.equip('${w.__bagId}')">장착</button><button type="button" class="red" onclick="window.__WB.dismantle('${w.__bagId}')">해체</button></div>`;
+        `<div class="wbag-actions"><button type="button" data-wb-equip="${id}">장착</button><button type="button" class="red" data-wb-dismantle="${id}">해체</button></div>`;
       grid.appendChild(div);
     });
     for(let i=arr.length;i<BAG_MAX;i++){
@@ -13520,12 +13537,15 @@ const obs=new MutationObserver(()=>patch());obs.observe(document.body,{childList
   }
 
   window.__WB={
-    equip:function(id){ try{ equipBagWeapon(String(id)); }catch(e){ console.error(e); alert('무기 장착 처리 중 오류가 발생했습니다.'); } },
+    equip:function(id){
+      try{ equipBagWeapon(String(id||'')); }catch(e){ console.error(e); alert('무기 장착 처리 중 오류가 발생했습니다.'); }
+    },
     dismantle:function(id){
       try{
-        const w=bag().find(x=>x.__bagId===String(id));
-        if(!w){alert('해당 무기를 찾을 수 없습니다.');return;}
-        if(confirm('이 제작무기를 해체할까요?\n제작재료와 각인석을 회수합니다.')) dismantleBagWeapon(String(id));
+        const sid=String(id||'');
+        const w=bag().find(x=>String(x.__bagId)===sid);
+        if(!w){alert('해당 제작무기를 찾을 수 없습니다.');return;}
+        if(confirm('이 제작무기를 해체할까요?\n제작재료와 각인석을 회수합니다.')) dismantleBagWeapon(sid);
       }catch(e){console.error(e);alert('무기 해체 처리 중 오류가 발생했습니다.');}
     }
   };
@@ -13541,10 +13561,20 @@ const obs=new MutationObserver(()=>patch());obs.observe(document.body,{childList
     modal.addEventListener('click',function(e){
       if(e.target===modal || e.target.id==='wbag-close'){closeBag();return;}
       const eq=e.target.closest('[data-wb-equip]');
-      if(eq){equipBagWeapon(eq.getAttribute('data-wb-equip'));return;}
+      if(eq){
+        e.preventDefault();
+        e.stopPropagation();
+        equipBagWeapon(String(eq.getAttribute('data-wb-equip')||''));
+        return;
+      }
       const ds=e.target.closest('[data-wb-dismantle]');
-      if(ds && confirm('이 제작무기를 해체하고 제작재료와 각인석과 제작재료를 회수할까요?')){
-        dismantleBagWeapon(ds.getAttribute('data-wb-dismantle'));
+      if(ds){
+        e.preventDefault();
+        e.stopPropagation();
+        const id=String(ds.getAttribute('data-wb-dismantle')||'');
+        const w=bag().find(x=>String(x.__bagId)===id);
+        if(!w){alert('해당 제작무기를 찾을 수 없습니다.');return;}
+        if(confirm('이 제작무기를 해체할까요?\n제작재료와 각인석을 회수합니다.')) dismantleBagWeapon(id);
       }
     });
   }
