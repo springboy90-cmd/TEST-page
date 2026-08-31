@@ -13263,56 +13263,68 @@ window.getWeaponPotentialSummary=function(){const w=weapon();if(!w)return{flat:0
 
 
 
-<script id="weapon-engraving-reset-v8">
+<script id="weapon-engraving-reset-v9-final">
 (function(){
 'use strict';
 const STONE=2, GOLD=100000;
-function ps(){return window.playerState||null}
-function weapon(){const p=ps();return p&&((p.weaponCrafting&&p.weaponCrafting.weapon)||p.weapon)||null}
-function slots(w){return ({normal:0,high:0,new:1,fine:2,masterpiece:3})[String(w&&w.grade||'normal')]??0}
-function ensure(w){if(!w)return;const n=slots(w);if(!Array.isArray(w.engraving))w.engraving=[];while(w.engraving.length<n)w.engraving.push(null);if(w.engraving.length>n)w.engraving.length=n}
-function save(){try{if(typeof window.save==='function')window.save()}catch(e){} try{if(typeof window.saveGame==='function')window.saveGame()}catch(e){} try{if(typeof window.updateUI==='function')window.updateUI()}catch(e){}}
+function ps(){return window.playerState||null;}
+function weapon(){const p=ps();return p&&((p.weaponCrafting&&p.weaponCrafting.weapon)||p.weapon)||null;}
+function slots(w){return ({normal:0,high:0,new:1,fine:2,masterpiece:3})[String(w&&w.grade||'normal')]??0;}
+function ensure(w){if(!w)return;const n=slots(w);if(!Array.isArray(w.potential))w.potential=[];if(!Array.isArray(w.engraving))w.engraving=[];while(w.potential.length<n)w.potential.push(null);while(w.engraving.length<n)w.engraving.push(null);if(w.potential.length>n)w.potential.length=n;if(w.engraving.length>n)w.engraving.length=n;}
+function fmt(x){if(!x)return '-';if(x.id==='hadumDmg')return '하둠 몬스터 피해 +'+(Number(x.value)||0)+'%';if(x.id==='atkPct')return '공격력 +'+(Number(x.value)||0)+'%';if(x.id==='critDmg')return '치명타 피해 +'+(Number(x.value)||0)+'%';return String(x.id||'옵션')+' '+String(x.value||0);}
+function saveAll(){try{if(typeof window.save==='function')window.save();}catch(e){}try{if(typeof window.saveGame==='function')window.saveGame(true);}catch(e){}try{if(typeof window.updateUI==='function')window.updateUI();}catch(e){}}
 function reset(i){
- const p=ps(),w=weapon(); if(!p||!w)return;
- ensure(w); const n=slots(w),m=p.craftingMaterials||{};
+ const p=ps(),w=weapon();
+ if(!p||!w)return;
+ ensure(w);
+ const n=slots(w),m=p.craftingMaterials=p.craftingMaterials||{};
  if(i<0||i>=n||!w.engraving[i])return;
- if(Number(m.engravingStone||0)<STONE){alert('각인석이 부족합니다.\n필요: 각인석 2개');return}
- if(Number(p.gold||0)<GOLD){alert('골드가 부족합니다.\n필요: 100,000 G');return}
- if(!confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n잠재력은 변경되지 않습니다.'))return;
- m.engravingStone=Number(m.engravingStone||0)-STONE;p.gold=Number(p.gold||0)-GOLD;w.engraving[i]=null;save();
+ if(Number(m.engravingStone||0)<STONE){alert('각인석이 부족합니다.\n필요: 각인석 2개');return;}
+ if(Number(p.gold||0)<GOLD){alert('골드가 부족합니다.\n필요: 100,000 G');return;}
+ if(!window.confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n잠재력은 그대로 유지됩니다.'))return;
+ m.engravingStone=Number(m.engravingStone||0)-STONE;
+ p.gold=Number(p.gold||0)-GOLD;
+ w.engraving[i]=null;
+ saveAll();
  if(window.__WPP&&typeof window.__WPP.render==='function')window.__WPP.render();
 }
-function patch(){
- const box=document.getElementById('wpp-body');if(!box)return;
- box.querySelectorAll('.v8-eng-slot').forEach((el)=>{el.onclick=null;});
- box.querySelectorAll('.v8-eng-slot').forEach(el=>{
-   const i=Number(el.dataset.slot);el.onclick=function(e){
-     if(e.target.closest('button,a,input,select,textarea'))return;
-     const w=weapon();
-     if(w&&w.engraving&&w.engraving[i])reset(i);
-   };
-   el.style.cursor='pointer';el.title='각인이 있으면 눌러서 초기화할 수 있습니다.';
- });
-}
+window.__WPP_RESET_V9=reset;
 function render(){
- const box=document.getElementById('wpp-body');if(!box)return;const w=weapon();if(!w){box.innerHTML='<div class="wpp-empty">현재 장착 중인 제작무기가 없습니다.</div>';return}
- ensure(w);const n=slots(w),m=ps().craftingMaterials||{};let h='<div class="wpp-card"><div class="wpp-title">✨ '+(w.name||'제작무기')+'</div><div class="wpp-sub">잠재력은 제작 시 랜덤 부여되며 변경되지 않습니다.</div><div class="wpp-mats">🔹 각인석 '+Number(m.engravingStone||0).toLocaleString()+'</div></div>';
- if(!n){h+='<div class="wpp-empty">현재 무기 등급에는 잠재력/각인 슬롯이 없습니다.<br>신품부터 슬롯이 열립니다.</div>';box.innerHTML=h;return}
+ const box=document.getElementById('wpp-body');if(!box)return;
+ const w=weapon();
+ if(!w){box.innerHTML='<div class="wpp-empty">현재 장착 중인 제작무기가 없습니다.</div>';return;}
+ ensure(w);const n=slots(w),p=ps(),m=p.craftingMaterials=p.craftingMaterials||{};let h='';
+ h+='<div class="wpp-card"><div class="wpp-title">✨ '+String(w.name||'제작무기')+'</div><div class="wpp-sub">잠재력은 제작 시 랜덤 부여되며 초기화되지 않습니다.</div><div class="wpp-mats">🔹 각인석 '+Number(m.engravingStone||0).toLocaleString()+' · 💰 '+Number(p.gold||0).toLocaleString()+' G</div></div>';
+ if(!n){h+='<div class="wpp-empty">현재 무기 등급에는 잠재력/각인 슬롯이 없습니다.<br>신품부터 슬롯이 열립니다.</div>';box.innerHTML=h;return;}
  h+='<div class="wpp-card"><div class="wpp-title">잠재력</div><div class="wpp-slots">';
- for(let i=0;i<n;i++)h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">잠재력 적용</span></div></div>';
- h+='</div></div><div class="wpp-card"><div class="wpp-title">각인</div><div class="wpp-sub">각인석 1개 + 50,000 G · 각인된 슬롯을 누르면 초기화할 수 있습니다.</div><div class="wpp-slots">';
- const g=Number(ps().gold||0);
+ for(let i=0;i<n;i++)h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(w.potential[i])+'</span></div></div>';
+ h+='</div></div><div class="wpp-card"><div class="wpp-title">각인</div><div class="wpp-sub">각인석 1개 + 50,000 G · 각인된 슬롯을 터치하면 초기화됩니다.</div><div class="wpp-slots">';
  for(let i=0;i<n;i++){
    const e=w.engraving[i];
-   if(e) h+='<div class="wpp-slot v8-eng-slot" data-slot="'+i+'"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(e)+'</span></div><div style="text-align:right;margin-top:4px;font-size:9px;color:#c9a85d">이 슬롯을 누르면 각인 초기화</div></div>';
-   else {const can=Number(m.engravingStone||0)>=1&&g>=50000;h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><button type="button" class="wpp-btn" onclick="window.__WPP.engrave('+i+')" '+(can?'':'disabled')+'>각인하기</button></div><div style="text-align:right;margin-top:3px;font-size:9px;color:'+(can?'#9ccc65':'#aaa')+'">'+(can?'각인 가능':'각인석 1개 + 50,000 G 필요')+'</div></div>'}
+   if(e){
+     h+='<div class="wpp-slot" data-engraving-reset-slot="'+i+'" role="button" tabindex="0" style="cursor:pointer;touch-action:manipulation;user-select:none;"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(e)+'</span></div><div style="text-align:right;margin-top:5px;font-size:9px;color:#c9a85d;pointer-events:none">👆 이 슬롯을 누르면 각인 초기화</div></div>';
+   }else{
+     const can=Number(m.engravingStone||0)>=1&&Number(p.gold||0)>=50000;
+     h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><button type="button" class="wpp-btn" onclick="window.__WPP.engrave('+i+')" '+(can?'':'disabled')+'>각인하기</button></div><div style="text-align:right;margin-top:3px;font-size:9px;color:'+(can?'#9ccc65':'#aaa')+'">'+(can?'각인 가능':'각인석 1개 + 50,000 G 필요')+'</div></div>';
+   }
  }
- h+='</div></div>';box.innerHTML=h;patch();
+ h+='</div></div>';box.innerHTML=h;
 }
-if(window.__WPP){window.__WPP.render=render;}
-window.__WPP_RESET_V8=reset;
-const oldOpen=window.openWeaponPotentialModal;window.openWeaponPotentialModal=function(){if(typeof oldOpen==='function')oldOpen();setTimeout(render,0)};
-const obs=new MutationObserver(()=>patch());obs.observe(document.body,{childList:true,subtree:true});
+function bind(){
+ const box=document.getElementById('wpp-body');if(!box||box.__engravingResetBound)return;box.__engravingResetBound=true;
+ const activate=function(e){
+   const el=e.target.closest('[data-engraving-reset-slot]');
+   if(!el||!box.contains(el))return;
+   e.preventDefault();e.stopPropagation();
+   reset(Number(el.getAttribute('data-engraving-reset-slot')));
+ };
+ box.addEventListener('click',activate,true);
+ box.addEventListener('touchend',activate,true);
+ box.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){const el=e.target.closest('[data-engraving-reset-slot]');if(el){e.preventDefault();reset(Number(el.getAttribute('data-engraving-reset-slot')));}}},true);
+}
+function refresh(){render();bind();}
+if(window.__WPP){window.__WPP.render=refresh;}else{window.__WPP={render:refresh};}
+window.addEventListener('load',function(){setTimeout(bind,0);});
 })();
 </script>
 
