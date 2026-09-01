@@ -1284,10 +1284,7 @@ html,body{overflow-x:hidden!important}#wc-modal *{box-sizing:border-box!importan
           </div>
           <div class="stat-row-item" id="guardian-set-row" style="display:none; justify-content: space-between; align-items:center; gap:6px;">
             <span class="stat-loot" id="guardian-set-val" style="color:#d84315;">🔥 파수꾼셋트 : ⚔️ 공격력 +15% · 🛡️ 방어력 +0</span>
-            <button class="status-action-btn" onclick="openGuardianInventoryModal()" style="padding:5px 9px;font-size:11px;background:#fff3e0;border-color:#ff8a65;color:#bf360c;font-weight:800;">🎒 장비 가방</button>
-          </div>
-          <div class="stat-row-item" id="guardian-bag-row" style="display:flex; justify-content:center; margin-top:2px;">
-            <button class="status-action-btn" onclick="openGuardianInventoryModal()" style="width:100%;padding:7px 10px;font-size:11px;background:#fff8e1;border-color:#ffb74d;color:#bf360c;font-weight:900;">🎒 파수꾼 장비 가방 · 옵션 확인 / 장착 / 분해</button>
+            <button class="status-action-btn" onclick="openGuardianInventoryModal()" style="padding:5px 9px;font-size:11px;background:#fff3e0;border-color:#ff8a65;color:#bf360c;font-weight:800;">🎒 방어구</button>
           </div>
           <div class="stat-row-item" id="guardian-resist-row" style="display:none; justify-content:center;">
             <span id="guardian-resist-val" style="font-size:10px;color:#6d4c41;">🔥 0% · ❄️ 0% · 🌪️ 0%</span>
@@ -4866,13 +4863,11 @@ window.playerState = playerState;
       {id:'windRes', name:'바람 저항', roll:()=>1+Math.floor(Math.random()*4), fmt:v=>`바람 저항 +${v}%`}
     ];
     function createGuardianItem(piece) {
-      const type = GUARDIAN_RESIST_KEYS[Math.floor(Math.random() * GUARDIAN_RESIST_KEYS.length)];
-      const value = GUARDIAN_OPTION_MIN + Math.random() * (GUARDIAN_OPTION_MAX - GUARDIAN_OPTION_MIN);
+      // 파수꾼 장비 드랍 잠재력은 방어력 +80~350과 각인 슬롯 1~3만 랜덤 생성한다.
+      // 화염/빙결/바람 저항 및 기타 전투 옵션은 드랍 데이터에 절대 생성하지 않는다.
       const item = {
         id: `g${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}_${playerState.guardianInventoryNextId || 1}`,
         piece,
-        optionType: type,
-        optionValue: Number(value.toFixed(4)),
         enhance: 0,
         potentialDef: GUARDIAN_POTENTIAL_DEF_MIN + Math.floor(Math.random() * (GUARDIAN_POTENTIAL_DEF_MAX - GUARDIAN_POTENTIAL_DEF_MIN + 1)),
         engravingSlots: GUARDIAN_ENGRAVING_SLOT_MIN + Math.floor(Math.random() * (GUARDIAN_ENGRAVING_SLOT_MAX - GUARDIAN_ENGRAVING_SLOT_MIN + 1)),
@@ -5135,7 +5130,7 @@ window.playerState = playerState;
       html += filteredInv.map(item => {
         const equippedNow = equipped[item.piece] === item.id;
         const pieceName = GUARDIAN_SET_PIECE_NAMES[item.piece] || item.piece;
-        const option = `${GUARDIAN_RESIST_LABELS[item.optionType]} +${Math.round(item.optionValue*100)}%`;
+        const option = '';
         const ep = getGuardianEnhancePreview(item);
         const statText = `${ep.atk ? `⚔️ +${ep.atk}/강` : ''}${ep.def ? `${ep.atk ? ' · ' : ''}🛡️ +${ep.def}/강` : ''}`;
         return `<div class="guardian-inv-item ${equippedNow?'equipped':''}">
@@ -5215,7 +5210,7 @@ window.playerState = playerState;
       const pieces = ['helm','armor','gloves','boots'];
       list.innerHTML = pieces.map(piece => {
         const item = inv.find(i => i.id === equipped[piece] && i.piece === piece);
-        if (!item) return `<div class="weapon-enhance-empty">${GUARDIAN_SET_PIECE_NAMES[piece]} · 장착할 파수꾼 장비가 없습니다.<br><small>🎒 장비 가방에서 먼저 장착하세요.</small></div>`;
+        if (!item) return `<div class="weapon-enhance-empty">${GUARDIAN_SET_PIECE_NAMES[piece]} · 장착할 파수꾼 장비가 없습니다.<br><small>🎒 방어구에서 먼저 장착하세요.</small></div>`;
         const ep = getGuardianEnhancePreview(item);
         const statName = ep.atk ? '공격력' : '방어력';
         const stat = ep.atk || ep.def;
@@ -11933,10 +11928,10 @@ window.playerState = playerState;
                     playItemGetSfx();
 
                     if (currentCount === 0) {
-                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}% · 🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
+                      const optText = `🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
                       showHealText(`🔥 파수꾼의 ${pieceName} 획득! ${optText}`, new THREE.Vector3(target.sprite.position.x, target.sprite.position.y + 0.6 + idx * 0.4, target.sprite.position.z));
                     } else {
-                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}% · 🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
+                      const optText = `🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
                       showHealText(`🔥 파수꾼 ${pieceName} 추가 획득 · ${optText}`, new THREE.Vector3(target.sprite.position.x, target.sprite.position.y + 0.6 + idx * 0.4, target.sprite.position.z));
                     }
 
