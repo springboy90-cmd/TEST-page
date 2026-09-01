@@ -1300,8 +1300,7 @@ html,body{overflow-x:hidden!important}#wc-modal *{box-sizing:border-box!importan
               🔥 파수꾼셋트 장착
             </button>
           </div>
-          <div class="stat-row-item" id="weapon-enhance-action-row" style="display:flex; justify-content:center; margin-top:3px;">
-            <button class="status-action-btn" onclick="openWeaponEnhanceModal()" style="width:100%;padding:7px 10px;font-size:11px;background:#e3f2fd;border-color:#64b5f6;color:#1565c0;font-weight:900;">⚒️ 무기 강화 · 파수꾼 부위 강화</button>
+          <div class="stat-row-item" id="weapon-potential-action-row" style="display:flex; justify-content:center; margin-top:3px;">
           <button class="status-action-btn" onclick="openWeaponPotentialModal()" style="display:block;width:100%;padding:7px 10px;font-size:11px;background:#f3e5f5;border-color:#ab47bc;color:#6a1b9a;font-weight:900;margin-top:4px;">✨ 무기 잠재력 · 각인</button>
           </div>
           <div class="status-action-row">
@@ -4666,6 +4665,7 @@ function drawSpearWeapon(ctx, x, y, angle, attackStage, isTier3 = false) {
       // 파수꾼 개별 장비 강화 레벨은 각 장비에 저장하며 최대 +20.
       // 구버전의 세트 통합 강화 수치는 로드 시 각 보유 장비의 초기 강화 레벨로 안전하게 변환한다.
       guardianEnhanceMigrationDone: false,
+      // 파수꾼 장비별 잠재력/각인: 보스 드랍 시 방어력 잠재력과 1~3개 각인 슬롯이 랜덤 부여된다.
       cloverInventory: { premium: 0, silver: 0, gold: 0 },
       cloverBuff: { type: "", until: 0 },
       // 속성 저항은 장착 중인 파수꾼 장비 + 세트 효과를 합산하고 50%로 제한한다.
@@ -4845,7 +4845,23 @@ window.playerState = playerState;
     const GUARDIAN_INVENTORY_MAX = 20;
     const GUARDIAN_RESIST_LABELS = { fire: '🔥 화염', ice: '❄️ 빙결', wind: '🌪️ 바람' };
     const GUARDIAN_RESIST_KEYS = ['fire','ice','wind'];
-
+    const GUARDIAN_POTENTIAL_DEF_MIN = 80;
+    const GUARDIAN_POTENTIAL_DEF_MAX = 350;
+    const GUARDIAN_ENGRAVING_SLOT_MIN = 1;
+    const GUARDIAN_ENGRAVING_SLOT_MAX = 3;
+    const GUARDIAN_ENGRAVING_STONE_COST = 1;
+    const GUARDIAN_ENGRAVING_GOLD_COST = 50000;
+    const GUARDIAN_ENGRAVING_RESET_STONE_COST = 2;
+    const GUARDIAN_ENGRAVING_RESET_GOLD_COST = 100000;
+    const GUARDIAN_ARMOR_ENGRAVINGS = [
+      {id:'defPct', name:'방어력', roll:()=>1+Math.floor(Math.random()*5), fmt:v=>`방어력 +${v}%`},
+      {id:'hp', name:'HP', roll:()=>500+Math.floor(Math.random()*3501), fmt:v=>`HP +${v}`},
+      {id:'mp', name:'MP', roll:()=>500+Math.floor(Math.random()*3501), fmt:v=>`MP +${v}`},
+      {id:'damageReduce', name:'피해 감소', roll:()=>1+Math.floor(Math.random()*3), fmt:v=>`피해 감소 +${v}%`},
+      {id:'fireRes', name:'화염 저항', roll:()=>1+Math.floor(Math.random()*4), fmt:v=>`화염 저항 +${v}%`},
+      {id:'iceRes', name:'빙결 저항', roll:()=>1+Math.floor(Math.random()*4), fmt:v=>`빙결 저항 +${v}%`},
+      {id:'windRes', name:'바람 저항', roll:()=>1+Math.floor(Math.random()*4), fmt:v=>`바람 저항 +${v}%`}
+    ];
     function createGuardianItem(piece) {
       const type = GUARDIAN_RESIST_KEYS[Math.floor(Math.random() * GUARDIAN_RESIST_KEYS.length)];
       const value = GUARDIAN_OPTION_MIN + Math.random() * (GUARDIAN_OPTION_MAX - GUARDIAN_OPTION_MIN);
@@ -4854,10 +4870,62 @@ window.playerState = playerState;
         piece,
         optionType: type,
         optionValue: Number(value.toFixed(4)),
-        enhance: 0
+        enhance: 0,
+        potentialDef: GUARDIAN_POTENTIAL_DEF_MIN + Math.floor(Math.random() * (GUARDIAN_POTENTIAL_DEF_MAX - GUARDIAN_POTENTIAL_DEF_MIN + 1)),
+        engravingSlots: GUARDIAN_ENGRAVING_SLOT_MIN + Math.floor(Math.random() * (GUARDIAN_ENGRAVING_SLOT_MAX - GUARDIAN_ENGRAVING_SLOT_MIN + 1)),
+        engraving: []
       };
       playerState.guardianInventoryNextId = (Number(playerState.guardianInventoryNextId) || 1) + 1;
       return item;
+    }
+
+    function ensureGuardianArmorData(item) {
+      if (!item) return;
+      if (!Number.isFinite(Number(item.potentialDef))) item.potentialDef = GUARDIAN_POTENTIAL_DEF_MIN + Math.floor(Math.random() * (GUARDIAN_POTENTIAL_DEF_MAX - GUARDIAN_POTENTIAL_DEF_MIN + 1));
+      if (!Number.isFinite(Number(item.engravingSlots))) item.engravingSlots = GUARDIAN_ENGRAVING_SLOT_MIN + Math.floor(Math.random() * (GUARDIAN_ENGRAVING_SLOT_MAX - GUARDIAN_ENGRAVING_SLOT_MIN + 1));
+      item.engravingSlots = Math.max(GUARDIAN_ENGRAVING_SLOT_MIN, Math.min(GUARDIAN_ENGRAVING_SLOT_MAX, Number(item.engravingSlots)));
+      if (!Array.isArray(item.engraving)) item.engraving = [];
+      while (item.engraving.length < item.engravingSlots) item.engraving.push(null);
+      if (item.engraving.length > item.engravingSlots) item.engraving.length = item.engravingSlots;
+    }
+
+    function getGuardianArmorEngravingTotal(item, id) {
+      ensureGuardianArmorData(item);
+      return (item.engraving || []).filter(Boolean).filter(x => x.id === id).reduce((sum,x)=>sum+(Number(x.value)||0),0);
+    }
+
+    function getGuardianArmorEngravingSummary(item) {
+      ensureGuardianArmorData(item);
+      return (item.engraving || []).filter(Boolean).map(x => { const o=GUARDIAN_ARMOR_ENGRAVINGS.find(a=>a.id===x.id); return o ? o.fmt(Number(x.value)||0) : `${x.id} ${x.value}`; });
+    }
+
+    function syncGuardianDerivedStats() {
+      const inv = playerState.guardianInventory || [];
+      let hp = 0, mp = 0;
+      for (const item of inv) {
+        const id = playerState.guardianEquippedItems?.[item.piece];
+        if (id === item.id) {
+          ensureGuardianArmorData(item);
+          hp += getGuardianArmorEngravingTotal(item,'hp');
+          mp += getGuardianArmorEngravingTotal(item,'mp');
+        }
+      }
+      const oldHp = Number(playerState._guardianAppliedHP || 0);
+      const oldMp = Number(playerState._guardianAppliedMP || 0);
+      playerState.maxHp = Math.max(1, Number(playerState.maxHp || 1) - oldHp + hp);
+      playerState.maxMp = Math.max(1, Number(playerState.maxMp || 1) - oldMp + mp);
+      playerState._guardianAppliedHP = hp;
+      playerState._guardianAppliedMP = mp;
+      playerState.hp = Math.min(Number(playerState.maxHp)||1, Math.max(0, Number(playerState.hp)||0));
+      playerState.mp = Math.min(Number(playerState.maxMp)||1, Math.max(0, Number(playerState.mp)||0));
+    }
+
+    function getGuardianArmorDamageReduction() {
+      let pct=0;
+      for (const item of (playerState.guardianInventory || [])) {
+        if (playerState.guardianEquippedItems?.[item.piece] === item.id) pct += getGuardianArmorEngravingTotal(item,'damageReduce') / 100;
+      }
+      return Math.min(0.50, Math.max(0,pct));
     }
 
     function getGuardianEnhanceStat(piece, stat) {
@@ -4903,6 +4971,10 @@ window.playerState = playerState;
       (playerState.guardianInventory || []).forEach(item => {
         if (playerState.guardianEquippedItems && playerState.guardianEquippedItems[item.piece] === item.id && item.optionType === type) {
           value += Number(item.optionValue) || 0;
+        }
+        if (playerState.guardianEquippedItems && playerState.guardianEquippedItems[item.piece] === item.id) {
+          const engrId = type==='fire' ? 'fireRes' : type==='ice' ? 'iceRes' : 'windRes';
+          value += getGuardianArmorEngravingTotal(item, engrId) / 100;
         }
       });
       // 세트 저항은 '착용한 파수꾼 부위 수'에 따라 적용한다. 풀세트 버튼이 꺼져 있으면 0.
@@ -4964,6 +5036,7 @@ window.playerState = playerState;
       playerState.guardianEquippedItems[item.piece] = item.id;
       playerState.guardianSet[item.piece] = true;
       playerState.guardianSetEquipped = ['helm','armor','gloves','boots'].every(p => !!getGuardianEquippedItem(p));
+      syncGuardianDerivedStats();
       updatePlayerFacingTexture();
       updateUI();
       saveGame();
@@ -4999,6 +5072,7 @@ window.playerState = playerState;
       const idx = playerState.guardianInventory.findIndex(i => i.id === id);
       if (idx < 0) return;
       playerState.guardianInventory.splice(idx, 1);
+      syncGuardianDerivedStats();
       playerState.enhanceCore = Math.max(0, Number(playerState.enhanceCore) || 0) + reward;
 
       saveGame();
@@ -5013,9 +5087,10 @@ window.playerState = playerState;
       const box = document.getElementById('guardian-inventory-list');
       const stats = document.getElementById('guardian-resist-summary');
       if (!box) return;
-      const pieces = ['helm','armor','gloves','boots'];
       const inv = playerState.guardianInventory || [];
       const equipped = playerState.guardianEquippedItems || {};
+      inv.forEach(ensureGuardianArmorData);
+      syncGuardianDerivedStats();
       if (stats) stats.innerHTML = `🔷 강화의 핵 <b>${Number(playerState.enhanceCore || 0).toLocaleString()}개</b> · ` + GUARDIAN_RESIST_KEYS.map(k => `${GUARDIAN_RESIST_LABELS[k]} <b>${Math.round(getPlayerElementalResistance(k)*100)}%</b>`).join(' · ');
       if (!inv.length) { box.innerHTML = '<div style="padding:12px;text-align:center;color:#999">파수꾼 장비가 없습니다.</div>'; return; }
       box.innerHTML = inv.map(item => {
@@ -5024,18 +5099,52 @@ window.playerState = playerState;
         const option = `${GUARDIAN_RESIST_LABELS[item.optionType]} +${Math.round(item.optionValue*100)}%`;
         const ep = getGuardianEnhancePreview(item);
         const statText = `${ep.atk ? `⚔️ +${ep.atk}/강` : ''}${ep.def ? `${ep.atk ? ' · ' : ''}🛡️ +${ep.def}/강` : ''}`;
+        const eng = getGuardianArmorEngravingSummary(item);
+        const engHtml = item.engraving.map((e,idx)=> e
+          ? `<div class="guardian-eng-slot guardian-eng-done" data-guardian-eng-reset="${item.id}" data-slot="${idx}" title="클릭하면 각인 초기화">슬롯 ${idx+1}: <b>${getGuardianArmorEngravingSummary(item)[item.engraving.slice(0,idx+1).filter(Boolean).length-1] || GUARDIAN_ARMOR_ENGRAVINGS.find(o=>o.id===e.id)?.fmt(e.value)}</b></div>`
+          : `<div class="guardian-eng-slot"><span>슬롯 ${idx+1}: 비어 있음</span><button type="button" onclick="engraveGuardianItem('${item.id}',${idx})">각인</button></div>`
+        ).join('');
         return `<div class="guardian-inv-item ${equippedNow?'equipped':''}">
-          <div style="min-width:0;flex:1"><b>🔥 파수꾼 ${pieceName} +${ep.level}/${GUARDIAN_SET_ENHANCE_MAX}</b>${equippedNow?' <span style="color:#2e7d32">[장착]</span>':''}<br><span style="color:#d84315">${option}</span><br><span style="font-size:9px;color:#666">${statText}</span></div>
+          <div style="min-width:0;flex:1"><b>🔥 파수꾼 ${pieceName} +${ep.level}/${GUARDIAN_SET_ENHANCE_MAX}</b>${equippedNow?' <span style="color:#2e7d32">[장착]</span>':''}<br><span style="color:#d84315">${option}</span><br><span style="font-size:9px;color:#555">🛡️ 잠재력 방어력 +${Number(item.potentialDef).toLocaleString()} · 각인 슬롯 ${item.engravingSlots}개</span><br><span style="font-size:9px;color:#666">${statText}</span></div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
             ${equippedNow?'':'<button onclick="equipGuardianItem(\''+item.id+'\')">장착</button>'}
             ${ep.level < GUARDIAN_SET_ENHANCE_MAX ? '<button style="background:#e3f2fd;border-color:#64b5f6;color:#1565c0" onclick="enhanceGuardianItem(\''+item.id+'\')">강화</button>' : '<button disabled style="opacity:.6">MAX</button>'}
             ${equippedNow?'':'<button class="danger" onclick="dismantleGuardianItem(\''+item.id+'\')">분해</button>'}
           </div>
+          <div class="guardian-eng-wrap"><div style="font-size:9px;font-weight:800;color:#6d4c41;margin:4px 0">✨ 방어구 각인 · 각인석 1개 + 50,000 G</div>${engHtml}</div>
         </div>`;
       }).join('');
     }
 
-    function enhanceGuardianItem(id) {
+    function engraveGuardianItem(id, slot) {
+      const item = (playerState.guardianInventory || []).find(i=>i.id===id);
+      if (!item) return;
+      ensureGuardianArmorData(item);
+      if (slot<0 || slot>=item.engravingSlots || item.engraving[slot]) return;
+      const m=playerState.craftingMaterials=playerState.craftingMaterials||{};
+      if (Number(m.engravingStone||0)<GUARDIAN_ENGRAVING_STONE_COST) return alert('각인석이 부족합니다.');
+      if (Number(playerState.gold||0)<GUARDIAN_ENGRAVING_GOLD_COST) return alert('게임머니가 부족합니다. (50,000 G 필요)');
+      if (!confirm(`방어구 ${GUARDIAN_SET_PIECE_NAMES[item.piece]||item.piece} 슬롯 ${slot+1}에 각인하시겠습니까?\n\n각인석 1개 + 50,000 G가 소모됩니다.`)) return;
+      m.engravingStone-=GUARDIAN_ENGRAVING_STONE_COST;
+      playerState.gold-=GUARDIAN_ENGRAVING_GOLD_COST;
+      const o=GUARDIAN_ARMOR_ENGRAVINGS[Math.floor(Math.random()*GUARDIAN_ARMOR_ENGRAVINGS.length)];
+      item.engraving[slot]={id:o.id,value:o.roll()};
+      syncGuardianDerivedStats(); saveGame(); updateUI(); renderGuardianInventory();
+    }
+
+    function resetGuardianEngraving(id, slot) {
+      const item=(playerState.guardianInventory||[]).find(i=>i.id===id);
+      if(!item) return; ensureGuardianArmorData(item);
+      if(!item.engraving[slot]) return;
+      const m=playerState.craftingMaterials=playerState.craftingMaterials||{};
+      if(Number(m.engravingStone||0)<GUARDIAN_ENGRAVING_RESET_STONE_COST) return alert('각인석이 부족합니다.\n필요: 각인석 2개');
+      if(Number(playerState.gold||0)<GUARDIAN_ENGRAVING_RESET_GOLD_COST) return alert('골드가 부족합니다.\n필요: 100,000 G');
+      if(!confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n방어구 잠재력은 그대로 유지됩니다.')) return;
+      m.engravingStone-=GUARDIAN_ENGRAVING_RESET_STONE_COST; playerState.gold-=GUARDIAN_ENGRAVING_RESET_GOLD_COST;
+      item.engraving[slot]=null; syncGuardianDerivedStats(); saveGame(); updateUI(); renderGuardianInventory();
+    }
+
+        function enhanceGuardianItem(id) {
       const item = (playerState.guardianInventory || []).find(i => i.id === id);
       if (!item) return;
       const lv = getGuardianItemEnhanceLevel(item);
@@ -5184,8 +5293,19 @@ window.playerState = playerState;
       if (isMunyeahanaBuffActive()) {
         def *= (1 + getMunyeahanaBuffRate());
       }
-      // 방어력도 동일하게, 장착한 부위의 강화 수치는 풀세트 여부와 무관하게 항상 반영한다.
+      // 방어력 잠재력(보스 드랍) + 부위 강화 + 방어력 % 각인을 모두 합산한다.
+      syncGuardianDerivedStats();
       def += getGuardianEnhanceDef();
+      let potentialDef = 0, defPct = 0;
+      for (const item of (playerState.guardianInventory || [])) {
+        if (playerState.guardianEquippedItems?.[item.piece] === item.id) {
+          ensureGuardianArmorData(item);
+          potentialDef += Number(item.potentialDef) || 0;
+          defPct += getGuardianArmorEngravingTotal(item,'defPct');
+        }
+      }
+      def += potentialDef;
+      def *= (1 + defPct / 100);
       return Math.round(def);
     }
 
@@ -10468,6 +10588,10 @@ window.playerState = playerState;
         m.hp = Math.min(m.maxHp, m.hp + heal);
       }
 
+      // 방어구 각인의 피해 감소는 속성 저항 적용 후 최종 피해에 적용한다.
+      const armorDamageReduction = getGuardianArmorDamageReduction();
+      if (armorDamageReduction > 0) netDmg = Math.max(1, Math.round(netDmg * (1 - armorDamageReduction)));
+
       // 보호의막: 최종 피해의 25%를 MP로 분담. MP가 부족하면 남은 MP만 사용하고 나머지는 HP로 받는다.
       const shieldActive = isShamanClass()
         && playerState.skillsLearned.includes('s2_4')
@@ -10713,7 +10837,7 @@ window.playerState = playerState;
         }
       }
 
-      playerState.gold += gold;
+      playerState.gold += Math.max(0, Math.round(gold * (typeof getCloverGoldMultiplier === 'function' ? getCloverGoldMultiplier() : 1)));
 
       [siriSprite, janggeumSprite, munyeahanaSprite].forEach((heroSprite, index) => {
         if (heroSprite) {
@@ -11804,10 +11928,10 @@ window.playerState = playerState;
                     playItemGetSfx();
 
                     if (currentCount === 0) {
-                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}%`;
+                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}% · 🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
                       showHealText(`🔥 파수꾼의 ${pieceName} 획득! ${optText}`, new THREE.Vector3(target.sprite.position.x, target.sprite.position.y + 0.6 + idx * 0.4, target.sprite.position.z));
                     } else {
-                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}%`;
+                      const optText = `${GUARDIAN_RESIST_LABELS[guardianItem.optionType]} +${Math.round(guardianItem.optionValue*100)}% · 🛡️ 잠재력 방어력 +${guardianItem.potentialDef} · ✨ 각인 슬롯 ${guardianItem.engravingSlots}`;
                       showHealText(`🔥 파수꾼 ${pieceName} 추가 획득 · ${optText}`, new THREE.Vector3(target.sprite.position.x, target.sprite.position.y + 0.6 + idx * 0.4, target.sprite.position.z));
                     }
 
@@ -13219,10 +13343,10 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 
 <style id="clover-system-css">#clover-modal{position:fixed!important;inset:0!important;z-index:10050!important;display:none;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(0,0,0,.38);transform:none!important}#clover-modal .clover-panel{width:min(360px,calc(100vw - 24px));max-height:min(72dvh,560px);overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;background:#fffdf7;border:3px solid #8bc34a;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.28)}#clover-modal .clover-scroll{overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;padding:10px 12px 12px;-webkit-overflow-scrolling:touch;touch-action:pan-y}.clover-card{border:2px solid #d7ccc8;border-radius:12px;padding:10px;margin-bottom:8px;background:#fff}.clover-card h4{margin:0 0 4px;font-size:13px}.clover-card .desc{font-size:10px;color:#6d6258;line-height:1.45;margin-bottom:6px}.clover-card .owned{font-size:10px;color:#33691e;font-weight:800;margin-bottom:6px}.clover-card button{border:2px solid #9ccc65;border-radius:8px;padding:6px 9px;background:#f1f8e9;color:#33691e;font-weight:900;cursor:pointer}.clover-timer{padding:7px 10px;margin-bottom:8px;border-radius:10px;background:#f1f8e9;border:1px solid #aed581;text-align:center;color:#33691e;font-weight:900}@media(max-width:600px){#clover-modal{padding:8px}#clover-modal .clover-panel{width:min(340px,calc(100vw - 16px));max-height:68dvh;border-radius:14px}}</style>
-<div id="clover-modal" class="interactive" onclick="if(event.target===this) closeCloverModal()"><div class="clover-panel"><div style="padding:11px 12px 8px;border-bottom:1px solid #dcedc8;text-align:center;font-weight:900;color:#33691e;font-size:15px">🍀 클로버 보관함</div><div class="clover-scroll"><div id="clover-active-box" class="clover-timer">현재 활성 버프 없음</div><div class="clover-card"><h4>🍀 클로버 프리미엄</h4><div class="desc">아이템 드랍량 <b>2배</b> · 사냥 EXP <b>+5%</b> · 공격력/방어력 <b>+5%</b> · 제조 EXP <b>+5%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-premium">0</span>개</div><button onclick="useClover('premium')">사용</button></div><div class="clover-card"><h4>🌿 은빛 클로버</h4><div class="desc">아이템 드랍량 <b>3배</b> · 사냥 EXP <b>+10%</b> · 제조 EXP <b>+10%</b> · 공격력/방어력 <b>+10%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-silver">0</span>개</div><button onclick="useClover('silver')">사용</button></div><div class="clover-card"><h4>🏆 황금 클로버</h4><div class="desc">아이템 드랍량 <b>4배</b> · 사냥 EXP <b>+20%</b> · 제조 EXP <b>+20%</b> · 공격력/방어력 <b>+20%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-gold">0</span>개</div><button onclick="useClover('gold')">사용</button></div><div style="font-size:9px;color:#795548;line-height:1.5;padding:2px 2px 8px">획득처: 일반/하둠 일반 몬스터 → 🍀 프리미엄 · 하둠 정예 → 🌿 은빛/🏆 황금 · 하둠 보스 → 🌿 은빛/🏆 황금.</div></div><div style="padding:8px 12px;border-top:1px solid #dcedc8"><button class="btn-small" style="width:100%" onclick="closeCloverModal()">창 닫기</button></div></div></div>
+<div id="clover-modal" class="interactive" onclick="if(event.target===this) closeCloverModal()"><div class="clover-panel"><div style="padding:11px 12px 8px;border-bottom:1px solid #dcedc8;text-align:center;font-weight:900;color:#33691e;font-size:15px">🍀 클로버 보관함</div><div class="clover-scroll"><div id="clover-active-box" class="clover-timer">현재 활성 버프 없음</div><div class="clover-card"><h4>🍀 클로버 프리미엄</h4><div class="desc">아이템 드랍량 <b>2배</b> · 금화 획득량 <b>1.5배</b> · 사냥 EXP <b>+5%</b> · 공격력/방어력 <b>+5%</b> · 제조 EXP <b>+5%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-premium">0</span>개</div><button onclick="useClover('premium')">사용</button></div><div class="clover-card"><h4>🌿 은빛 클로버</h4><div class="desc">아이템 드랍량 <b>3배</b> · 사냥 EXP <b>+10%</b> · 제조 EXP <b>+10%</b> · 공격력/방어력 <b>+10%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-silver">0</span>개</div><button onclick="useClover('silver')">사용</button></div><div class="clover-card"><h4>🏆 황금 클로버</h4><div class="desc">아이템 드랍량 <b>4배</b> · 사냥 EXP <b>+20%</b> · 제조 EXP <b>+20%</b> · 공격력/방어력 <b>+20%</b><br>지속시간 60분</div><div class="owned">보유: <span id="clover-owned-gold">0</span>개</div><button onclick="useClover('gold')">사용</button></div><div style="font-size:9px;color:#795548;line-height:1.5;padding:2px 2px 8px">획득처: 일반/하둠 일반 몬스터 → 🍀 프리미엄 · 하둠 정예 → 🌿 은빛/🏆 황금 · 하둠 보스 → 🌿 은빛/🏆 황금.</div></div><div style="padding:8px 12px;border-top:1px solid #dcedc8"><button class="btn-small" style="width:100%" onclick="closeCloverModal()">창 닫기</button></div></div></div>
 
 <script id="clover-system-js">
-(function(){const T={premium:{name:'🍀 클로버 프리미엄',drop:2,exp:1.05,combat:.05,craft:1.05},silver:{name:'🌿 은빛 클로버',drop:3,exp:1.1,combat:.1,craft:1.1},gold:{name:'🏆 황금 클로버',drop:4,exp:1.2,combat:.2,craft:1.2}},O={premium:1,silver:2,gold:3};function e(){if(!window.playerState)return;playerState.cloverInventory={premium:0,silver:0,gold:0,...(playerState.cloverInventory||{})};playerState.cloverBuff={type:'',until:0,...(playerState.cloverBuff||{})};if(!T[playerState.cloverBuff.type]||Number(playerState.cloverBuff.until)<=Date.now())playerState.cloverBuff={type:'',until:0}}window.getActiveCloverType=()=>{e();return playerState.cloverBuff.type||''};window.getCloverDropMultiplier=()=>{e();return T[getActiveCloverType()]?.drop||1};window.getCloverExpMultiplier=()=>{e();return T[getActiveCloverType()]?.exp||1};window.getCloverCombatBonus=()=>{e();return T[getActiveCloverType()]?.combat||0};window.getCloverCraftExpMultiplier=()=>{e();return T[getActiveCloverType()]?.craft||1};window.grantCloverScaledLoot=n=>{e();const q=Math.max(0,Math.round(Number(n)||0)*getCloverDropMultiplier());playerState.talismanLoot=(Number(playerState.talismanLoot)||0)+q};window.grantClover=(t,n=1)=>{e();if(!T[t])return;playerState.cloverInventory[t]+=Math.max(1,Math.floor(Number(n)||1));if(typeof saveGame==='function')saveGame();if(typeof updateUI==='function')updateUI()};window.useClover=t=>{e();if(!T[t]||playerState.cloverInventory[t]<=0)return;const now=Date.now(),ot=getActiveCloverType(),rem=ot?Math.max(0,Number(playerState.cloverBuff.until)-now):0;let bt=(ot&&O[ot]>O[t])?ot:t;playerState.cloverInventory[t]--;playerState.cloverBuff={type:bt,until:now+rem+3600000};if(typeof saveGame==='function')saveGame();if(typeof updateUI==='function')updateUI();r()};const f=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};window.openCloverModal=()=>{e();r();const m=document.getElementById('clover-modal');if(m)m.style.display='flex'};window.closeCloverModal=()=>{const m=document.getElementById('clover-modal');if(m)m.style.display='none'};function r(){e();['premium','silver','gold'].forEach(k=>{const x=document.getElementById('clover-owned-'+k);if(x)x.textContent=playerState.cloverInventory[k].toLocaleString()});const b=document.getElementById('clover-active-box'),t=T[getActiveCloverType()];if(b)b.innerHTML=t?`${t.name} · <b>${f(playerState.cloverBuff.until-Date.now())}</b><br><small>드랍 ×${t.drop} · 사냥 EXP +${Math.round((t.exp-1)*100)}% · 공격/방어 +${Math.round(t.combat*100)}%</small>`:'현재 활성 버프 없음'}function drops(m){if(!m||m.isExperienceDungeon||m.isCraftGoldDungeon)return;if(!m.isBoss&&!m.isElite&&Math.random()<.0035)grantClover('premium');if(m.isElite&&m.isHadum&&!m.isBoss){if(Math.random()<.04)grantClover('gold');else if(Math.random()<.25)grantClover('silver')}if(m.isBoss&&m.isHadum){if(Math.random()<.08)grantClover('gold');else if(Math.random()<.30)grantClover('silver')}}function hook(){const o=window.applyDamage;if(typeof o==='function'&&!o.__cloverWrapped){const w=function(t,a){const alive=!!t?.alive,hp=Number(t?.hp||0),z=o.apply(this,arguments);if(alive&&t&&!t.alive&&hp>0)drops(t);return z};w.__cloverWrapped=true;window.applyDamage=w;return true}return false}window.addEventListener('load',()=>{e();hook();r()});setInterval(()=>{try{e();hook();const t=getActiveCloverType();if(t&&Number(playerState.cloverBuff.until)<=Date.now()){playerState.cloverBuff={type:'',until:0};if(typeof saveGame==='function')saveGame()}if(document.getElementById('clover-modal')?.style.display==='flex')r();const row=document.getElementById('clover-status-row'),v=document.getElementById('clover-status-val');if(row)row.style.display='flex';if(v)v.innerText=t?`${T[t].name} ${f(playerState.cloverBuff.until-Date.now())} · 드랍 ×${T[t].drop}`:'🍀 클로버: 없음'}catch(x){}},1000)})();
+(function(){const T={premium:{name:'🍀 클로버 프리미엄',drop:2,gold:1.5,exp:1.05,combat:.05,craft:1.05},silver:{name:'🌿 은빛 클로버',drop:3,gold:2.5,exp:1.1,combat:.1,craft:1.1},gold:{name:'🏆 황금 클로버',drop:4,gold:3.5,exp:1.2,combat:.2,craft:1.2}},O={premium:1,silver:2,gold:3};function e(){if(!window.playerState)return;playerState.cloverInventory={premium:0,silver:0,gold:0,...(playerState.cloverInventory||{})};playerState.cloverBuff={type:'',until:0,...(playerState.cloverBuff||{})};if(!T[playerState.cloverBuff.type]||Number(playerState.cloverBuff.until)<=Date.now())playerState.cloverBuff={type:'',until:0}}window.getActiveCloverType=()=>{e();return playerState.cloverBuff.type||''};window.getCloverDropMultiplier=()=>{e();return T[getActiveCloverType()]?.drop||1};window.getCloverGoldMultiplier=()=>{e();return T[getActiveCloverType()]?.gold||1};window.getCloverExpMultiplier=()=>{e();return T[getActiveCloverType()]?.exp||1};window.getCloverCombatBonus=()=>{e();return T[getActiveCloverType()]?.combat||0};window.getCloverCraftExpMultiplier=()=>{e();return T[getActiveCloverType()]?.craft||1};window.grantCloverScaledLoot=n=>{e();const q=Math.max(0,Math.round(Number(n)||0)*getCloverDropMultiplier());playerState.talismanLoot=(Number(playerState.talismanLoot)||0)+q};window.grantClover=(t,n=1)=>{e();if(!T[t])return;playerState.cloverInventory[t]+=Math.max(1,Math.floor(Number(n)||1));if(typeof saveGame==='function')saveGame();if(typeof updateUI==='function')updateUI()};window.useClover=t=>{e();if(!T[t]||playerState.cloverInventory[t]<=0)return;const now=Date.now(),ot=getActiveCloverType(),rem=ot?Math.max(0,Number(playerState.cloverBuff.until)-now):0;let bt=(ot&&O[ot]>O[t])?ot:t;playerState.cloverInventory[t]--;playerState.cloverBuff={type:bt,until:now+rem+3600000};if(typeof saveGame==='function')saveGame();if(typeof updateUI==='function')updateUI();r()};const f=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};window.openCloverModal=()=>{e();r();const m=document.getElementById('clover-modal');if(m)m.style.display='flex'};window.closeCloverModal=()=>{const m=document.getElementById('clover-modal');if(m)m.style.display='none'};function r(){e();['premium','silver','gold'].forEach(k=>{const x=document.getElementById('clover-owned-'+k);if(x)x.textContent=playerState.cloverInventory[k].toLocaleString()});const b=document.getElementById('clover-active-box'),t=T[getActiveCloverType()];if(b)b.innerHTML=t?`${t.name} · <b>${f(playerState.cloverBuff.until-Date.now())}</b><br><small>드랍 ×${t.drop} · 금화 ×${t.gold} · 사냥 EXP +${Math.round((t.exp-1)*100)}% · 공격/방어 +${Math.round(t.combat*100)}%</small>`:'현재 활성 버프 없음'}function drops(m){if(!m||m.isExperienceDungeon||m.isCraftGoldDungeon)return;if(!m.isBoss&&!m.isElite&&Math.random()<.0035)grantClover('premium');if(m.isElite&&m.isHadum&&!m.isBoss){if(Math.random()<.04)grantClover('gold');else if(Math.random()<.25)grantClover('silver')}if(m.isBoss&&m.isHadum){if(Math.random()<.08)grantClover('gold');else if(Math.random()<.30)grantClover('silver')}}function hook(){const o=window.applyDamage;if(typeof o==='function'&&!o.__cloverWrapped){const w=function(t,a){const alive=!!t?.alive,hp=Number(t?.hp||0),z=o.apply(this,arguments);if(alive&&t&&!t.alive&&hp>0)drops(t);return z};w.__cloverWrapped=true;window.applyDamage=w;return true}return false}window.addEventListener('load',()=>{e();hook();r()});setInterval(()=>{try{e();hook();const t=getActiveCloverType();if(t&&Number(playerState.cloverBuff.until)<=Date.now()){playerState.cloverBuff={type:'',until:0};if(typeof saveGame==='function')saveGame()}if(document.getElementById('clover-modal')?.style.display==='flex')r();const row=document.getElementById('clover-status-row'),v=document.getElementById('clover-status-val');if(row)row.style.display='flex';if(v)v.innerText=t?`${T[t].name} ${f(playerState.cloverBuff.until-Date.now())} · 드랍 ×${T[t].drop}`:'🍀 클로버: 없음'}catch(x){}},1000)})();
 </script>
 
 <style id="weapon-potential-css">
@@ -13253,8 +13377,8 @@ function grade(w){return ({normal:'일반',high:'고급',new:'신품',fine:'호�
 function icon(w){try{return (window.G&&window.G[w.grade]&&window.G[w.grade].i)||'🗡️'}catch(e){return '🗡️'}}
 function save(){try{if(typeof window.save==='function')window.save()}catch(e){}try{if(typeof window.updateUI==='function')window.updateUI()}catch(e){}}
 function render(){const box=document.getElementById('wpp-body');if(!box)return;try{const w=weapon();if(!w){box.innerHTML='<div class="wpp-empty">현재 장착 중인 제작무기가 없습니다.</div>';return}ensure(w);const n=slots(w),m=inv();let h='<div class="wpp-card"><div class="wpp-title">'+icon(w)+' '+String(w.name||'제작무기')+' · '+grade(w)+'</div><div class="wpp-sub">현재 장착한 제작무기의 잠재력과 각인을 관리합니다.</div><div class="wpp-mats">🔹 각인석 '+Number(m.engravingStone||0).toLocaleString()+'</div></div>';if(!n){h+='<div class="wpp-empty">현재 무기 등급에는 잠재력 슬롯이 없습니다.<br>신품부터 잠재력 슬롯이 열립니다.</div>';box.innerHTML=h;return}h+='<div class="wpp-card"><div class="wpp-title">잠재력</div><div class="wpp-slots">';for(let i=0;i<n;i++)h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span><span class="wpp-good">'+fmt(w.potential[i])+'</span></div></div>';h+='</div></div><div class="wpp-card"><div class="wpp-title">각인</div><div class="wpp-sub">각인석 1개 + 50,000 G · 각인 완료 슬롯을 누르면 초기화</div><div class="wpp-slots">';const g=Number(state().gold||0);for(let i=0;i<n;i++){const e=w.engraving[i],can=!e&&Number(m.engravingStone||0)>=1&&g>=50000;let btn=e?'<span class="wpp-good">'+fmt(e)+'</span>':'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button type="button" class="wpp-btn" onclick="window.__WPP.engrave('+i+')" '+(can?'':'disabled')+'>각인하기</button><small style="color:'+(can?'#9ccc65':'#aaa')+'">'+(can?'각인 가능':'각인석 1개 + 50,000 G 필요 · 초기화: 각인석 2개 + 100,000 G')+'</small></div>';h+='<div class="wpp-slot"><div class="wpp-row"><span>슬롯 '+(i+1)+'</span>'+btn+'</div></div>'}h+='</div></div>';box.innerHTML=h}catch(err){console.error('WPP render error:',err);box.innerHTML='<div class="wpp-empty">무기 정보를 불러오는 중 오류가 발생했습니다.<br>게임 플레이는 계속할 수 있습니다.</div>'}}
-window.__WPP={engrave:function(i){try{const w=weapon();if(!w)return;ensure(w);const n=slots(w),m=inv(),ps=state();if(i<0||i>=n||!w.potential[i])return;if(w.engraving[i])return alert('이미 각인된 슬롯입니다.');if(Number(m.engravingStone||0)<1)return alert('각인석이 부족합니다.');if(Number(ps.gold||0)<50000)return alert('게임머니가 부족합니다. (50,000 G 필요)');m.engravingStone=Number(m.engravingStone)-1;ps.gold=Number(ps.gold)-50000;const o=ENG[Math.floor(Math.random()*ENG.length)];w.engraving[i]={id:o.id,value:o.roll()};save();if(window.__WPP&&typeof window.__WPP.render==='function')window.__WPP.render();else render()}catch(err){console.error('WPP engraving error:',err);alert('각인 처리 중 오류가 발생했습니다.')}},render:render};
-window.openWeaponPotentialModal=function(){const modal=document.getElementById('wpp-modal');if(!modal)return;modal.style.display='flex';const doRender=function(){try{if(window.__WPP&&typeof window.__WPP.render==='function')window.__WPP.render();else render()}catch(e){render()}};try{window.requestAnimationFrame(doRender)}catch(e){doRender()}};
+window.__WPP={engrave:function(i){try{const w=weapon();if(!w)return;ensure(w);const n=slots(w),m=inv(),ps=state();if(i<0||i>=n||!w.potential[i])return;if(w.engraving[i])return alert('이미 각인된 슬롯입니다.');if(Number(m.engravingStone||0)<1)return alert('각인석이 부족합니다.');if(Number(ps.gold||0)<50000)return alert('게임머니가 부족합니다. (50,000 G 필요)');m.engravingStone=Number(m.engravingStone)-1;ps.gold=Number(ps.gold)-50000;const o=ENG[Math.floor(Math.random()*ENG.length)];w.engraving[i]={id:o.id,value:o.roll()};save();render()}catch(err){console.error('WPP engraving error:',err);alert('각인 처리 중 오류가 발생했습니다.')}},render:render};
+window.openWeaponPotentialModal=function(){const modal=document.getElementById('wpp-modal');if(!modal)return;modal.style.display='flex';try{window.requestAnimationFrame(function(){render()})}catch(e){render()}};
 window.closeWeaponPotentialModal=function(){const m=document.getElementById('wpp-modal');if(m)m.style.display='none'};
 window.initWeaponPotential=function(w){ensure(w)};
 window.getWeaponPotentialSummary=function(){const w=weapon();if(!w)return{flat:0,pct:0};ensure(w);let flat=0,pct=0,hadumDmg=0,critDmg=0;w.potential.concat(w.engraving).forEach(x=>{if(!x)return;if(x.id==='atk')flat+=Number(x.value)||0;if(x.id==='atkPct')pct+=(Number(x.value)||0)/100});return{flat,pct}};
@@ -13271,7 +13395,7 @@ function ps(){return window.playerState||null;}
 function weapon(){const p=ps();return p&&((p.weaponCrafting&&p.weaponCrafting.weapon)||p.weapon)||null;}
 function slots(w){return ({normal:0,high:0,new:1,fine:2,masterpiece:3})[String(w&&w.grade||'normal')]??0;}
 function ensure(w){if(!w)return;const n=slots(w);if(!Array.isArray(w.potential))w.potential=[];if(!Array.isArray(w.engraving))w.engraving=[];while(w.potential.length<n)w.potential.push(null);while(w.engraving.length<n)w.engraving.push(null);if(w.potential.length>n)w.potential.length=n;if(w.engraving.length>n)w.engraving.length=n;}
-function fmt(x){if(!x)return '-';if(x.id==='atk')return '공격력 +'+(Number(x.value)||0);if(x.id==='hadumDmg')return '하둠 몬스터 피해 +'+(Number(x.value)||0)+'%';if(x.id==='atkPct')return '공격력 +'+(Number(x.value)||0)+'%';if(x.id==='critDmg')return '치명타 피해 +'+(Number(x.value)||0)+'%';return String(x.id||'옵션')+' '+String(x.value||0);}
+function fmt(x){if(!x)return '-';if(x.id==='hadumDmg')return '하둠 몬스터 피해 +'+(Number(x.value)||0)+'%';if(x.id==='atkPct')return '공격력 +'+(Number(x.value)||0)+'%';if(x.id==='critDmg')return '치명타 피해 +'+(Number(x.value)||0)+'%';return String(x.id||'옵션')+' '+String(x.value||0);}
 function saveAll(){try{if(typeof window.save==='function')window.save();}catch(e){}try{if(typeof window.saveGame==='function')window.saveGame(true);}catch(e){}try{if(typeof window.updateUI==='function')window.updateUI();}catch(e){}}
 function reset(i){
  const p=ps(),w=weapon();
@@ -13281,34 +13405,12 @@ function reset(i){
  if(i<0||i>=n||!w.engraving[i])return;
  if(Number(m.engravingStone||0)<STONE){alert('각인석이 부족합니다.\n필요: 각인석 2개');return;}
  if(Number(p.gold||0)<GOLD){alert('골드가 부족합니다.\n필요: 100,000 G');return;}
- showResetConfirm(function(){
-   m.engravingStone=Number(m.engravingStone||0)-STONE;
-   p.gold=Number(p.gold||0)-GOLD;
-   w.engraving[i]=null;
-   saveAll();
-   if(window.__WPP&&typeof window.__WPP.render==='function')window.__WPP.render();
- });
-}
-function showResetConfirm(onConfirm){
- let box=document.getElementById('wpp-reset-confirm-box');
- if(!box){
-  box=document.createElement('div');
-  box.id='wpp-reset-confirm-box';
-  box.style.cssText='position:fixed;inset:0;z-index:13000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);padding:16px;';
-  document.body.appendChild(box);
- }
- box.innerHTML='<div style="background:#201a23;border:1px solid #4d3a52;border-radius:12px;padding:16px;max-width:320px;width:100%;">'
-  +'<div style="color:#ce93d8;font-weight:900;margin-bottom:8px;">각인 초기화</div>'
-  +'<div style="color:#ddd;font-size:12px;line-height:1.6;margin-bottom:14px;">이 슬롯의 각인을 초기화할까요?<br><br>각인석 2개 + 100,000 G가 소모됩니다.<br>잠재력은 그대로 유지됩니다.</div>'
-  +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
-  +'<button type="button" id="wpp-reset-cancel" style="border:1px solid #55445a;background:#19151d;color:#ccc;border-radius:6px;padding:8px 14px;font-weight:800;font-size:12px;">취소</button>'
-  +'<button type="button" id="wpp-reset-ok" style="border:1px solid #8e44a8;background:#321d39;color:#f3d9f6;border-radius:6px;padding:8px 14px;font-weight:800;font-size:12px;">초기화</button>'
-  +'</div></div>';
- box.style.display='flex';
- const close=function(){box.style.display='none';box.innerHTML='';};
- document.getElementById('wpp-reset-cancel').onclick=close;
- document.getElementById('wpp-reset-ok').onclick=function(){close();onConfirm();};
- box.onclick=function(e){if(e.target===box)close();};
+ if(!window.confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n잠재력은 그대로 유지됩니다.'))return;
+ m.engravingStone=Number(m.engravingStone||0)-STONE;
+ p.gold=Number(p.gold||0)-GOLD;
+ w.engraving[i]=null;
+ saveAll();
+ if(window.__WPP&&typeof window.__WPP.render==='function')window.__WPP.render();
 }
 window.__WPP_RESET_V9=reset;
 function render(){
@@ -13350,6 +13452,24 @@ window.addEventListener('load',function(){setTimeout(bind,0);});
 })();
 </script>
 
+
+<style id="guardian-armor-potential-engraving-css">
+.guardian-eng-wrap{margin-top:6px;padding:6px;border-top:1px solid #ead7c8;background:#fffaf5;border-radius:6px;width:100%;box-sizing:border-box}
+.guardian-eng-slot{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 5px;margin:3px 0;border:1px solid #e0d0c5;border-radius:5px;font-size:9px;background:#fff}
+.guardian-eng-done{cursor:pointer;background:#f3e5f5;border-color:#ce93d8;color:#6a1b9a}
+.guardian-eng-done:hover{filter:brightness(.97)}
+</style>
+<script id="guardian-engraving-touch-handler">
+(function(){
+  function bind(){
+    const box=document.getElementById('guardian-inventory-list'); if(!box||box.__guardianEngBound)return; box.__guardianEngBound=true;
+    const go=e=>{const el=e.target.closest('[data-guardian-eng-reset]'); if(!el||!box.contains(el))return; e.preventDefault(); e.stopPropagation(); resetGuardianEngraving(el.getAttribute('data-guardian-eng-reset'),Number(el.getAttribute('data-slot')));};
+    box.addEventListener('click',go,true); box.addEventListener('touchend',go,true);
+  }
+  window.addEventListener('load',bind); setInterval(bind,1000);
+})();
+</script>
+window.addEventListener('load',()=>{setTimeout(()=>{try{(playerState.guardianInventory||[]).forEach(ensureGuardianArmorData);syncGuardianDerivedStats();}catch(e){}},0);});
 </body>
 <style id="weapon-bag-system-css">
 #wbag-modal{position:fixed;inset:0;z-index:11000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);padding:10px;box-sizing:border-box}
