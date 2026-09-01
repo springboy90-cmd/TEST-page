@@ -1304,6 +1304,9 @@ html,body{overflow-x:hidden!important}#wc-modal *{box-sizing:border-box!importan
           <button class="status-action-btn" onclick="openWeaponPotentialModal()" style="display:block;width:100%;padding:7px 10px;font-size:11px;background:#f3e5f5;border-color:#ab47bc;color:#6a1b9a;font-weight:900;margin-top:4px;">✨ 무기 잠재력 · 각인</button>
           </div>
           <div class="stat-row-item" id="armor-potential-action-row" style="display:flex; justify-content:center; margin-top:3px;">
+          <button class="status-action-btn" onclick="openArmorPotentialModal()" style="display:block;width:100%;padding:7px 10px;font-size:11px;background:#e3f2fd;border-color:#42a5f5;color:#1565c0;font-weight:900;margin-top:4px;">🛡️ 방어구 잠재력 · 각인</button>
+          </div>
+          <div class="stat-row-item" id="armor-potential-action-row" style="display:flex; justify-content:center; margin-top:3px;">
           <button class="status-action-btn" onclick="openGuardianArmorPotentialModal()" style="display:block;width:100%;padding:7px 10px;font-size:11px;background:#fff3e0;border-color:#ff8a65;color:#bf360c;font-weight:900;margin-top:4px;">🛡️ 방어구 잠재력 · 각인</button>
           </div>
           <div class="status-action-row">
@@ -4981,6 +4984,9 @@ window.playerState = playerState;
         }
       });
       // 세트 저항은 '착용한 파수꾼 부위 수'에 따라 적용한다. 풀세트 버튼이 꺼져 있으면 0.
+      if (type === 'fire') value += getGuardianArmorEngravingValue('fireRes') / 100;
+      if (type === 'ice') value += getGuardianArmorEngravingValue('iceRes') / 100;
+      if (type === 'wind') value += getGuardianArmorEngravingValue('windRes') / 100;
       const equippedCount = ['helm','armor','gloves','boots'].filter(piece => !!getGuardianEquippedItem(piece)).length;
       if (equippedCount >= 2) value += GUARDIAN_RESIST_BONUS_2SET;
       if (equippedCount >= 4) {
@@ -5085,6 +5091,32 @@ window.playerState = playerState;
       try { renderCraftingBag(); } catch (e) {}
       showHealText(`♻️ 파수꾼 ${pieceName} +${lv} 분해 완료 · 🔷 강화의 핵 +${reward}`, playerSprite.position);
     }
+
+    function getGuardianArmorEquippedItems() {
+      const inv = playerState.guardianInventory || [];
+      const eq = playerState.guardianEquippedItems || {};
+      return ['helm','armor','gloves','boots'].map(piece => inv.find(i => i && i.piece === piece && eq[piece] === i.id)).filter(Boolean);
+    }
+    function getGuardianArmorEngravingValue(id) {
+      return getGuardianArmorEquippedItems().reduce((sum,i) => sum + (Array.isArray(i.armorEngraving) ? i.armorEngraving.filter(Boolean).filter(e => e.id === id).reduce((a,e)=>a+(Number(e.value)||0),0) : 0), 0);
+    }
+    function syncGuardianArmorDerivedStats() {
+      playerState.guardianArmorApplied = playerState.guardianArmorApplied || {defense:0,hp:0,mp:0};
+      const old = playerState.guardianArmorApplied;
+      playerState.maxHp = Math.max(1, Number(playerState.maxHp||1) - Number(old.hp||0));
+      playerState.maxMp = Math.max(1, Number(playerState.maxMp||1) - Number(old.mp||0));
+      playerState.defensePower = Math.max(0, Number(playerState.defensePower||0) - Number(old.defense||0));
+      const items = getGuardianArmorEquippedItems();
+      const defense = items.reduce((sum,i)=>sum + Number(i.armorPotential?.defense||0),0);
+      const hp = getGuardianArmorEngravingValue('hp');
+      const mp = getGuardianArmorEngravingValue('mp');
+      playerState.maxHp += hp; playerState.maxMp += mp; playerState.defensePower += defense;
+      playerState.hp = Math.min(Number(playerState.hp||0), playerState.maxHp);
+      playerState.mp = Math.min(Number(playerState.mp||0), playerState.maxMp);
+      playerState.guardianArmorApplied = {defense,hp,mp};
+    }
+    window.getGuardianArmorEngravingValue = getGuardianArmorEngravingValue;
+    window.syncGuardianArmorDerivedStats = syncGuardianArmorDerivedStats;
 
     function renderGuardianInventory() {
       const box = document.getElementById('guardian-inventory-list');
@@ -11032,7 +11064,7 @@ window.playerState = playerState;
         playerState.guardianSetEquipped = hasExplicitGuardianEquipState ? p.guardianSetEquipped : legacyFullGuardianSet;
         // 신규 파수꾼 개별 장비 데이터. 기존 세이브는 아래에서 기존 보유 부위를 실제 장비로 복원한다.
         playerState.guardianInventory = Array.isArray(p.guardianInventory) ? p.guardianInventory.filter(i => i && GUARDIAN_SET_PIECE_NAMES[i.piece] && GUARDIAN_RESIST_KEYS.includes(i.optionType)).map(i => ({
-          id: String(i.id), piece: i.piece, optionType: i.optionType, optionValue: Math.max(GUARDIAN_OPTION_MIN, Math.min(GUARDIAN_OPTION_MAX, Number(i.optionValue)||GUARDIAN_OPTION_MIN)), enhance: Math.max(0, Math.min(GUARDIAN_SET_ENHANCE_MAX, Number(i.enhance)||0))
+          id: String(i.id), piece: i.piece, optionType: i.optionType, optionValue: Math.max(GUARDIAN_OPTION_MIN, Math.min(GUARDIAN_OPTION_MAX, Number(i.optionValue)||GUARDIAN_OPTION_MIN)), enhance: Math.max(0, Math.min(GUARDIAN_SET_ENHANCE_MAX, Number(i.enhance)||0)), armorPotential: { defense: Math.max(80, Math.min(350, Number(i.armorPotential?.defense)|| (80 + Math.floor(Math.random()*271)))), slots: Math.max(1, Math.min(3, Number(i.armorPotential?.slots)||1)) }, armorEngraving: Array.isArray(i.armorEngraving) ? i.armorEngraving.slice(0,3).map(e => e && { id:String(e.id||''), value:Number(e.value)||0 }) : [null,null,null]
         })).slice(0, GUARDIAN_INVENTORY_MAX) : [];
         playerState.guardianInventoryNextId = Math.max(1, Number(p.guardianInventoryNextId) || playerState.guardianInventory.length + 1);
         // 구버전 세이브 호환: 기존에는 부위 보유 수량만 저장했으므로, 보유 수량만큼 개별 장비를 생성해 가방으로 옮긴다.
@@ -13339,7 +13371,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <div id="guardian-inventory-modal" class="modal interactive" onclick="if(event.target===this)closeGuardianInventoryModal()">
   <div id="guardian-inventory-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>🎒 파수꾼 장비 가방</h2><button onclick="closeGuardianInventoryModal()" style="font-size:20px;border:0;background:none;cursor:pointer">×</button></div>
-    <div style="font-size:11px;color:#795548;margin-bottom:8px">드랍 시 🔥/❄️/🌪️ 중 1종의 저항 옵션이 2~4%로 랜덤 부여됩니다.</div>
+    <div style="font-size:11px;color:#795548;margin-bottom:8px">최대 30개 보관 · 드랍 시 🔥/❄️/🌪️ 중 1종의 저항 옵션이 2~4%로 랜덤 부여됩니다.</div>
     <div id="guardian-resist-summary" class="guardian-resist-summary"></div>
     <div id="guardian-inventory-list"></div>
   </div>
@@ -13381,6 +13413,43 @@ h+='<div class="gap-card"><div class="gap-title">✨ 방어구 각인</div><div 
 function open(){const m=document.getElementById('gap-modal');if(!m)return;m.style.display='flex';render();}function close(){const m=document.getElementById('gap-modal');if(m)m.style.display='none';}
 window.__GAP={select:function(id){selectedId=id;render();},engrave:function(id,slot){const p=ps(),item=inv().find(x=>x.id===id);if(!p||!item)return;ensureItem(item);const mats=p.craftingMaterials=p.craftingMaterials||{};if(!item.engraving[slot]){if(Number(mats.engravingStone||0)<STONE)return alert('각인석이 부족합니다.');if(Number(p.gold||0)<GOLD)return alert('게임머니가 부족합니다. (50,000 G 필요)');if(!confirm('이 슬롯에 방어구 각인을 진행할까요?\n\n각인석 1개 + 50,000 G가 소모됩니다.'))return;const opts=[{id:'defPct',roll:()=>1+Math.floor(Math.random()*5)},{id:'hp',roll:()=>500+Math.floor(Math.random()*3501)},{id:'mp',roll:()=>500+Math.floor(Math.random()*3501)},{id:'damageReduce',roll:()=>1+Math.floor(Math.random()*3)},{id:'fireRes',roll:()=>1+Math.floor(Math.random()*4)},{id:'iceRes',roll:()=>1+Math.floor(Math.random()*4)},{id:'windRes',roll:()=>1+Math.floor(Math.random()*4)}];const o=opts[Math.floor(Math.random()*opts.length)];mats.engravingStone=Number(mats.engravingStone||0)-1;p.gold=Number(p.gold||0)-GOLD;item.engraving[slot]={id:o.id,value:o.roll()};if(typeof window.syncGuardianDerivedStats==='function')window.syncGuardianDerivedStats();saveAll();render();}},reset:function(id,slot){const p=ps(),item=inv().find(x=>x.id===id);if(!p||!item)return;ensureItem(item);if(!item.engraving[slot])return;const mats=p.craftingMaterials=p.craftingMaterials||{};if(Number(mats.engravingStone||0)<RESET_STONE)return alert('각인석이 부족합니다.\n필요: 각인석 2개');if(Number(p.gold||0)<RESET_GOLD)return alert('골드가 부족합니다.\n필요: 100,000 G');if(!confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n방어구 잠재력은 그대로 유지됩니다.'))return;mats.engravingStone=Number(mats.engravingStone||0)-RESET_STONE;p.gold=Number(p.gold||0)-RESET_GOLD;item.engraving[slot]=null;if(typeof window.syncGuardianDerivedStats==='function')window.syncGuardianDerivedStats();saveAll();render();},render:render};
 window.openGuardianArmorPotentialModal=open;window.closeGuardianArmorPotentialModal=close;window.renderGuardianArmorPotential=render;
+})();
+</script>
+
+<style id="armor-potential-css">
+#appm-modal{position:fixed;inset:0;z-index:12001;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);padding:10px;touch-action:pan-y!important}
+#appm-panel{width:min(430px,94vw);height:min(720px,90vh);max-height:90vh;overflow:hidden;background:#121820;color:#eee;border:2px solid #42a5f5;border-radius:14px;box-shadow:0 18px 60px #000;font-family:inherit;display:flex;flex-direction:column}
+#appm-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #30495f}#appm-head h2{margin:0;color:#90caf9;font-size:17px}#appm-close{background:#263544;color:#fff;border:1px solid #54718b;border-radius:7px;padding:4px 10px;font-size:18px}
+#appm-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:10px}
+.appm-equip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px}.appm-equip{border:1px solid #455a64;background:#1b242d;border-radius:8px;padding:6px 3px;text-align:center;cursor:pointer;font-size:9px}.appm-equip.active{border-color:#42a5f5;background:#172f45;box-shadow:0 0 0 1px #42a5f5 inset}.appm-icon{font-size:20px;line-height:1.1}.appm-name{font-weight:900;margin-top:2px}.appm-lv{color:#90caf9;font-size:8px}.appm-card{background:#1a222b;border:1px solid #354655;border-radius:9px;padding:9px;margin-bottom:8px}.appm-title{font-weight:900;color:#90caf9;font-size:12px;margin-bottom:5px}.appm-row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #2b3742;font-size:10px}.appm-row:last-child{border-bottom:0}.appm-good{color:#b3e5fc;font-weight:900}.appm-slot{border:1px solid #455a64;border-radius:7px;background:#141b22;padding:7px;margin:5px 0;cursor:pointer;touch-action:manipulation}.appm-slot.empty{cursor:default}.appm-slot-head{display:flex;justify-content:space-between;align-items:center;font-size:9px}.appm-btn{border:1px solid #42a5f5;background:#17334a;color:#e3f2fd;border-radius:6px;padding:5px 8px;font-size:9px;font-weight:900;cursor:pointer}.appm-btn:disabled{opacity:.4}.appm-note{font-size:8px;color:#9eabb5;line-height:1.45}.appm-cost{font-size:9px;color:#cfd8dc;margin:5px 0}.appm-empty{text-align:center;padding:18px;color:#9eabb5;font-size:10px}
+@media(max-width:600px){#appm-panel{width:calc(100vw - 18px);height:88vh;max-height:88vh}#appm-body{padding:8px}.appm-equip-grid{gap:4px}.appm-equip{padding:5px 2px}.appm-icon{font-size:18px}}
+</style>
+<div id="appm-modal" onclick="if(event.target===this)closeArmorPotentialModal()">
+ <div id="appm-panel"><div id="appm-head"><h2>🛡️ 방어구 잠재력 · 각인</h2><button id="appm-close" onclick="closeArmorPotentialModal()">×</button></div><div id="appm-body"></div></div>
+</div>
+<script>
+(function(){'use strict';
+const PIECES=[['helm','투구','🪖'],['armor','갑옷','🛡️'],['gloves','장갑','🧤'],['boots','신발','👢']];
+const ENG=[
+ {id:'defPct',name:'방어력',roll:()=>1+Math.floor(Math.random()*5),fmt:v=>'방어력 +'+v+'%'},
+ {id:'hp',name:'HP',roll:()=>500+Math.floor(Math.random()*3501),fmt:v=>'HP +'+Number(v).toLocaleString()},
+ {id:'mp',name:'MP',roll:()=>500+Math.floor(Math.random()*3501),fmt:v=>'MP +'+Number(v).toLocaleString()},
+ {id:'dmgRed',name:'피해 감소',roll:()=>1+Math.floor(Math.random()*3),fmt:v=>'피해 감소 +'+v+'%'},
+ {id:'fireRes',name:'화염 저항',roll:()=>1+Math.floor(Math.random()*4),fmt:v=>'화염 저항 +'+v+'%'},
+ {id:'iceRes',name:'빙결 저항',roll:()=>1+Math.floor(Math.random()*4),fmt:v=>'빙결 저항 +'+v+'%'},
+ {id:'windRes',name:'바람 저항',roll:()=>1+Math.floor(Math.random()*4),fmt:v=>'바람 저항 +'+v+'%'}
+];
+let selected='helm';
+function ps(){return window.playerState||null} function inv(){return ps()?.guardianInventory||[]}
+function item(piece){const id=ps()?.guardianEquippedItems?.[piece];return inv().find(x=>x&&x.id===id)||null}
+function ensure(i){if(!i)return; i.armorPotential=i.armorPotential||{defense:80+Math.floor(Math.random()*271),slots:1+Math.floor(Math.random()*3)};i.armorPotential.defense=Math.max(80,Math.min(350,Number(i.armorPotential.defense)||80));i.armorPotential.slots=Math.max(1,Math.min(3,Number(i.armorPotential.slots)||1));if(!Array.isArray(i.armorEngraving))i.armorEngraving=[];while(i.armorEngraving.length<i.armorPotential.slots)i.armorEngraving.push(null);if(i.armorEngraving.length>i.armorPotential.slots)i.armorEngraving.length=i.armorPotential.slots}
+function save(){try{window.save?.()}catch(e){}try{window.saveGame?.(true)}catch(e){}try{window.updateUI?.()}catch(e){}}
+function fmt(e){const o=ENG.find(x=>x.id===e?.id);return o?o.fmt(Number(e.value)||0):'-'}
+function sync(){try{window.syncGuardianArmorDerivedStats?.()}catch(e){}}
+function render(){const box=document.getElementById('appm-body');if(!box)return;const p=ps();if(!p){box.innerHTML='<div class="appm-empty">캐릭터 정보를 불러올 수 없습니다.</div>';return}const items=PIECES.map(x=>[x,item(x[0])]);let h='<div class="appm-note" style="margin-bottom:7px">현재 착용 중인 파수꾼 방어구만 표시합니다. 부위를 선택하면 해당 방어구의 잠재력과 각인을 관리합니다.<br>각인: 각인석 1개 + 50,000 G · 완료 슬롯 터치: 각인석 2개 + 100,000 G</div><div class="appm-equip-grid">';items.forEach(([x,i])=>{const[pc,nm,ic]=x;h+='<div class="appm-equip '+(selected===pc?'active':'')+'" onclick="window.__APPM.select(\''+pc+'\')"><div class="appm-icon">'+ic+'</div><div class="appm-name">'+nm+'</div><div class="appm-lv">'+(i?('+'+(Number(i.enhance)||0)):'미착용')+'</div></div>'});h+='</div>';const it=item(selected);if(!it){h+='<div class="appm-empty">선택한 부위의 파수꾼 방어구를 현재 착용하고 있지 않습니다.</div>';box.innerHTML=h;return}ensure(it);const slots=it.armorPotential.slots;h+='<div class="appm-card"><div class="appm-title">'+PIECES.find(x=>x[0]===selected)[2]+' '+PIECES.find(x=>x[0]===selected)[1]+' · 현재 장착</div><div class="appm-row"><span>잠재력 · 방어력</span><span class="appm-good">+'+it.armorPotential.defense+'</span></div><div class="appm-row"><span>잠재력 · 각인 슬롯</span><span class="appm-good">'+slots+'칸</span></div></div>';h+='<div class="appm-card"><div class="appm-title">✨ 방어구 각인</div>';for(let i=0;i<slots;i++){const e=it.armorEngraving[i];if(e)h+='<div class="appm-slot" onclick="window.__APPM.reset('+i+')"><div class="appm-slot-head"><span>슬롯 '+(i+1)+'</span><span class="appm-good">'+fmt(e)+'</span></div><div class="appm-note">터치하면 이 각인을 초기화합니다.</div></div>';else h+='<div class="appm-slot empty"><div class="appm-slot-head"><span>슬롯 '+(i+1)+' · 비어 있음</span><button class="appm-btn" onclick="event.stopPropagation();window.__APPM.engrave('+i+')" '+(Number(p.craftingMaterials?.engravingStone||0)>=1&&Number(p.gold||0)>=50000?'':'disabled')+'>각인하기</button></div><div class="appm-note">랜덤 옵션 7종 중 1종</div></div>'}h+='</div><div class="appm-card"><div class="appm-title">현재 각인 옵션</div>';const all=(it.armorEngraving||[]).filter(Boolean);h+=all.length?all.map(e=>'<div class="appm-row"><span>'+e.id+'</span><span class="appm-good">'+fmt(e)+'</span></div>').join(''):'<div class="appm-note">아직 각인된 옵션이 없습니다.</div>';h+='</div>';box.innerHTML=h}
+window.__APPM={select:function(pc){selected=pc;render()},engrave:function(i){const p=ps(),it=item(selected);if(!p||!it)return;ensure(it);if(i<0||i>=it.armorPotential.slots||it.armorEngraving[i])return;const m=p.craftingMaterials=p.craftingMaterials||{};if(Number(m.engravingStone||0)<1)return alert('각인석이 부족합니다. (1개 필요)');if(Number(p.gold||0)<50000)return alert('게임머니가 부족합니다. (50,000 G 필요)');m.engravingStone--;p.gold-=50000;const o=ENG[Math.floor(Math.random()*ENG.length)];it.armorEngraving[i]={id:o.id,value:o.roll()};sync();save();render()},reset:function(i){const p=ps(),it=item(selected);if(!p||!it)return;ensure(it);if(!it.armorEngraving[i])return;const m=p.craftingMaterials=p.craftingMaterials||{};if(Number(m.engravingStone||0)<2)return alert('각인석이 부족합니다. (2개 필요)');if(Number(p.gold||0)<100000)return alert('골드가 부족합니다. (100,000 G 필요)');if(!confirm('이 슬롯의 각인을 초기화할까요?\n\n각인석 2개 + 100,000 G가 소모됩니다.\n방어구 잠재력은 그대로 유지됩니다.'))return;m.engravingStone-=2;p.gold-=100000;it.armorEngraving[i]=null;sync();save();render()},render:render};
+window.openArmorPotentialModal=function(){const m=document.getElementById('appm-modal');if(!m)return;m.style.display='flex';document.body.classList.add('modal-open');requestAnimationFrame(()=>{const b=document.getElementById('appm-body');if(b)b.scrollTop=0;render()})};window.closeArmorPotentialModal=function(){const m=document.getElementById('appm-modal');if(m)m.style.display='none';document.body.classList.remove('modal-open')};window.renderArmorPotential=render;
+setTimeout(()=>{try{sync();window.updateUI?.()}catch(e){}},0);
 })();
 </script>
 
