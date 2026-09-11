@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>한국형 클래식 도시경영 시뮬레이션</title>
+<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·교통 시스템 V15</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -129,7 +129,7 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
   <div class="panel"><h3>선택한 대상</h3><div id="inspect">도시의 건물이나 시설을 클릭하세요.</div></div>
   <div class="panel"><h3>도시 상태</h3>
     <div class="row"><span>토지가치</span><b id="land">54</b></div>
-    <div class="row"><span>교통량</span><b id="traffic">22%</b></div>
+    <div class="row"><span>교통량</span><b id="traffic">22%</b></div><div class="row"><span>통근 차량</span><b id="commuteCars">0</b></div>
     <div class="row"><span>오염도</span><b id="pollution">14%</b></div>
     <div class="row"><span>범죄율</span><b id="crime">9%</b></div>
     <div class="row"><span>교육 수준</span><b id="education">42%</b></div>
@@ -182,7 +182,7 @@ function buildingAt(x,y){
   });
 }
 function isOccupied(x,y){ return !!buildingAt(x,y); }
-let city={name:'새로운 도시',year:1,month:1,pop:1240,money:25000,balance:320,happy:68,traffic:22,pollution:14,crime:9,education:42,health:76,land:54,powerCap:0,powerUse:0,waterCap:0,waterUse:0,taxR:7,taxC:6,taxI:5,taxLand:2,taxSpecial:1,budgets:{police:100,fire:100,education:100,health:100,traffic:100,roads:100,power:100,water:100,parks:100,admin:100,welfare:100}};
+let city={name:'새로운 도시',year:1,month:1,pop:1240,money:25000,balance:320,happy:68,traffic:22,pollution:14,crime:9,education:42,health:76,land:54,powerCap:0,powerUse:0,waterCap:0,waterUse:0,taxR:7,taxC:6,taxI:5,taxLand:2,taxSpecial:1,commute:{trips:0,avgTime:0,congestion:0,loads:{},activeCars:0},budgets:{police:100,fire:100,education:100,health:100,traffic:100,roads:100,power:100,water:100,parks:100,admin:100,welfare:100}};
 
 const colors={grass:'#7f9165',dirt:'#927b5b',water:'#547c8b',road:'#555b59',park:'#64815a'};
 const BUILDINGS={
@@ -434,6 +434,15 @@ function drawTile(x,y){
  if(g.type==='forest')c='#536b4d'; if(g.zone==='R')c='#7f9a68';if(g.zone==='C')c='#aa9160';if(g.zone==='I')c='#8d6960';
  ctx.fillStyle=c;ctx.fill();if(g.type!=='road'){ctx.strokeStyle='#66725a';ctx.lineWidth=.45;ctx.stroke();}
  if(g.type==='road')drawRoad(x,y,p,s);
+ if(g.type==='road' && !dataMode){
+   const cv=roadCongestion(x,y);
+   if(cv>=25){
+     const alpha=.16+Math.min(100,cv)/100*.42;
+     ctx.fillStyle=cv>=85?`rgba(180,45,40,${alpha})`:cv>=60?`rgba(210,155,45,${alpha})`:`rgba(215,205,75,${alpha})`;
+     ctx.beginPath();poly.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fill();
+     if(zoom>1.05 && cv>=60){ctx.fillStyle='#f5e8b0';ctx.font=`${Math.max(8,Math.round(8*zoom))}px Arial`;ctx.textAlign='center';ctx.fillText(Math.round(cv)+'%',p.x,p.y+3);}
+   }
+ }
  if(g.type==='forest'&&zoom>.72){
    ctx.fillStyle='#354b35';
    const r=2.5+zoom*1.2;
@@ -626,16 +635,18 @@ function draw(){
  for(let y=0;y<N;y++)for(let x=0;x<N;x++)drawTile(x,y);
  buildings.forEach(drawBuilding);
  cars.forEach(c=>{
-   const nx=c.x+(DIRV[c.dir]?.dx||0)*c.t, ny=c.y+(DIRV[c.dir]?.dy||0)*c.t;
+   if(!c.route||c.route.length<2)return;
+   const a=c.route[c.index],b=c.route[Math.min(c.index+1,c.route.length-1)];
+   const nx=a.x+(b.x-a.x)*c.t, ny=a.y+(b.y-a.y)*c.t;
    let p=worldToScreen(nx,ny),s=T*zoom;
-   const horiz=c.dir==='e'||c.dir==='w';
+   const horiz=a.y===b.y;
    ctx.fillStyle=c.color||'#e2c36f';
-   if(horiz) ctx.fillRect(p.x-s*.11,p.y-s*.045,s*.22,s*.09);
+   if(horiz)ctx.fillRect(p.x-s*.11,p.y-s*.045,s*.22,s*.09);
    else ctx.fillRect(p.x-s*.045,p.y-s*.11,s*.09,s*.22);
    ctx.fillStyle='#303638';
-   if(horiz) ctx.fillRect(p.x-s*.08,p.y-s*.03,s*.16,s*.06);
+   if(horiz)ctx.fillRect(p.x-s*.08,p.y-s*.03,s*.16,s*.06);
    else ctx.fillRect(p.x-s*.03,p.y-s*.08,s*.06,s*.16);
- });
+ });;
  drawGhost();
  if(selected){let p=worldToScreen(selected.x,selected.y),s=T*zoom;ctx.strokeStyle='#f0e2a1';ctx.lineWidth=2;ctx.strokeRect(p.x-s*.42,p.y-s*.55,s*.84,s*.55)}
 }
@@ -671,6 +682,228 @@ function placeBigZone(x,y,id,free=false){
   news(`${def.name} 건설 완료 — 비용 $${def.cost.toLocaleString()}.`);
   recalcUtilities(); return true;
 }
+
+// ============================================================
+// 시민 / 일자리 시스템 V14
+// ============================================================
+// 시민은 단순한 population 숫자가 아니라 주거지와 일자리를 연결하는
+// 도시 경제의 핵심 데이터로 취급한다. 대규모 도시에서도 안정적으로
+// 동작하도록 전체 시민을 매월 객체화하지 않고 집계형 시민 집단을 사용한다.
+
+function buildingTiles(b){ return Math.max(1,(b.size||1)*(b.size||1)); }
+
+function citizenJobStats(){
+  const rs = buildings.filter(b=>b.type==='zone'&&b.zone==='R');
+  const cs = buildings.filter(b=>b.type==='zone'&&b.zone==='C');
+  const is = buildings.filter(b=>b.type==='zone'&&b.zone==='I');
+
+  // 건물 레벨과 토지가치가 높을수록 수용 인구/일자리 밀도가 상승한다.
+  const residentialCapacity = rs.reduce((sum,b)=>{
+    const lv=Math.max(1,b.level||1), land=Math.max(0,Math.min(100,city.land||50));
+    return sum + buildingTiles(b)*(45 + lv*28 + land*.12);
+  },0);
+
+  const commercialJobs = cs.reduce((sum,b)=>{
+    const lv=Math.max(1,b.level||1), land=Math.max(0,Math.min(100,city.land||50));
+    return sum + buildingTiles(b)*(8 + lv*7 + land*.04);
+  },0);
+
+  const industrialJobs = is.reduce((sum,b)=>{
+    const lv=Math.max(1,b.level||1);
+    // 교육 수준이 높을수록 같은 산업지역에서 더 많은 고급/전문 일자리가 발생한다.
+    return sum + buildingTiles(b)*(10 + lv*8) * (1 + Math.max(0,city.education-50)*0.004);
+  },0);
+
+  const serviceJobs = buildings.filter(b=>b.type==='facility').reduce((sum,b)=>{
+    const map={police:5,fire:5,school:8,hospital:12,park:1,
+      sewage:7,recycle:6,coal:10,gas:10,nuclear:16,pump:4,tower:3,treatment:8};
+    return sum+(map[b.id]||3);
+  },0);
+
+  const jobs = commercialJobs + industrialJobs + serviceJobs;
+  const pop=Math.max(0,city.pop||0);
+
+  // 실제 시민 수는 population을 기반으로 생성하지만, 저장 크기를 억제하기 위해
+  // 최대 600개의 대표 시민 집단을 사용한다.
+  const households=Math.max(0,Math.round(pop/2.2));
+  const workers=Math.max(0,Math.round(pop*.46));
+  const filled=Math.min(workers,jobs);
+  const unfilled=Math.max(0,workers-filled);
+  const employmentRate=workers?filled/workers*100:100;
+
+  // 소득은 교육 수준과 일자리 부족의 영향을 받는다.
+  const educationFactor=1+Math.max(0,(city.education||30)-50)*0.006;
+  const employmentFactor=employmentRate/100;
+  const avgIncome=Math.max(900,Math.round((1800 + (city.land||50)*8)*educationFactor*employmentFactor));
+
+  city.jobs={R:0,C:Math.round(commercialJobs),I:Math.round(industrialJobs),
+    total:Math.round(jobs),filled:Math.round(filled),unfilled:Math.round(unfilled)};
+  city.households=households;
+  city.workers=workers;
+  city.avgIncome=avgIncome;
+  city.employmentRate=employmentRate;
+
+  // 도시 인구의 실제 취업 상태가 수요/행복에 연결된다.
+  city.employmentRate=Math.max(0,Math.min(100,employmentRate));
+
+  return {
+    residentialCapacity, commercialJobs, industrialJobs, serviceJobs,
+    jobs, pop, households, workers, filled, unfilled, employmentRate, avgIncome
+  };
+}
+
+function citizenSystemEffects(){
+  const s=citizenJobStats();
+  const capacity=s.residentialCapacity;
+  const housingPressure=capacity>0?s.pop/capacity:1;
+  const jobPressure=s.workers>0?s.jobs/s.workers:1;
+
+  // 일자리 부족 → 이주/성장 둔화
+  const employmentPenalty=Math.max(0,50-s.employmentRate)*0.12;
+
+  // 주거 수용력 부족 → 성장 제한
+  const housingPenalty=Math.max(0,housingPressure-.92)*18;
+
+  // 고용률과 소득은 행복도와 상업 수요에 연결
+  city.employmentRate=Math.max(0,Math.min(100,s.employmentRate));
+  return {
+    ...s,
+    housingPressure,
+    jobPressure,
+    employmentPenalty,
+    housingPenalty
+  };
+}
+
+function updateCitizenJobSystem(){
+  return citizenSystemEffects();
+}
+
+// 시민/일자리 정보 패널
+function renderCitizenInfo(b){
+  const s=citizenSystemEffects();
+  if(!b) return;
+  const role=b.zone==='R'?'주거':b.zone==='C'?'상업':'공업';
+  const tiles=buildingTiles(b), lv=Math.max(1,b.level||1);
+  let value=0;
+  if(b.zone==='R') value=Math.round(tiles*(45+lv*28+(city.land||50)*.12));
+  if(b.zone==='C') value=Math.round(tiles*(8+lv*7+(city.land||50)*.04));
+  if(b.zone==='I') value=Math.round(tiles*(10+lv*8)*(1+Math.max(0,(city.education||30)-50)*.004));
+  const label=b.zone==='R'?'수용 인구':'일자리';
+  return `${role} · ${label} ${value.toLocaleString()}명`;
+}
+
+// ============================================================
+// 시민 출퇴근 → 도로별 교통량 → 차량 → 도로 혼잡 시각화 V15
+// ============================================================
+// 시민을 한 명씩 경로 탐색하지 않고, 주거/직장 건물 단위의 통근 그룹을
+// 대표 차량으로 샘플링하여 성능을 유지하면서도 실제 도로별 혼잡이 보이게 한다.
+let commuteTrips=[];
+let roadTraffic={};
+let commuteDirty=true;
+
+function roadKey(x,y){ return x+','+y; }
+function nearestRoad(x,y){
+  let best=null,bd=999;
+  for(let r=1;r<=6;r++){
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      if(Math.abs(dx)!==r&&Math.abs(dy)!==r)continue;
+      const xx=x+dx,yy=y+dy;
+      if(grid[yy]?.[xx]?.type==='road'){
+        const d=Math.abs(dx)+Math.abs(dy);
+        if(d<bd){bd=d;best={x:xx,y:yy};}
+      }
+    }
+    if(best)break;
+  }
+  return best;
+}
+function findRoadPath(start,end,maxNodes=1800){
+  if(!start||!end)return [];
+  if(start.x===end.x&&start.y===end.y)return [{x:start.x,y:start.y}];
+  const q=[start], prev=new Map(), seen=new Set([roadKey(start.x,start.y)]);
+  let qi=0,found=false;
+  while(qi<q.length&&qi<maxNodes){
+    const cur=q[qi++];
+    for(const d of ['n','s','e','w']){
+      const nx=cur.x+DIRV[d].dx,ny=cur.y+DIRV[d].dy;
+      if(grid[ny]?.[nx]?.type!=='road')continue;
+      const k=roadKey(nx,ny); if(seen.has(k))continue;
+      seen.add(k); prev.set(k,cur); q.push({x:nx,y:ny});
+      if(nx===end.x&&ny===end.y){found=true;qi=q.length;break;}
+    }
+  }
+  if(!found)return [];
+  const path=[];let cur=end;
+  while(cur){path.push(cur);if(cur.x===start.x&&cur.y===start.y)break;cur=prev.get(roadKey(cur.x,cur.y));}
+  path.reverse(); return path;
+}
+function buildCommuteGroups(){
+  commuteTrips=[]; roadTraffic={};
+  const homes=buildings.filter(b=>b.type==='zone'&&b.zone==='R');
+  const works=buildings.filter(b=>b.type==='zone'&&(b.zone==='C'||b.zone==='I'));
+  if(!homes.length||!works.length)return;
+  const samples=Math.min(180,Math.max(12,Math.round(city.pop/90)));
+  for(let i=0;i<samples;i++){
+    const hb=homes[i%homes.length];
+    const wb=works[(i*7+Math.floor(i/3))%works.length];
+    const workers=Math.max(1,Math.round((buildingTiles(hb)*18)*(hb.level||1)/Math.max(1,homes.length)));
+    const home=nearestRoad(hb.x,hb.y),work=nearestRoad(wb.x,wb.y);
+    const path=findRoadPath(home,work);
+    if(path.length<2)continue;
+    const group=Math.max(1,Math.round(workers*samples/Math.max(1,city.jobs?.filled||workers)));
+    commuteTrips.push({home:{x:hb.x,y:hb.y},work:{x:wb.x,y:wb.y},path,group,time:path.length*1.7});
+    for(const pt of path){const k=roadKey(pt.x,pt.y);roadTraffic[k]=(roadTraffic[k]||0)+group;}
+  }
+  let total=0,weighted=0,maxLoad=0;
+  Object.values(roadTraffic).forEach(v=>{total+=v;maxLoad=Math.max(maxLoad,v);});
+  commuteTrips.forEach(t=>weighted+=t.time*t.group);
+  const avgTime=total?weighted/Math.max(1,total):0;
+  city.commute={trips:commuteTrips.reduce((a,t)=>a+t.group,0),avgTime:avgTime,congestion:Math.min(99,maxLoad/18*100),loads:roadTraffic,activeCars:0};
+  commuteDirty=false;
+}
+function updateCommuteTraffic(){
+  if(commuteDirty||!city.commute||city.month%2===1)buildCommuteGroups();
+  const rs=roadStats(), cap=Math.max(1,rs.avgLanes*3.2);
+  let maxRatio=0;
+  for(const k in roadTraffic)maxRatio=Math.max(maxRatio,roadTraffic[k]/cap);
+  const commuterLoad=Math.min(99,maxRatio*48);
+  const base=commuterLoad + Math.min(25,Math.max(0,(city.pop/900)-rs.count*.015));
+  city.traffic=Math.max(0,Math.min(99,Math.round(base)));
+  // 혼잡은 시민의 실제 통근시간을 늘리고 행복에 반영된다.
+  const congestionFactor=Math.max(0,city.traffic-35)/65;
+  if(city.commute)city.commute.congestion=city.traffic;
+  return {maxRatio,congestionFactor};
+}
+function roadCongestion(x,y){
+  const load=roadTraffic[roadKey(x,y)]||0;
+  const rs=roadStats(), capacity=Math.max(3,(grid[y]?.[x]?.lanes||2)*3.2);
+  return Math.max(0,Math.min(100,load/capacity*100));
+}
+function spawnCommuteCar(trip){
+  if(!trip||trip.path.length<2)return null;
+  return {route:trip.path,index:0,t:Math.random(),color:['#d94b4b','#4f83c2','#d8b84d','#63a866'][Math.floor(Math.random()*4)]};
+}
+function syncCarsToCommute(){
+  if(!commuteTrips.length){cars=[];if(city.commute)city.commute.activeCars=0;return;}
+  const target=Math.min(110,Math.max(4,Math.round(commuteTrips.reduce((a,t)=>a+t.group,0)/7)));
+  cars=cars.filter(c=>c.route&&c.route.length>1&&c.index<c.route.length-1);
+  while(cars.length<target){
+    const t=commuteTrips[Math.floor(Math.random()*commuteTrips.length)];
+    const car=spawnCommuteCar(t);if(!car)break;cars.push(car);
+  }
+  if(cars.length>target)cars.length=target;
+  if(city.commute)city.commute.activeCars=cars.length;
+}
+function updateCommuteCars(dt){
+  cars.forEach(c=>{
+    if(!c.route||c.route.length<2)return;
+    const speed=Math.max(.45,1.35-(roadCongestion(c.route[c.index].x,c.route[c.index].y)/100)*.85);
+    c.t+=dt*speed/1.8;
+    if(c.t>=1){c.index++;c.t=0;if(c.index>=c.route.length-1){c.index=0;c.t=Math.random();}}
+  });
+}
+
 function develop(){
  let opts=[];
  for(let y=3;y<N-3;y++)for(let x=3;x<N-3;x++){
@@ -727,26 +960,7 @@ function syncCarsToRoads(){
   }
   if(cars.length>target) cars.length=target;
 }
-function updateCars(dt){
-  const speedPerTile=2.2; // 타일 하나를 통과하는 데 걸리는 dt 단위
-  cars.forEach(c=>{
-    c.t+=dt/speedPerTile;
-    if(c.t>=1){
-      // 다음 타일로 진입: 현재 칸에서 갈 수 있는 다음 방향을 고른다 (가능하면 왔던 길로 U턴하지 않음)
-      const nx=c.x+DIRV[c.dir].dx, ny=c.y+DIRV[c.dir].dy;
-      if(grid[ny]?.[nx]?.type!=='road'){
-        // 도로가 끊긴 경우(철거 등) 현재 위치에서 새로 방향을 찾음
-        const dirs=roadDirsAt(c.x,c.y);
-        if(!dirs.length){c.t=0;return;}
-        c.dir=dirs[Math.floor(Math.random()*dirs.length)];
-        c.t=0;return;
-      }
-      c.x=nx;c.y=ny;c.t=0;
-      const options=roadDirsAt(c.x,c.y).filter(d=>d!==OPP[c.dir]);
-      c.dir=(options.length?options:roadDirsAt(c.x,c.y))[Math.floor(Math.random()*(options.length?options.length:1))]||c.dir;
-    }
-  });
-}
+function updateCars(dt){ updateCommuteCars(dt); }
 
 function canBuildAt(x,y){
  if(x<0||y<0||x>=N||y>=N||grid[y][x].type==='road'||isOccupied(x,y))return false;
@@ -789,7 +1003,7 @@ function localHappiness(x,y){
  return Math.max(0,Math.min(100,city.happy + (land-50)*.20 + parks*2.5 + services*1.2 - pollution*.16));
 }
 function dataValue(x,y){
- if(dataMode==='traffic')return Math.min(99,Math.max(0,city.traffic+(nearRoad(x,y)?15:0)));
+ if(dataMode==='traffic')return grid[y]?.[x]?.type==='road'?roadCongestion(x,y):Math.min(99,city.traffic*.65);
  if(dataMode==='pollution')return localEnvironmental(x,y);
  if(dataMode==='land')return localLandValue(x,y);
  if(dataMode==='happiness')return localHappiness(x,y);
@@ -829,11 +1043,14 @@ function bulldozeAt(x,y){
  if(x<0||y<0||x>=N||y>=N)return false;
  const b=buildingAt(x,y);
  if(b){
-   const i=buildings.indexOf(b);buildings.splice(i,1);
-   footprint(b).forEach(({x:fx,y:fy})=>{
-     if(grid[fy]?.[fx]){grid[fy][fx].zone=null;grid[fy][fx].service=null;grid[fy][fx].power=false;grid[fy][fx].water=false;grid[fy][fx].type='grass';}
-   });
-   news(`${b.name||'건물'} 철거 완료.`);
+    const i=buildings.indexOf(b);
+    const refund=b.type==='facility'?Math.round((Number(b.cost)||0)*0.85):0;
+    buildings.splice(i,1);
+    footprint(b).forEach(({x:fx,y:fy})=>{
+      if(grid[fy]?.[fx]){grid[fy][fx].zone=null;grid[fy][fx].service=null;grid[fy][fx].environment=null;grid[fy][fx].power=false;grid[fy][fx].water=false;grid[fy][fx].type='grass';}
+    });
+    if(refund>0){city.money+=refund;news(`${b.name||'시설'} 철거 완료 — 설치비의 85%인 $${refund.toLocaleString()} 환급.`);}
+    else news(`${b.name||'건물'} 철거 완료.`);
    recalcUtilities();return true;
  }
  if(grid[y][x].type==='road'){
@@ -975,7 +1192,14 @@ function updateUI(){
  const shown전력=city.powerCap?Math.max(0,Math.round(100-powerPct)):'0';
  const shown수도=city.waterCap?Math.max(0,Math.round(100-waterPct)):'0';
  for(const [id,val] of [['pop',Math.round(city.pop).toLocaleString()],['money','$'+Math.max(0,Math.round(city.money)).toLocaleString()],['balance',(city.balance>=0?'+':'')+'$'+Math.round(city.balance).toLocaleString()],['happy',Math.round(city.happy)+'%'],['traffic',Math.round(city.traffic)+'%'],['pollution',Math.round(city.pollution)+'%'],['crime',Math.round(city.crime)+'%'],['education',Math.round(city.education)+'%'],['health',Math.round(city.health)+'%'],['land',Math.round(city.land)],['power',shown전력+'%'],['water',shown수도+'%']])document.getElementById(id).textContent=val;
- document.getElementById('date').textContent=`년차 ${city.year} — ${['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'][city.month-1]}`;
+ const cj=updateCitizenJobSystem();
+    const commute=updateCommuteTraffic();
+    if(commute.congestionFactor>0) city.happy=Math.max(20,city.happy-commute.congestionFactor*1.4);
+  const emp=document.getElementById('employment'), jobsEl=document.getElementById('jobs'), inc=document.getElementById('income');
+  if(emp)emp.textContent=Math.round(cj.employmentRate)+'%';
+  if(jobsEl)jobsEl.textContent=Math.round(cj.jobs).toLocaleString();
+  if(inc)inc.textContent='$'+Math.round(cj.avgIncome).toLocaleString();
+  document.getElementById('date').textContent=`년차 ${city.year} — ${['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'][city.month-1]}`;
  document.getElementById('rbar').style.width=Math.min(100,Math.max(5,taxDemand('R')+city.happy*.18-city.pollution*.10))+'%';
  document.getElementById('cbar').style.width=Math.min(100,Math.max(5,taxDemand('C')-city.traffic*.25+city.happy*.15))+'%';
  document.getElementById('ibar').style.width=Math.min(100,Math.max(5,taxDemand('I')-city.pollution*.35+city.happy*.08))+'%';
@@ -996,9 +1220,11 @@ function tick(){
    const residentGrowthFactor=0.55+0.45*taxDemand('R')/100;
    city.pop+=r*(shortage?0.15:.8)*residentGrowthFactor*(0.65+0.35*bd.welfare/100);
    const rs=roadStats();
-   // 도로가 넓고 도로·교통 예산이 충분할수록 교통 처리능력이 올라감
-   const capacityRelief=Math.max(0.45,1-(rs.avgLanes-2)*0.22*(0.65+0.35*bd.roads/100)*(0.65+0.35*bd.traffic/100));
-   city.traffic=Math.min(99,(18+(city.pop/1000)+ind*1.2)*capacityRelief);
+   commuteDirty=true;
+   updateCommuteTraffic();
+   const capacityRelief=Math.max(0.55,0.65+0.35*bd.roads/100*bd.traffic/100);
+   city.traffic=Math.min(99,city.traffic*capacityRelief);
+   updateCommuteTraffic();
    const envRelief=buildings.filter(b=>b.id==='sewage'||b.id==='recycle').reduce((a,b)=>a+(b.env||0),0);
    city.pollution=Math.max(0,Math.min(99,10+ind*2.2+city.traffic*.18+buildings.filter(b=>b.id==='coal').length*3-envRelief));
    const avgLand=Math.max(0,Math.min(100,54 + buildings.filter(b=>b.id==='park').length*1.8 - city.pollution*.28 + city.education*.10 + city.health*.08));
@@ -1007,12 +1233,20 @@ function tick(){
    const serviceBonus=svc.police*.035+svc.fire*.03+svc.education*.035+svc.health*.04+svc.park*.05;
    const adminWelfareBonus=(bd.admin-50)*.015+(bd.welfare-50)*.012;
    city.happy=Math.max(20,Math.min(95,70-city.traffic*.16-city.pollution*.10+serviceBonus+city.land*.08+city.education*.05+adminWelfareBonus-shortage));
-   const fin=calculateFinances();
+   const cj=updateCitizenJobSystem();
+    // 고용률이 낮으면 인구 증가가 둔화되고, 일자리가 충분하면 성장 여력이 생긴다.
+    const employmentGrowth=Math.max(0.45,Math.min(1.18,0.72+cj.employmentRate/220));
+    const housingGrowth=Math.max(0.45,Math.min(1.05,cj.residentialCapacity>0?Math.min(1,cj.residentialCapacity/Math.max(1,city.pop*1.05)):0.45));
+    const welfareGrowth=0.85+(budgetState().welfare/100)*0.15;
+    city.pop=Math.max(0,city.pop*(1+0.0035*employmentGrowth*housingGrowth*welfareGrowth)+
+      Math.max(0,cj.jobs-cj.workers)*0.08-
+      Math.max(0,cj.workers-cj.jobs)*0.05);
+    const fin=calculateFinances();
    city.balance=fin.monthlyNet;
    city.money+=city.balance;
    if(shortage===0&&Math.random()<.18)develop();
    updateCars(speed);
-   syncCarsToRoads();
+   syncCarsToCommute();
  }
  updateUI();draw();if(Math.random()<.08)news(`도시 소식: 인구 ${Math.round(city.pop).toLocaleString()}명 — 교통량 ${Math.round(city.traffic)}%.`);
 }
@@ -1114,9 +1348,32 @@ function calculateFinances(){
   const c=buildings.filter(b=>b.type==='zone'&&b.zone==='C').reduce((a,b)=>a+tiles(b),0);
   const ind=buildings.filter(b=>b.type==='zone'&&b.zone==='I').reduce((a,b)=>a+tiles(b),0);
   const landBase=Math.max(0,city.land||50);
-  const revenue=Math.max(0,r*(city.taxR/7)*9+c*(city.taxC/6)*22+ind*(city.taxI/5)*20+(r+c+ind)*landBase*(city.taxLand/100)*0.55+Math.max(0,city.pop)*city.taxSpecial*0.004);
-  const bd=budgetState(), fm=buildings.filter(b=>b.type==='facility').reduce((a,b)=>a+(b.maint||0),0), zm=buildings.filter(b=>b.type==='zone'&&b.maint).reduce((a,b)=>a+(b.maint||0),0), pf=Math.max(1,city.pop/1000);
-  const bases={police:fm*.16+pf*7,fire:fm*.13+pf*6,education:fm*.16+pf*8,health:fm*.17+pf*7,traffic:zm*.04+pf*4,roads:roadStats().count*.8,power:buildings.filter(b=>['coal','gas','nuclear'].includes(b.id)).reduce((a,b)=>a+(b.maint||0),0)+pf*3,water:buildings.filter(b=>['pump','tower','treatment'].includes(b.id)).reduce((a,b)=>a+(b.maint||0),0)+pf*3,parks:buildings.filter(b=>b.id==='park').reduce((a,b)=>a+(b.maint||0),0)+pf*2,admin:pf*6+zm*.04,welfare:pf*5};
+  // 기본 세율(R7/C6/I5)에서도 정상적인 도시가 흑자를 낼 수 있도록 세수 구조를 조정한다.
+  const revenue=Math.max(0,
+    r*(city.taxR/7)*14 +
+    c*(city.taxC/6)*30 +
+    ind*(city.taxI/5)*28 +
+    (r+c+ind)*landBase*(city.taxLand/100)*0.35 +
+    Math.max(0,city.pop)*city.taxSpecial*0.0025
+  );
+  const bd=budgetState(), pf=Math.max(1,city.pop/1000), rc=roadStats().count;
+  const maintBy=id=>buildings.filter(b=>b.type==='facility'&&b.id===id).reduce((a,b)=>a+(b.maint||0),0);
+  const powerMaint=buildings.filter(b=>['coal','gas','nuclear'].includes(b.id)).reduce((a,b)=>a+(b.maint||0),0);
+  const waterMaint=buildings.filter(b=>['pump','tower','treatment'].includes(b.id)).reduce((a,b)=>a+(b.maint||0),0);
+  // 기존에는 모든 시설 유지비(fm)가 경찰/소방/교육 등 여러 항목에 중복 반영되어 세출이 과도하게 계산되었다.
+  const bases={
+    police:maintBy('police')+pf*3.0,
+    fire:maintBy('fire')+pf*2.5,
+    education:maintBy('school')+pf*3.5,
+    health:maintBy('hospital')+pf*3.0,
+    traffic:pf*1.8+rc*.35,
+    roads:rc*.55,
+    power:powerMaint+pf*1.2,
+    water:waterMaint+pf*1.2,
+    parks:maintBy('park')+pf*1.5,
+    admin:pf*3.0,
+    welfare:pf*2.5
+  };
   const expenses=Object.keys(bases).reduce((a,k)=>a+bases[k]*(bd[k]/100),0);
   return {revenue,expenses,monthlyNet:revenue-expenses,bases,r,c,ind};
 }
