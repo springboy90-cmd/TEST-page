@@ -938,18 +938,57 @@ function updateCommuteCars(dt){
 function develop(){
  let opts=[];
  for(let y=3;y<N-3;y++)for(let x=3;x<N-3;x++){
-   let g=grid[y][x];
-   if(!g.zone||isOccupied(x,y)||!nearRoad(x,y)||!is전력ed수도ed(x,y))continue;
-   opts.push({x,y,zone:g.zone});
+  let g=grid[y][x];
+  if(!g.zone||isOccupied(x,y)||!nearRoad(x,y)||!is전력ed수도ed(x,y))continue;
+  opts.push({x,y,zone:g.zone});
  }
- if(!opts.length)return;
- let level=city.pop>50000?5:city.pop>10000?4:city.pop>3000?3:city.pop>1500?2:1;
- const weighted=[];
- opts.forEach(o=>{const w=taxDemand(o.zone)*(o.zone==='R'?1.1:o.zone==='C'?(1+city.happy/180):(1+Math.max(0,50-city.pollution)/180));for(let i=0;i<Math.max(1,Math.round(w/12));i++)weighted.push(o)});
- let q=weighted[Math.floor(Math.random()*weighted.length)]||opts[0];
- if(Math.random()>taxDemand(q.zone)/100)return;
- buildings.push({...q,level,type:'zone',size:1});
- recalcUtilities();
+ if(!opts.length)return 0;
+ const cj=updateCitizenJobSystem();
+ const housingRatio=cj.residentialCapacity/Math.max(1,city.pop);
+ const housingNeed=Math.max(0,Math.min(2.5,1.25-housingRatio));
+ const jobNeed=Math.max(0,Math.min(2.0,(cj.workers-cj.jobs)/Math.max(1,cj.workers)));
+ let built=0;
+ const maxBuilds=city.pop>=50000?4:city.pop>=30000?3:city.pop>=10000?2:1;
+ const baseLevel=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:city.pop>=3000?2:1;
+ for(let n=0;n<maxBuilds;n++){
+  if(!opts.length)break;
+  const weighted=[];
+  opts.forEach(o=>{
+    let w=taxDemand(o.zone);
+    if(o.zone==='R') w*=1.15+housingNeed*2.8+jobNeed*.35;
+    else if(o.zone==='C') w*=1+city.happy/150;
+    else w*=1+Math.max(0,50-city.pollution)/150;
+    for(let i=0;i<Math.max(1,Math.round(w/10));i++)weighted.push(o);
+  });
+  let q=weighted[Math.floor(Math.random()*weighted.length)]||opts[0];
+  const demandBoost=q.zone==='R'?Math.min(1.35,1+housingNeed*.65):1;
+  if(Math.random()>Math.min(1,taxDemand(q.zone)/100*demandBoost)){opts=opts.filter(o=>o.x!==q.x||o.y!==q.y);continue;}
+  buildings.push({...q,level:baseLevel,type:'zone',size:1,age:0}); built++;
+  opts=opts.filter(o=>o.x!==q.x||o.y!==q.y);
+ }
+ recalcUtilities(); return built;
+}
+
+function upgradeResidentialBuildings(){
+  const cj=citizenSystemEffects();
+  const pressure=city.pop/Math.max(1,cj.residentialCapacity);
+  const candidates=buildings.filter(b=>b.type==='zone'&&b.zone==='R'&&(b.level||1)<5);
+  if(!candidates.length)return 0;
+  const maxUpgrades=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:2;
+  const target=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:2;
+  let upgraded=0;
+  candidates.sort((a,b)=>(a.level||1)-(b.level||1));
+  for(const b of candidates){
+    if(upgraded>=maxUpgrades)break;
+    const lv=b.level||1; if(lv>=target)continue;
+    const land=Math.max(0,Math.min(100,city.land||50));
+    const threshold=lv===1?52:lv===2?60:lv===3?68:76;
+    const eligible=(city.happy>=threshold||land>=threshold-4||pressure>0.72);
+    if(!eligible)continue;
+    const chance=pressure>0.92?0.72:pressure>0.78?0.48:0.24;
+    if(Math.random()<chance){b.level=lv+1;b.age=0;upgraded++;}
+  }
+  return upgraded;
 }
 function nearRoad(x,y){for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(grid[yy]?.[xx]?.type==='road')return true;return false}
 // 도로 총량/평균 차선 통계 (교통량 계산에 사용)
@@ -1352,6 +1391,7 @@ function tick(){
     city.pop=Math.max(0,city.pop*(1+0.0070*employmentGrowth*housingGrowth*welfareGrowth)+
       Math.max(0,cj.jobs-cj.workers)*0.08-
       Math.max(0,cj.workers-cj.jobs)*0.05);
+    upgradeResidentialBuildings();
     // 프로토타입에서는 주거 공급이 충분하면 10,000명 이후에도 자연스럽게 성장하도록
     // 인구 상한을 두지 않는다. 대신 주거 수용력 부족만 성장률을 낮춘다.
     const fin=calculateFinances();
