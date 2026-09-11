@@ -104,6 +104,7 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
   <button class="tool active" data-tool="select">↖ 선택<small>건물/시설 정보</small></button>
   <button class="tool" data-tool="road">▰ 도로<small>드래그하여 건설</small></button>
   <button class="tool" data-tool="widen">⬌ 차선확장<small>2차선→4차선 ($350)</small></button>
+  <button class="tool" data-tool="highway">▰ 고가도로<small>6차선 · 지상도로 위/빈 부지 건설 ($120/칸)</small></button>
   <button class="tool" data-tool="bulldoze">⌫ 철거<small>잘못 만든 시설 삭제</small></button>
   <button class="tool" data-tool="move">↔ 건물이동<small>건물을 다른 칸으로 이동</small></button>
   <button class="tool" data-tool="zoneR">주거 R<small>주거지역 지정</small></button>
@@ -375,6 +376,7 @@ function drawRoadLamp(p,s,wide){
 function drawRoad(x,y,p,s){
   const lanes=grid[y][x].lanes||2;
   const wide=lanes>=4;
+  const elevated=!!grid[y][x].elevated;
 
   // drawTile의 그리드와 정확히 동일한 한 칸
   const top=s*.41;
@@ -382,7 +384,7 @@ function drawRoad(x,y,p,s){
 
   // 도로 타일
   ctx.save();
-  ctx.fillStyle=wide ? '#4f5251' : '#4a4d4c';
+  ctx.fillStyle=elevated ? '#3d4145' : (wide ? '#4f5251' : '#4a4d4c');
   ctx.beginPath();
   ctx.moveTo(p.x,p.y-top);
   ctx.lineTo(p.x+side,p.y);
@@ -421,9 +423,19 @@ function drawRoad(x,y,p,s){
   // 향후 도로 선택/삭제 등의 기존 로직과 호환되는 단순 분류값
   grid[y][x].roadShape='기본_직선도로';
 
-  // 모든 도로 타일에 가로등 1개.
-  // lanes 값으로 일반도로/확장도로 외형을 완전히 분리한다.
-  drawRoadLamp(p,s,wide);
+  // 고가도로: 지상 도로와 구별되는 상판/기둥을 표시한다.
+  if(elevated){
+    ctx.save();
+    ctx.strokeStyle='#a8adb0'; ctx.lineWidth=Math.max(1,zoom*.7);
+    ctx.beginPath(); ctx.moveTo(p.x-side*.72,p.y-top*.02); ctx.lineTo(p.x+side*.72,p.y+top*.02); ctx.stroke();
+    ctx.fillStyle='#70767a';
+    ctx.fillRect(p.x-s*.045,p.y+top*.55,s*.09,s*.34);
+    ctx.fillRect(p.x-s*.045,p.y-top*.18,s*.09,s*.28);
+    ctx.restore();
+  }
+
+  // 모든 도로 타일에 가로등 1개. 고가도로는 가로등을 조금 더 밝게 표시한다.
+  drawRoadLamp(p,s,wide||elevated);
 }
 
 function drawTile(x,y){
@@ -818,23 +830,32 @@ function nearestRoad(x,y){
   }
   return best;
 }
-function findRoadPath(start,end,maxNodes=1800){
+function findRoadPath(start,end,maxNodes=3000){
   if(!start||!end)return [];
   if(start.x===end.x&&start.y===end.y)return [{x:start.x,y:start.y}];
-  const q=[start], prev=new Map(), seen=new Set([roadKey(start.x,start.y)]);
-  let qi=0,found=false;
-  while(qi<q.length&&qi<maxNodes){
-    const cur=q[qi++];
+  // 통근 경로는 고가도로/확장도로를 선호한다. 단순 BFS보다 실제 도로 용량을 반영한다.
+  const open=[{x:start.x,y:start.y,cost:0}], dist=new Map([[roadKey(start.x,start.y),0]]), prev=new Map();
+  let processed=0;
+  while(open.length&&processed++<maxNodes){
+    open.sort((a,b)=>a.cost-b.cost);
+    const cur=open.shift();
+    const ck=roadKey(cur.x,cur.y);
+    if(cur.cost!==dist.get(ck))continue;
+    if(cur.x===end.x&&cur.y===end.y)break;
     for(const d of ['n','s','e','w']){
       const nx=cur.x+DIRV[d].dx,ny=cur.y+DIRV[d].dy;
-      if(grid[ny]?.[nx]?.type!=='road')continue;
-      const k=roadKey(nx,ny); if(seen.has(k))continue;
-      seen.add(k); prev.set(k,cur); q.push({x:nx,y:ny});
-      if(nx===end.x&&ny===end.y){found=true;qi=q.length;break;}
+      const cell=grid[ny]?.[nx];
+      if(cell?.type!=='road')continue;
+      const lanes=Math.max(2,cell.lanes||2);
+      const step=(cell.elevated?0.72:1.0) * (lanes>=6?0.82:lanes>=4?0.90:1.0);
+      const nk=roadKey(nx,ny),nc=cur.cost+step;
+      if(!dist.has(nk)||nc<dist.get(nk)){
+        dist.set(nk,nc); prev.set(nk,{x:cur.x,y:cur.y}); open.push({x:nx,y:ny,cost:nc});
+      }
     }
   }
-  if(!found)return [];
-  const path=[];let cur=end;
+  const ek=roadKey(end.x,end.y); if(!dist.has(ek))return [];
+  const path=[]; let cur=end;
   while(cur){path.push(cur);if(cur.x===start.x&&cur.y===start.y)break;cur=prev.get(roadKey(cur.x,cur.y));}
   path.reverse(); return path;
 }
@@ -863,11 +884,17 @@ function buildCommuteGroups(){
   commuteDirty=false;
 }
 function updateCommuteTraffic(){
-  if(commuteDirty||!city.commute||city.month%2===1)buildCommuteGroups();
-  const rs=roadStats(), cap=Math.max(1,rs.avgLanes*3.2);
-  let maxRatio=0;
-  for(const k in roadTraffic)maxRatio=Math.max(maxRatio,roadTraffic[k]/cap);
-  const commuterLoad=Math.min(99,maxRatio*48);
+  if(commuteDirty||!city.commute)buildCommuteGroups();
+  const rs=roadStats();
+  let maxRatio=0, weightedRatio=0, loadCount=0;
+  for(const k in roadTraffic){
+    const [sx,sy]=k.split(',').map(Number), cell=grid[sy]?.[sx];
+    const cap=Math.max(4,(cell?.lanes||2)*5.5*(cell?.elevated?1.18:1));
+    const ratio=roadTraffic[k]/cap;
+    maxRatio=Math.max(maxRatio,ratio); weightedRatio+=Math.min(1.5,ratio); loadCount++;
+  }
+  const avgRatio=loadCount?weightedRatio/loadCount:0;
+  const commuterLoad=Math.min(99,maxRatio*42 + avgRatio*18);
   const base=commuterLoad + Math.min(25,Math.max(0,(city.pop/900)-rs.count*.015));
   city.traffic=Math.max(0,Math.min(99,Math.round(base)));
   // 혼잡은 시민의 실제 통근시간을 늘리고 행복에 반영된다.
@@ -877,8 +904,12 @@ function updateCommuteTraffic(){
 }
 function roadCongestion(x,y){
   const load=roadTraffic[roadKey(x,y)]||0;
-  const rs=roadStats(), capacity=Math.max(3,(grid[y]?.[x]?.lanes||2)*3.2);
-  return Math.max(0,Math.min(100,load/capacity*100));
+  const cell=grid[y]?.[x];
+  if(cell?.type!=='road') return 0;
+  // 혼잡도와 실제 용량 계산을 동일한 기준으로 통일한다.
+  const capacity=Math.max(4,(cell.lanes||2)*5.5*(cell.elevated?1.18:1));
+  const ratio=load/capacity;
+  return Math.max(0,Math.min(100,Math.round(Math.pow(Math.min(1.8,ratio)/1.25,1.15)*100)));
 }
 function spawnCommuteCar(trip){
   if(!trip||trip.path.length<2)return null;
@@ -927,7 +958,7 @@ function roadStats(){
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){
     if(grid[y][x].type==='road'){count++;laneSum+=(grid[y][x].lanes||2);}
   }
-  return {count, avgLanes: count?laneSum/count:2};
+  return {count, avgLanes: count?laneSum/count:2, capacity: laneSum*5.5};
 }
 // ===== 차량 시스템: 실제 도로망을 따라 이동 =====
 function roadDirsAt(x,y){
@@ -1036,9 +1067,38 @@ function widenRoadAt(x,y){
  if(city.money<WIDEN_COST){news('차선 확장 자금이 부족합니다.');return false;}
  city.money-=WIDEN_COST;
  g.lanes=4;
+ commuteDirty=true;
+ syncCarsToCommute();
  news(`도로 확장 완료 — ${x}, ${y} · 2차선 → 4차선 (비용 $${WIDEN_COST.toLocaleString()}).`);
  return true;
 }
+const HIGHWAY_COST=120;
+function buildElevatedRoadAt(x,y){
+  if(x<0||y<0||x>=N||y>=N)return false;
+  const g=grid[y][x];
+  if(buildingAt(x,y)){news('건물 위에는 고가도로를 건설할 수 없습니다.');return false;}
+  if(g.type==='forest'){news('숲에는 고가도로를 건설할 수 없습니다.');return false;}
+  if(g.elevated){news('이미 고가도로가 설치된 구간입니다.');return false;}
+  if(city.money<HIGHWAY_COST){news('고가도로 건설 자금이 부족합니다.');return false;}
+
+  const wasRoad=g.type==='road';
+  city.money-=HIGHWAY_COST;
+  // 기존 지상도로 칸을 선택하면 그 도로 위에 고가 상판을 올린다.
+  // 빈 칸이면 새로운 6차선 고가도로를 만든다.
+  g.type='road';
+  g.zone=null;
+  g.lanes=6;
+  g.elevated=true;
+  g.highway=true;
+  g.baseRoad=wasRoad;
+  commuteDirty=true;
+  news(`${wasRoad?'기존 도로 상부 ':'새 노선 '}고가도로 건설 완료 — 6차선 · $${HIGHWAY_COST.toLocaleString()}`);
+  recalcUtilities();
+  draw();
+  updateUI();
+  return true;
+}
+
 function bulldozeAt(x,y){
  if(x<0||y<0||x>=N||y>=N)return false;
  const b=buildingAt(x,y);
@@ -1054,9 +1114,9 @@ function bulldozeAt(x,y){
    recalcUtilities();return true;
  }
  if(grid[y][x].type==='road'){
-   grid[y][x].type='grass';grid[y][x].zone=null;grid[y][x].service=null;grid[y][x].lanes=2;
+   grid[y][x].type='grass';grid[y][x].zone=null;grid[y][x].service=null;grid[y][x].lanes=2;grid[y][x].elevated=false; commuteDirty=true;
    news(`도로 철거 완료 — ${x}, ${y}`);
-   syncCarsToRoads();
+   syncCarsToCommute();
    recalcUtilities();return true;
  }
  if(grid[y][x].zone){
@@ -1096,16 +1156,37 @@ function canMoveBuilding(b,x,y){
  return true;
 }
 function moveBuildingAt(x,y){
- const b=buildingAt(x,y);
+ const target=buildingAt(x,y);
  if(!movingBuilding){
-   if(!b){news('이동할 건물을 먼저 클릭하세요.');return false;}
-   movingBuilding=b;selected={x,y};news(`${b.name||'건물'} 선택 — 이동할 빈 부지를 클릭하세요.`);return true;
+   if(!target){news('이동할 건물을 먼저 클릭하세요.');return false;}
+   // 건물 자체가 가지고 있던 시각 속성을 고정해 두어, 이동 후에도
+   // 원래 건물의 R/C/I 색상과 레벨별 외형이 그대로 유지되도록 한다.
+   movingBuilding=target;
+   movingBuilding._moveVisualZone=movingBuilding.zone;
+   movingBuilding._moveVisualLevel=movingBuilding.level;
+   selected={x,y};
+   news(`${target.name||'건물'} 선택 — 이동할 빈 부지를 클릭하세요.`);
+   draw();
+   return true;
  }
  if(!canMoveBuilding(movingBuilding,x,y)){news('이 위치에는 건물을 이동할 수 없습니다. 도로·숲·다른 건물과 겹칠 수 없습니다.');return false;}
  const mb=movingBuilding;
+ const oldX=mb.x, oldY=mb.y;
+ const visualZone=mb._moveVisualZone||mb.zone;
+ const visualLevel=mb._moveVisualLevel||mb.level;
  mb.x=x;mb.y=y;
- movingBuilding=null;selected={x,y};
- recalcUtilities(); news(`${b.name||'건물'} 이동 완료 — ${x}, ${y}`); return true;
+ // 이동 전 건물의 시각 속성을 유지한다.
+ mb.zone=visualZone;
+ mb.level=visualLevel;
+ delete mb._moveVisualZone;
+ delete mb._moveVisualLevel;
+ movingBuilding=null;
+ selected={x,y};
+ recalcUtilities();
+ draw();
+ updateUI();
+ news(`${mb.name||'건물'} 이동 완료 — ${oldX}, ${oldY} → ${x}, ${y}`);
+ return true;
 }
 
 function placeAt(x,y){
@@ -1115,7 +1196,13 @@ function placeAt(x,y){
  else if(tool==='move'){moveBuildingAt(x,y);}
  else if(tool==='road'){
    if(occupied){news('이미 건물이나 시설이 있는 칸에는 도로를 놓을 수 없습니다. 먼저 철거하세요.');}
-   else if(grid[y][x].type!=='road'){grid[y][x].type='road';grid[y][x].lanes=2;city.money-=20;syncCarsToRoads();}
+   else if(grid[y][x].type!=='road'){
+     grid[y][x].type='road';grid[y][x].lanes=2;grid[y][x].elevated=false;
+     city.money-=20;commuteDirty=true;syncCarsToCommute();
+   }
+ }
+ else if(tool==='highway'){
+   buildElevatedRoadAt(x,y);
  }
  else if(tool==='widen'){
    widenRoadAt(x,y);
@@ -1146,7 +1233,7 @@ function inspect(x,y){
  ${b.maint?`<div class="row"><span>유지비</span><b>$${b.maint}/mo</b></div>`:''}
  <div class="row"><span>전력</span><b>${is전력ed수도ed(x,y)?'연결됨':'공급 부족'}</b></div>
  <div class="row"><span>수도</span><b>${is전력ed수도ed(x,y)?'연결됨':'공급 부족'}</b></div>`:
- `<b>${g.type.toUpperCase()}</b>${g.type==='road'?`<div class="row"><span>차선</span><b>${g.lanes||2}차선</b></div>`:''}<div class="row"><span>용도지역</span><b>${g.zone||'없음'}</b></div>${g.service?'<div class="row"><span>서비스</span><b>'+g.service+'</b></div>':''}`;
+ `<b>${g.type.toUpperCase()}</b>${g.type==='road'?`<div class="row"><span>차선</span><b>${g.lanes||2}차선</b></div>${g.elevated?'<div class="row"><span>도로 형태</span><b>고가도로</b></div>':''}`:''}<div class="row"><span>용도지역</span><b>${g.zone||'없음'}</b></div>${g.service?'<div class="row"><span>서비스</span><b>'+g.service+'</b></div>':''}`;
 }
 
 function budgetState(){
