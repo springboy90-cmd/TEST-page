@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>도시경영 시뮬레이션</title>
+<title>한국형 클래식 도시경영 시뮬레이션</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -160,7 +160,7 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let W=0,H=0,camX=0,camY=0,zoom=1,tool='select',speed=1,dataMode='',running=true,drag=false,last=null;
 let buildType=null, ghost={x:-1,y:-1}, selected=null, panActive=false, panStart=null, camStart=null, touchMoved=false;
-const N=60,T=18;
+const N=60,T=(innerWidth<=700?32:(innerWidth<=1100?23:18));
 const grid=Array.from({length:N},()=>Array.from({length:N},()=>({
   type:'grass',zone:null,level:0, power:false, water:false, service:null, lanes:2
 })));
@@ -255,6 +255,8 @@ seed();
 
 function worldToScreen(x,y){let s=T*zoom;return {x:(x-y)*s*.82+W/2+camX,y:(x+y)*s*.41+H/2+camY}}
 function screenToWorld(px,py){let s=T*zoom,a=(px-W/2-camX)/(.82*s),b=(py-H/2-camY)/(.41*s);return {x:(a+b)/2,y:(b-a)/2}}
+function canvasPoint(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+function worldCellFromEvent(e){const p=canvasPoint(e),q=screenToWorld(p.x,p.y);return {x:Math.floor(q.x),y:Math.floor(q.y),px:p.x,py:p.y};}
 
 
 
@@ -1032,100 +1034,68 @@ function endPan(){
 function isPaintTool(){return tool==='road'||tool.startsWith('zone')||tool==='bulldoze';}
 
 canvas.addEventListener('mousedown',e=>{
- // 건설비 modes use drag painting. Select mode uses drag for camera panning.
- if(isPaintTool()){
-   drag=true;touchMoved=false;
-   const q=screenToWorld(e.offsetX,e.offsetY);
-   placeAt(Math.floor(q.x),Math.floor(q.y));
- }else{
-   beginPan(e.clientX,e.clientY);
- }
+ if(isPaintTool()){drag=true;touchMoved=false;const q=worldCellFromEvent(e);placeAt(q.x,q.y);}
+ else beginPan(e.clientX,e.clientY);
 });
 canvas.addEventListener('mousemove',e=>{
- const q=screenToWorld(e.offsetX,e.offsetY),tx=Math.floor(q.x),ty=Math.floor(q.y);ghost={x:tx,y:ty};
+ const q=worldCellFromEvent(e),tx=q.x,ty=q.y;ghost={x:tx,y:ty};
  if(isPaintTool()&&drag){placeAt(tx,ty);}
  else if(panActive){movePan(e.clientX,e.clientY);return;}
- if(tx>=0&&ty>=0&&tx<N&&ty<N){
-   const tt=document.getElementById('tooltip');
-   tt.style.display='block';tt.style.left=(e.offsetX+12)+'px';tt.style.top=(e.offsetY+12)+'px';
-   tt.textContent=`${tx}, ${ty} · ${grid[ty][tx].zone||grid[ty][tx].type}`;
- }
+ if(tx>=0&&ty>=0&&tx<N&&ty<N){const tt=document.getElementById('tooltip');tt.style.display='block';tt.style.left=(q.px+12)+'px';tt.style.top=(q.py+12)+'px';tt.textContent=`${tx}, ${ty} · ${grid[ty][tx].zone||grid[ty][tx].type}`;}
  draw();
 });
 canvas.addEventListener('mouseup',e=>{
- if(isPaintTool()){drag=false;}
- else if(panActive){
-   if(!touchMoved){
-     const q=screenToWorld(e.offsetX,e.offsetY);placeAt(Math.floor(q.x),Math.floor(q.y));
-   }
-   endPan();
- }
+ if(isPaintTool()) drag=false;
+ else if(panActive){if(!touchMoved){const q=worldCellFromEvent(e);placeAt(q.x,q.y);}endPan();}
 });
 canvas.addEventListener('mouseleave',()=>{drag=false;endPan();document.getElementById('tooltip').style.display='none'});
 
 // Desktop: wheel zoom is cursor-centered. Mobile: one-finger construction,
 // one-finger camera movement in SELECT, two-finger pinch zoom + camera movement.
-let pinchStartDist=0,pinchStartZoom=1,pinchStartMid=null,pinchStartCam=null;
+let pinchStartDist=0,pinchStartZoom=1,pinchStartMid=null,pinchAnchorWorld=null,pinchStartCam=null;
+let touchStartPoint=null,touchLastPoint=null;
 canvas.addEventListener('touchstart',e=>{
  e.preventDefault();
- const r=canvas.getBoundingClientRect();
  if(e.touches.length===2){
-   pinchStartDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-   pinchStartZoom=zoom;
-   pinchStartMid={x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2};
-   pinchStartCam={x:camX,y:camY};
-   drag=false;endPan();
+  const a=e.touches[0],b=e.touches[1];
+  pinchStartDist=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);pinchStartZoom=zoom;
+  pinchStartMid={x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2};
+  const mp=canvasPoint({clientX:pinchStartMid.x,clientY:pinchStartMid.y});pinchAnchorWorld=screenToWorld(mp.x,mp.y);
+  drag=false;endPan();touchStartPoint=null;touchLastPoint=null;
  }else if(e.touches.length===1){
-   const t=e.touches[0];
-   if(isPaintTool()){
-     drag=true;touchMoved=false;
-     const q=screenToWorld(t.clientX-r.left,t.clientY-r.top);
-     placeAt(Math.floor(q.x),Math.floor(q.y));
-   }else{
-     beginPan(t.clientX,t.clientY);
-   }
+  const p=e.touches[0];touchStartPoint={x:p.clientX,y:p.clientY};touchLastPoint=touchStartPoint;touchMoved=false;
+  if(isPaintTool()){drag=false;}else beginPan(p.clientX,p.clientY);
  }
 },{passive:false});
-
 canvas.addEventListener('touchmove',e=>{
  e.preventDefault();
- const r=canvas.getBoundingClientRect();
  if(e.touches.length===2){
-   const a=e.touches[0],b=e.touches[1];
-   const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-   const mid={x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2};
-   zoom=Math.max(.55,Math.min(2.8,pinchStartZoom*(d/Math.max(1,pinchStartDist))));
-   camX=pinchStartCam.x+(mid.x-pinchStartMid.x);
-   camY=pinchStartCam.y+(mid.y-pinchStartMid.y);
-   draw();
+  const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  const mid={x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2};zoom=Math.max(.55,Math.min(2.8,pinchStartZoom*(d/Math.max(1,pinchStartDist))));
+  const mp=canvasPoint({clientX:mid.x,clientY:mid.y}),after=worldToScreen(pinchAnchorWorld.x,pinchAnchorWorld.y);
+  camX+=mp.x-after.x;camY+=mp.y-after.y;draw();
  }else if(e.touches.length===1){
-   const t=e.touches[0];
-   if(isPaintTool()){
-     const q=screenToWorld(t.clientX-r.left,t.clientY-r.top);
-     if(Math.abs(t.clientX-(panStart?.x||t.clientX))+Math.abs(t.clientY-(panStart?.y||t.clientY))>5)touchMoved=true;
-     placeAt(Math.floor(q.x),Math.floor(q.y));
-   }else{
-     movePan(t.clientX,t.clientY);
-   }
+  const p=e.touches[0];
+  if(isPaintTool()){
+   const sx=touchStartPoint?touchStartPoint.x:p.clientX,sy=touchStartPoint?touchStartPoint.y:p.clientY;
+   if(Math.hypot(p.clientX-sx,p.clientY-sy)>8){touchMoved=true;drag=true;const q=worldCellFromEvent(p);placeAt(q.x,q.y);}
+  }else movePan(p.clientX,p.clientY);
+  touchLastPoint={x:p.clientX,y:p.clientY};
  }
 },{passive:false});
-
 canvas.addEventListener('touchend',e=>{
  e.preventDefault();
  if(e.touches.length===0){
-   if(!isPaintTool() && !touchMoved && e.changedTouches[0]){
-     const t=e.changedTouches[0],r=canvas.getBoundingClientRect(),q=screenToWorld(t.clientX-r.left,t.clientY-r.top);
-     placeAt(Math.floor(q.x),Math.floor(q.y));
-   }
-   drag=false;endPan();
+  if(!touchMoved&&e.changedTouches[0]){const q=worldCellFromEvent(e.changedTouches[0]);placeAt(q.x,q.y);}
+  drag=false;touchStartPoint=null;touchLastPoint=null;endPan();
  }
 },{passive:false});
 canvas.addEventListener('wheel',e=>{
  e.preventDefault();
- const before=screenToWorld(e.offsetX,e.offsetY);
+ const p=canvasPoint(e),before=screenToWorld(p.x,p.y);
  zoom=Math.max(.55,Math.min(2.8,zoom*(e.deltaY<0?1.12:.89)));
  const after=worldToScreen(before.x,before.y);
- camX+=e.offsetX-after.x;camY+=e.offsetY-after.y;draw();
+ camX+=p.x-after.x;camY+=p.y-after.y;draw();
 },{passive:false});
 document.querySelectorAll('.tool[data-tool]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));b.classList.add('active');
