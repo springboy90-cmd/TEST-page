@@ -1159,11 +1159,16 @@ function moveBuildingAt(x,y){
  const target=buildingAt(x,y);
  if(!movingBuilding){
    if(!target){news('이동할 건물을 먼저 클릭하세요.');return false;}
-   // 건물 자체가 가지고 있던 시각 속성을 고정해 두어, 이동 후에도
-   // 원래 건물의 R/C/I 색상과 레벨별 외형이 그대로 유지되도록 한다.
    movingBuilding=target;
    movingBuilding._moveVisualZone=movingBuilding.zone;
    movingBuilding._moveVisualLevel=movingBuilding.level;
+   // 건물이 차지하던 바닥 용도지역(R/C/I)도 함께 저장한다.
+   const sz=Math.max(1,movingBuilding.size||1);
+   movingBuilding._moveFloorZones=[];
+   for(let dy=0;dy<sz;dy++)for(let dx=0;dx<sz;dx++){
+     const gx=movingBuilding.x+dx, gy=movingBuilding.y+dy;
+     movingBuilding._moveFloorZones.push({dx,dy,zone:grid[gy]?.[gx]?.zone||null});
+   }
    selected={x,y};
    news(`${target.name||'건물'} 선택 — 이동할 빈 부지를 클릭하세요.`);
    draw();
@@ -1174,12 +1179,31 @@ function moveBuildingAt(x,y){
  const oldX=mb.x, oldY=mb.y;
  const visualZone=mb._moveVisualZone||mb.zone;
  const visualLevel=mb._moveVisualLevel||mb.level;
+ const sz=Math.max(1,mb.size||1);
+ const floorZones=mb._moveFloorZones||[];
+
+ // 기존 위치의 바닥 색(R/C/I)을 제거한다. 그래야 이전 위치에 색상이 남지 않는다.
+ for(let dy=0;dy<sz;dy++)for(let dx=0;dx<sz;dx++){
+   const gx=oldX+dx, gy=oldY+dy;
+   if(grid[gy]?.[gx]) grid[gy][gx].zone=null;
+ }
+
+ // 건물을 새 위치로 이동한다.
  mb.x=x;mb.y=y;
- // 이동 전 건물의 시각 속성을 유지한다.
  mb.zone=visualZone;
  mb.level=visualLevel;
+
+ // 핵심 수정: 기존 건물 바닥의 R/C/I zone 색상도 새 위치의 footprint로 이동한다.
+ for(let dy=0;dy<sz;dy++)for(let dx=0;dx<sz;dx++){
+   const gx=x+dx, gy=y+dy;
+   if(!grid[gy]?.[gx]) continue;
+   const saved=floorZones.find(f=>f.dx===dx&&f.dy===dy);
+   grid[gy][gx].zone=saved?.zone||visualZone||null;
+ }
+
  delete mb._moveVisualZone;
  delete mb._moveVisualLevel;
+ delete mb._moveFloorZones;
  movingBuilding=null;
  selected={x,y};
  recalcUtilities();
