@@ -82,6 +82,12 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
   .tool{font-size:9px;padding:5px 6px}
 }
 </style>
+
+<style id="v25-budget-control-fix">
+input[type="range"]{touch-action:pan-x !important; pointer-events:auto !important;}
+#budgetPanel input[type="range"], .budget-panel input[type="range"],
+[id*="budget"] input[type="range"]{touch-action:pan-x !important;}
+</style>
 </head>
 <body>
 <div id="app">
@@ -133,7 +139,7 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
     <div class="row"><span>교통량</span><b id="traffic">22%</b></div><div class="row"><span>통근 차량</span><b id="commuteCars">0</b></div>
     <div class="row"><span>오염도</span><b id="pollution">14%</b></div>
     <div class="row"><span>범죄율</span><b id="crime">9%</b></div>
-    <div class="row"><span>교육 수준</span><b id="education">42%</b></div>
+    <div class="row"><span>교육 수준</span><b id="education">42%</b></div><div class="row"><span>교육 단계</span><b id="educationTier">1단계</b></div><div class="row"><span>첨단산업 비중</span><b id="advancedIndustry">0%</b></div><div class="row"><span>고소득 일자리</span><b id="highIncomeJobs">0</b></div>
     <div class="row"><span>건강 수준</span><b id="health">76%</b></div>
   </div>
   <div class="panel"><h3>공공 서비스</h3>
@@ -183,17 +189,17 @@ function buildingAt(x,y){
   });
 }
 function isOccupied(x,y){ return !!buildingAt(x,y); }
-let city={name:'새로운 도시',year:1,month:1,pop:1240,money:25000,balance:320,happy:68,traffic:22,pollution:14,crime:9,education:42,health:76,land:54,powerCap:0,powerUse:0,waterCap:0,waterUse:0,taxR:7,taxC:6,taxI:5,taxLand:2,taxSpecial:1,commute:{trips:0,avgTime:0,congestion:0,loads:{},activeCars:0},budgets:{police:100,fire:100,education:100,health:100,traffic:100,roads:100,power:100,water:100,parks:100,admin:100,welfare:100}};
+let city={name:'새로운 도시',year:1,month:1,pop:1240,money:25000,balance:320,happy:68,traffic:22,pollution:14,crime:9,education:42,health:76,land:54,powerCap:0,powerUse:0,waterCap:0,waterUse:0,taxR:7,taxC:6,taxI:5,taxLand:2,taxSpecial:1,educationTier:1,advancedIndustryRate:0,highIncomeJobs:0,highIncomeTaxRevenue:0,commute:{trips:0,avgTime:0,congestion:0,loads:{},activeCars:0},budgets:{police:100,fire:100,education:100,health:100,traffic:100,roads:100,power:100,water:100,parks:100,admin:100,welfare:100}};
 
 const colors={grass:'#7f9165',dirt:'#927b5b',water:'#547c8b',road:'#555b59',park:'#64815a'};
 const BUILDINGS={
  power:[
-  {id:'coal',name:'Coal 전력 Plant',cost:4200,cap:900,maint:90,pol:5,icon:'🏭'},
+  {id:'coal',name:'Coal 전력 Plant',cost:4200,cap:2200,maint:90,pol:5,icon:'🏭'},
   {id:'gas',name:'Gas 전력 Plant',cost:7800,cap:1700,maint:140,pol:3,icon:'🏭'},
   {id:'nuclear',name:'Nuclear Plant',cost:22000,cap:5000,maint:300,pol:1,icon:'☢'}
  ],
  water:[
-  {id:'pump',name:'수도 Pump',cost:1800,cap:1200,maint:55,icon:'💧'},
+  {id:'pump',name:'수도 Pump',cost:1800,cap:2600,maint:55,icon:'💧'},
   {id:'tower',name:'수도 Tower',cost:2500,cap:850,maint:40,icon:'🗼'},
   {id:'treatment',name:'수도 Treatment',cost:6500,cap:3000,maint:120,icon:'≈'}
  ],
@@ -201,6 +207,8 @@ const BUILDINGS={
   {id:'police',name:'경찰 Station',cost:2600,range:9,maint:80,icon:'🚓'},
   {id:'fire',name:'소방 Station',cost:2400,range:9,maint:75,icon:'🚒'},
   {id:'school',name:'Elementary School',cost:3200,range:8,maint:90,icon:'🏫'},
+  {id:'highschool',name:'High School',cost:6800,range:10,maint:140,icon:'🏫'},
+  {id:'university',name:'University',cost:15000,range:13,maint:260,icon:'🎓'},
   {id:'hospital',name:'Hospital',cost:9000,range:11,maint:180,icon:'🏥'},
   {id:'park',name:'City Park',cost:900,range:5,maint:15,icon:'🌳'}
  ],
@@ -215,12 +223,33 @@ const BUILDINGS={
  ]
 };
 
+// ============================================================
+// Tier 1~6 실물 경제 연동
+// 외형만 커지는 것이 아니라 주거 수용력/일자리/세입/전력/수도가
+// 단계별로 함께 증가한다. 2x2 대형 건물은 점유 타일 수만큼 적용된다.
+// *** seed()가 게임 시작 시 develop()을 통해 이 값을 즉시 참조하므로,
+//     반드시 seed() 호출(아래)보다 앞에 선언되어야 한다. 이 순서가 깨지면
+//     recalcUtilities()가 TIER_ECONOMY 미정의 상태를 감지하고 조용히
+//     아무 것도 하지 않게 되어(powerCap/waterCap이 0으로 고정) 초기 도시가
+//     전력/수도 부족 판정을 받아 건물이 전혀 개발되지 않는 심각한 버그가 재발한다. ***
+// ============================================================
+var TIER_ECONOMY={
+  1:{RPop:110,CJobs:15,IJobs:18,powerR:7,powerC:16,powerI:28,waterR:8,waterC:13,waterI:24,tax:1.00},
+  2:{RPop:185,CJobs:27,IJobs:31,powerR:10,powerC:22,powerI:39,waterR:11,waterC:18,waterI:33,tax:1.18},
+  3:{RPop:300,CJobs:45,IJobs:50,powerR:14,powerC:31,powerI:55,waterR:15,waterC:25,waterI:46,tax:1.40},
+  4:{RPop:470,CJobs:72,IJobs:79,powerR:19,powerC:43,powerI:78,waterR:20,waterC:35,waterI:65,tax:1.68},
+  5:{RPop:700,CJobs:110,IJobs:120,powerR:26,powerC:60,powerI:108,waterR:28,waterC:48,waterI:90,tax:2.00},
+  6:{RPop:1050,CJobs:168,IJobs:180,powerR:35,powerC:82,powerI:148,waterR:38,waterC:66,waterI:124,tax:2.35}
+};
+
 function resize(){W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=W;canvas.height=H;draw()} addEventListener('resize',resize);
 
 function seed(){
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<3||y<3||x>N-4||y>N-4)grid[y][x].type='forest';}
-  for(let x=8;x<52;x++) grid[29][x].type='road';
-  for(let y=10;y<49;y++) grid[y][30].type='road';
+  // 도시의 최초 간선도로망. 이후 자동개발은 이 '메인도로'에서
+  // 실제로 이어진 도로망을 통해서만 허용한다.
+  for(let x=8;x<52;x++){ grid[29][x].type='road'; grid[29][x].mainRoad=true; }
+  for(let y=10;y<49;y++){ grid[y][30].type='road'; grid[y][30].mainRoad=true; }
   for(let x=12;x<28;x++) grid[24][x].type='road';
   for(let x=33;x<48;x++) grid[34][x].type='road';
   for(let y=31;y<40;y++)for(let x=10;x<25;x++) if((x+y)%3!==0) grid[y][x].zone='R';
@@ -229,6 +258,9 @@ function seed(){
   // R 주거지역을 관통하는 도로 (지역 내부까지 도로가 닿아야 개발이 진행됨)
   for(let x=9;x<26;x++) grid[35][x].type='road';
   for(let y=30;y<41;y++) grid[y][17].type='road';
+  // I 공업지역을 관통하는 도로 (동일한 이유로 필요)
+  for(let x=34;x<48;x++) grid[39][x].type='road';
+  for(let y=36;y<43;y++) grid[y][41].type='road';
   // Starting town has actual municipal facilities.
   placeBuilding(28,28,'coal',true);
   placeBuilding(31,30,'pump',true);
@@ -246,7 +278,7 @@ function placeBuilding(x,y,id,free=false){
   const b={x,y,id,type:'facility',name:def.name,cost:def.cost,maint:def.maint,level:1,
     zone:null,cap:def.cap||0,range:def.range||0,pol:def.pol||0};
   buildings.push(b);
-  grid[y][x].service=(id==='police'||id==='fire'||id==='school'||id==='hospital'||id==='park')?id:null;
+  grid[y][x].service=(id==='police'||id==='fire'||id==='school'||id==='highschool'||id==='university'||id==='hospital'||id==='park')?id:null;
   grid[y][x].type=id==='park'?'park':(id==='coal'||id==='gas'||id==='nuclear'?'power':'facility');
   grid[y][x].environment=(id==='sewage'||id==='recycle')?id:null;
   news(`${def.name} 건설 완료 — 비용 $${def.cost.toLocaleString()}.`);
@@ -475,11 +507,11 @@ function buildingPalette(zone,level){
  // 레벨이 올라가도 zone 고유의 색조가 유지되도록, 명도만 단계적으로 밝아지게 구성.
  // R=따뜻한 벽돌/베이지, C=차분한 블루그레이(간판 강조), I=녹슨 카키/철재 톤.
  const sets={
-  R:[['#8a6b4e','#5f4a37'],['#a3805a','#725c41'],['#b8926a','#83694c'],['#cba87c','#93765a'],['#ddbb8e','#a3835f']],
-  C:[['#3f5468','#2b3c4b'],['#4a6178','#324556'],['#55708a','#3a5064'],['#6483a0','#456073'],['#7699b8','#527186']],
-  I:[['#7a7256','#544e3a'],['#847a58','#5b5340'],['#8f8259','#635846'],['#9a8c5e','#6b604c'],['#a4954f','#726650']]
+  R:[['#8a6b4e','#5f4a37'],['#a3805a','#725c41'],['#b8926a','#83694c'],['#cba87c','#93765a'],['#ddbb8e','#a3835f'],['#eecda0','#b3906c']],
+  C:[['#3f5468','#2b3c4b'],['#4a6178','#324556'],['#55708a','#3a5064'],['#6483a0','#456073'],['#7699b8','#527186'],['#89aecb','#5f8296']],
+  I:[['#7a7256','#544e3a'],['#847a58','#5b5340'],['#8f8259','#635846'],['#9a8c5e','#6b604c'],['#a4954f','#726650'],['#aea057','#7c6f57']]
  };
- return sets[zone][Math.max(0,Math.min(4,level-1))];
+ return sets[zone][Math.max(0,Math.min(5,level-1))];
 }
 function drawWindows(p,s,h,rows,cols,lit=false,gapXmul=.09,startXmul=.20){
  const gapX=s*gapXmul,gapY=Math.max(5,h/rows*.62);
@@ -490,82 +522,119 @@ function drawWindows(p,s,h,rows,cols,lit=false,gapXmul=.09,startXmul=.20){
  }
 }
 // 주거(R): 경사진 박공지붕 + 발코니 난간 — 따뜻한 벽돌색 계열
+function buildingVariant(b,lev){
+  if(Number.isFinite(b.variant)) return Math.abs(b.variant)%5;
+  return Math.abs(((b.x||0)*17+(b.y||0)*31+(lev||1)*43+(b.zone==='C'?7:b.zone==='I'?13:3))%5);
+}
+function drawGroundDetails(b,p,s,w,h,lev,zone,v){
+  const roadNear=nearRoad(b.x,b.y);
+  // 도로 연결/출입구
+  ctx.fillStyle='#4b4d48';
+  ctx.beginPath();ctx.moveTo(p.x-w*.20,p.y);ctx.lineTo(p.x+w*.08,p.y);ctx.lineTo(p.x+w*.15,p.y+s*.18);ctx.lineTo(p.x-w*.12,p.y+s*.18);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#d5c99c';ctx.fillRect(p.x-w*.08,p.y-h*.02,w*.14,Math.max(2,zoom*2));
+  // 주차장/차량
+  if(zone==='R' || zone==='C'){
+    ctx.fillStyle='#555653';ctx.fillRect(p.x-w*.42,p.y+s*.02,w*.26,s*.13);
+    for(let i=0;i<2+(v%2);i++){ctx.fillStyle=i%2?'#6f7778':'#a5a095';ctx.fillRect(p.x-w*.39+i*s*.075,p.y+s*.045,s*.055,s*.045);}
+  }
+  if(zone==='R'){
+    // 정원/나무/울타리
+    ctx.strokeStyle='#6b5b43';ctx.lineWidth=Math.max(.5,zoom*.4);ctx.strokeRect(p.x-w*.46,p.y+s*.02,w*.14,s*.13);
+    ctx.fillStyle='#4c7049';ctx.beginPath();ctx.arc(p.x-w*.40,p.y-s*.01,Math.max(2,zoom*1.8),0,7);ctx.fill();
+  }else if(zone==='C'){
+    // 보행자 + 배달 차량
+    ctx.fillStyle='#d5b87a';ctx.beginPath();ctx.arc(p.x+w*.30,p.y+s*.01,Math.max(1.3,zoom),0,7);ctx.fill();
+    ctx.fillStyle='#c8c5ae';ctx.fillRect(p.x+w*.28,p.y+s*.025,s*.10,s*.055);
+  }else{
+    // 컨테이너/화물차/설비
+    ctx.fillStyle='#69706a';ctx.fillRect(p.x-iwSafe(w)*.34,p.y+s*.02,w*.18,s*.10);
+    ctx.fillStyle='#7c6a4d';ctx.fillRect(p.x-iwSafe(w)*.12,p.y+s*.03,w*.10,s*.07);
+  }
+  if(!roadNear){ctx.globalAlpha=.55;ctx.fillStyle='#59634e';ctx.fillRect(p.x-w*.46,p.y+s*.10,w*.82,s*.025);ctx.globalAlpha=1;}
+}
+function iwSafe(w){return w||1;}
 function drawResidential(b,p,s,w,h,lev){
- let [front,side]=buildingPalette('R',lev);
- ctx.fillStyle=front;
- ctx.beginPath();ctx.moveTo(p.x-w*.5,p.y-h);ctx.lineTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.05,p.y);ctx.lineTo(p.x-w*.5,p.y);ctx.closePath();ctx.fill();
- ctx.fillStyle=side;
- ctx.beginPath();ctx.moveTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.5,p.y-h);ctx.lineTo(p.x+w*.5,p.y-s*.02);ctx.lineTo(p.x+w*.05,p.y);ctx.closePath();ctx.fill();
- // 뾰족한 박공지붕 (삼각 지붕 두 면)
- const roofPeak=s*.22;
- ctx.fillStyle=lev>=4?'#7a3f38':'#8f4f42';
- ctx.beginPath();ctx.moveTo(p.x-w*.5,p.y-h);ctx.lineTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x-w*.22,p.y-h-roofPeak);ctx.closePath();ctx.fill();
- ctx.fillStyle=lev>=4?'#6b352f':'#7c4438';
- ctx.beginPath();ctx.moveTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.5,p.y-h);ctx.lineTo(p.x-w*.22,p.y-h-roofPeak);ctx.closePath();ctx.fill();
- const cols=Math.max(2,Math.min(6,Math.floor(w/7))),rows=Math.max(2,Math.floor(h/9));
- drawWindows({x:p.x-w*.18,y:p.y},s,h,rows,cols,lev>=3);
- // 발코니 난간 (저층부터도 소박하게, 고층엔 더 많이)
- ctx.strokeStyle='#e3d5b8';ctx.lineWidth=Math.max(.6,zoom*.5);
- const balRows=lev>=3?Math.min(4,rows):1;
- for(let r=0;r<balRows;r++){let yy=p.y-h+13+r*9*zoom;ctx.beginPath();ctx.moveTo(p.x-w*.23,yy);ctx.lineTo(p.x+w*.03,yy);ctx.stroke();}
+  const v=buildingVariant(b,lev), [front,side]=buildingPalette('R',lev);
+  // Tier 1 단독주택 → Tier 2 중형주택 → Tier 3 저층아파트 → Tier 4 고층아파트 → Tier 5 초고층 주거 → Tier 6 메가타워
+  const floors=[1,2,4,7,11,15][lev-1]||15;
+  const hh=Math.max(h,(10+floors*4.2)*zoom);
+  const ww=w*(lev>=3?1.08:1);
+  ctx.fillStyle=front;ctx.fillRect(p.x-ww*.48,p.y-hh,ww*.53,hh);
+  ctx.fillStyle=side;ctx.fillRect(p.x+ww*.05,p.y-hh-s*.10,ww*.43,hh+s*.10);
+  // 지붕 타입 변화
+  if(lev<=2){ctx.fillStyle=v%2?'#75443b':'#8c5143';ctx.beginPath();ctx.moveTo(p.x-ww*.52,p.y-hh);ctx.lineTo(p.x,p.y-hh-s*(.16+.025*v));ctx.lineTo(p.x+ww*.48,p.y-hh);ctx.closePath();ctx.fill();}
+  else {ctx.fillStyle=lev>=5?'#5b6266':'#6f4e45';ctx.fillRect(p.x-ww*.50,p.y-hh-s*.08,ww*.96,s*.08);}
+  const cols=lev<=2?2:Math.min(7,3+(v%3)), rows=Math.min(floors,8);
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const wx=p.x-ww*.40+c*(ww*.72/Math.max(1,cols-1)), wy=p.y-hh+8*zoom+r*((hh-10*zoom)/Math.max(1,rows));
+    ctx.fillStyle=((r+c+v)%4===0)?'#e1c77c':'#2b3438';ctx.fillRect(wx,wy,Math.max(1.5,zoom*1.15),Math.max(2,zoom*1.5));
+  }
+  // 발코니/에어컨/옥상
+  if(lev>=3){ctx.strokeStyle='#d7d0ba';ctx.lineWidth=Math.max(.5,zoom*.4);for(let r=1;r<Math.min(5,rows);r++){const yy=p.y-hh+r*(hh/Math.min(5,rows));ctx.strokeRect(p.x-ww*.25,yy,ww*.22,s*.045);}}
+  if(lev>=2){ctx.fillStyle='#8b8e88';ctx.fillRect(p.x+ww*.30,p.y-hh+s*.04,s*.045,s*.09);}
+  if(lev>=4){ctx.fillStyle='#777b7b';ctx.fillRect(p.x+ww*.22,p.y-hh-s*.13,s*.09,s*.10);ctx.fillStyle='#565b59';ctx.fillRect(p.x+ww*.34,p.y-hh-s*.16,s*.055,s*.14);}
+  if(lev>=5){ctx.fillStyle='#d5b55c';ctx.fillRect(p.x-ww*.05,p.y-hh-s*.18,ww*.18,s*.045);}
+  // 6단계(메가타워): 옥상 헬리패드 표식 추가
+  if(lev>=6){
+    ctx.fillStyle='#3a4448';ctx.beginPath();ctx.arc(p.x-ww*.18,p.y-hh-s*.10,s*.075,0,7);ctx.fill();
+    ctx.strokeStyle='#e5d9aa';ctx.lineWidth=Math.max(.6,zoom*.5);ctx.beginPath();ctx.arc(p.x-ww*.18,p.y-hh-s*.10,s*.05,0,7);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p.x-ww*.18-s*.035,p.y-hh-s*.10);ctx.lineTo(p.x-ww*.18+s*.035,p.y-hh-s*.10);ctx.moveTo(p.x-ww*.18,p.y-hh-s*.10-s*.035);ctx.lineTo(p.x-ww*.18,p.y-hh-s*.10+s*.035);ctx.stroke();
+  }
+  drawGroundDetails(b,p,s,ww,hh,lev,'R',v);
 }
-// 상업(C): 평지붕 + 통유리 쇼윈도 + 네온 간판 — 차분한 블루그레이 계열
 function drawCommercial(b,p,s,w,h,lev){
- let [front,side]=buildingPalette('C',lev);
- ctx.fillStyle=front;
- ctx.beginPath();ctx.moveTo(p.x-w*.5,p.y-h);ctx.lineTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.05,p.y);ctx.lineTo(p.x-w*.5,p.y);ctx.closePath();ctx.fill();
- ctx.fillStyle=side;
- ctx.beginPath();ctx.moveTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.5,p.y-h);ctx.lineTo(p.x+w*.5,p.y-s*.02);ctx.lineTo(p.x+w*.05,p.y);ctx.closePath();ctx.fill();
- // 평지붕(플랫) — R과 달리 뾰족하지 않고 얇은 파라펫
- ctx.fillStyle=lev>=4?'#2c343a':'#37414a';
- ctx.beginPath();ctx.moveTo(p.x-w*.5,p.y-h);ctx.lineTo(p.x+w*.05,p.y-h-s*.12);ctx.lineTo(p.x+w*.5,p.y-h);ctx.lineTo(p.x,p.y-h+s*.05);ctx.closePath();ctx.fill();
- // 1층 통유리 쇼윈도 (건물 전면 하단 가로로 넓게)
- ctx.fillStyle='#9fd0e0aa';
- ctx.fillRect(p.x-w*.46,p.y-h*.30,w*.42,h*.28);
- const cols=Math.max(3,Math.min(7,Math.floor(w/6))),rows=Math.max(2,Math.floor(h/9));
- drawWindows({x:p.x-w*.18,y:p.y-h*.32},s,h*.68,Math.max(1,rows-1),cols,lev>=2,.075);
- // 옥상/전면 네온 간판 — 레벨이 오를수록 더 화려하게
- ctx.fillStyle=lev>=3?'#e8c25f':'#e2c36f';ctx.fillRect(p.x-w*.34,p.y-h+s*.05,w*.32,Math.max(2,zoom*2.2));
- ctx.fillStyle='#20262a';ctx.fillRect(p.x-w*.32,p.y-h+s*.085,w*.28,Math.max(1,zoom));
- if(lev>=3){ctx.fillStyle='#e05a5a';ctx.beginPath();ctx.arc(p.x-w*.30,p.y-h+s*.06,Math.max(1.2,zoom*1.1),0,7);ctx.fill();}
+  const v=buildingVariant(b,lev), [front,side]=buildingPalette('C',lev);
+  // Tier 1 상점 → 2 상가 → 3 중형 상업 → 4 쇼핑센터 → 5 복합시설 → 6 랜드마크 타워
+  const floors=[1,2,4,8,12,17][lev-1]||17, hh=Math.max(h,(10+floors*4.5)*zoom), ww=w*(lev>=4?1.16:1);
+  ctx.fillStyle=front;ctx.fillRect(p.x-ww*.48,p.y-hh,ww*.53,hh);ctx.fillStyle=side;ctx.fillRect(p.x+ww*.05,p.y-hh-s*.10,ww*.43,hh+s*.10);
+  ctx.fillStyle=lev>=4?'#2b353c':'#37434c';ctx.fillRect(p.x-ww*.50,p.y-hh-s*.07,ww*.96,s*.07);
+  // 통유리 + 반복되지 않는 창 패턴
+  ctx.fillStyle='#91c3d2';ctx.fillRect(p.x-ww*.42,p.y-hh*.30,ww*.40,hh*.27);
+  const cols=Math.min(8,3+(v%4));for(let c=0;c<cols;c++){ctx.fillStyle=((c+v)%3===0)?'#e1c77c':'#26353b';ctx.fillRect(p.x-ww*.39+c*(ww*.34/Math.max(1,cols-1)),p.y-hh*.55,Math.max(1.5,zoom*1.1),Math.max(2,zoom*1.6));}
+  // 간판은 층수/변형에 따라 위치와 개수 변화
+  const signs=lev>=4?2:1;for(let k=0;k<signs;k++){ctx.fillStyle=k===v%2?'#e2c36f':'#d06b5e';ctx.fillRect(p.x-ww*.40+k*ww*.38,p.y-hh+s*(.03+k*.055),ww*.27,Math.max(2,zoom*2.2));}
+  if(lev>=3){ctx.fillStyle='#454d52';ctx.fillRect(p.x+ww*.28,p.y-hh-s*.15,s*.08,s*.12);}
+  if(lev>=5){ctx.fillStyle='#d9bd65';ctx.fillRect(p.x-ww*.12,p.y-hh-s*.20,ww*.30,s*.055);}
+  // 6단계(랜드마크 타워): 첨탑형 안테나 추가
+  if(lev>=6){
+    ctx.strokeStyle='#c9c4ab';ctx.lineWidth=Math.max(.8,zoom*.7);
+    ctx.beginPath();ctx.moveTo(p.x,p.y-hh-s*.20);ctx.lineTo(p.x,p.y-hh-s*.34);ctx.stroke();
+    ctx.fillStyle='#e05a5a';ctx.beginPath();ctx.arc(p.x,p.y-hh-s*.35,Math.max(1.3,zoom*1.2),0,7);ctx.fill();
+  }
+  drawGroundDetails(b,p,s,ww,hh,lev,'C',v);
 }
-// 공업(I): 낮고 넓은 박스형 + 굴뚝/탱크 — 녹슨 카키/철재 계열
 function drawIndustrial(b,p,s,w,h,lev){
- let [front,side]=buildingPalette('I',lev);
- // 공업 건물은 R/C보다 낮고 넓게(가로로 퍼진 실루엣)
- const ih=h*.66, iw=w*1.12;
- ctx.fillStyle=front;
- ctx.beginPath();ctx.moveTo(p.x-iw*.5,p.y-ih);ctx.lineTo(p.x+iw*.05,p.y-ih-s*.10);ctx.lineTo(p.x+iw*.05,p.y);ctx.lineTo(p.x-iw*.5,p.y);ctx.closePath();ctx.fill();
- ctx.fillStyle=side;
- ctx.beginPath();ctx.moveTo(p.x+iw*.05,p.y-ih-s*.10);ctx.lineTo(p.x+iw*.5,p.y-ih);ctx.lineTo(p.x+iw*.5,p.y-s*.02);ctx.lineTo(p.x+iw*.05,p.y);ctx.closePath();ctx.fill();
- // 톱니(sawtooth) 지붕 — 공장 특유의 들쭉날쭉한 지붕선
- ctx.fillStyle=lev>=4?'#403c30':'#4a4536';
- const teeth=3;
- for(let t=0;t<teeth;t++){
-   const tx0=p.x-iw*.5+iw*(t/teeth), tx1=p.x-iw*.5+iw*((t+1)/teeth);
-   ctx.beginPath();ctx.moveTo(tx0,p.y-ih);ctx.lineTo((tx0+tx1)/2,p.y-ih-s*.09);ctx.lineTo(tx1,p.y-ih);ctx.closePath();ctx.fill();
- }
- // 창문 대신 환기창(가로로 긴 슬릿) 소수만
- ctx.fillStyle='#2a2e28';
- for(let i=0;i<3;i++)ctx.fillRect(p.x-iw*.40+i*iw*.14,p.y-ih*.45,iw*.10,Math.max(2,zoom*1.4));
- // 굴뚝 (레벨이 높을수록 개수/연기 증가)
- const chimneys=lev>=4?2:1;
- for(let cN=0;cN<chimneys;cN++){
-   const cx=p.x+iw*(0.18+cN*0.10);
-   ctx.fillStyle='#514d47';ctx.fillRect(cx,p.y-ih-s*.30,Math.max(2,zoom*2),ih*.42);
-   if(lev>=2){ctx.fillStyle='#8b8b8bcc';ctx.beginPath();ctx.arc(cx+1,p.y-ih-s*.34,3+zoom*.8,0,7);ctx.fill();}
- }
- // 원통형 저장 탱크 (공업 전용 특징)
- ctx.fillStyle='#847a58';
- ctx.beginPath();ctx.ellipse(p.x-iw*.30,p.y-ih*.5,iw*.10,ih*.28,0,0,7);ctx.fill();
- ctx.strokeStyle='#5b5340';ctx.lineWidth=Math.max(.6,zoom*.5);ctx.stroke();
+  const v=buildingVariant(b,lev), [front,side]=buildingPalette('I',lev);
+  // Tier 1 공방 → 2 소규모 공장 → 3 공장단지 → 4 대형산업 → 5 첨단산업시설 → 6 메가시티 산업단지
+  const scales=[.82,.92,1.05,1.22,1.35,1.48], ih=Math.max(h*.58,(9+([1,2,3,5,7,9][lev-1]||9)*3.5)*zoom), iw=w*(scales[lev-1]||scales[5]);
+  ctx.fillStyle=front;ctx.fillRect(p.x-iw*.48,p.y-ih,iw*.53,ih);ctx.fillStyle=side;ctx.fillRect(p.x+iw*.05,p.y-ih-s*.08,iw*.43,ih+s*.08);
+  // 톱니 지붕/첨단 지붕 (5단계 이상은 평지붕+안테나형 첨단 지붕)
+  if(lev<5){ctx.fillStyle='#4b4638';for(let t=0;t<3;t++){const x0=p.x-iw*.48+iw*t/3,x1=p.x-iw*.48+iw*(t+1)/3;ctx.beginPath();ctx.moveTo(x0,p.y-ih);ctx.lineTo((x0+x1)/2,p.y-ih-s*.09);ctx.lineTo(x1,p.y-ih);ctx.closePath();ctx.fill();}}
+  else {ctx.fillStyle='#53616a';ctx.fillRect(p.x-iw*.48,p.y-ih-s*.10,iw*.96,s*.10);ctx.fillStyle='#9cc5d2';ctx.fillRect(p.x-iw*.22,p.y-ih-s*.16,iw*.42,s*.035);}
+  // 창/환기창
+  const vents=lev>=4?5:3;for(let i=0;i<vents;i++){ctx.fillStyle=lev>=5?'#86b9c7':'#292f2b';ctx.fillRect(p.x-iw*.40+i*iw*.13,p.y-ih*.45,iw*.08,Math.max(2,zoom*1.3));}
+  // 굴뚝/탱크/컨테이너 — 고단계일수록 산업 설비 증가 (5단계 이상은 첨단설비 위주라 굴뚝 최소화)
+  const chimneys=lev===1?0:lev===2?1:lev===3?2:lev===4?3:1;
+  for(let i=0;i<chimneys;i++){const cx=p.x+iw*(.16+i*.075);ctx.fillStyle=lev>=5?'#66767c':'#514d47';ctx.fillRect(cx,p.y-ih-s*(.22+(i%2)*.05),Math.max(2,zoom*2.2),ih*.34);if(lev<5&&lev>=2){ctx.fillStyle='#a0a3a0aa';ctx.beginPath();ctx.arc(cx+1,p.y-ih-s*.27,2.5+zoom*.7,0,7);ctx.fill();}}
+  if(lev>=2){ctx.fillStyle='#887956';ctx.beginPath();ctx.ellipse(p.x-iw*.28,p.y-ih*.42,iw*.10,ih*.25,0,0,7);ctx.fill();}
+  if(lev>=3){ctx.fillStyle=v%2?'#9a704d':'#64727a';ctx.fillRect(p.x-iw*.02,p.y-ih*.15,iw*.18,ih*.10);ctx.fillStyle='#6b5b46';ctx.fillRect(p.x+iw*.16,p.y-ih*.10,iw*.10,ih*.08);}
+  if(lev>=5){ctx.fillStyle='#a8d6dd';ctx.beginPath();ctx.arc(p.x+iw*.28,p.y-ih*.58,s*.11,0,7);ctx.fill();}
+  // 6단계(메가시티 첨단산업단지): 옥상 태양광 패널 + 로봇공정 랜드마크 설비 추가
+  if(lev>=6){
+    ctx.fillStyle='#2f4a5c';ctx.fillRect(p.x-iw*.44,p.y-ih-s*.145,iw*.34,s*.05);
+    ctx.strokeStyle='#7fa8bd';ctx.lineWidth=Math.max(.5,zoom*.4);
+    for(let g=1;g<4;g++){ctx.beginPath();ctx.moveTo(p.x-iw*.44+iw*.34*g/4,p.y-ih-s*.145);ctx.lineTo(p.x-iw*.44+iw*.34*g/4,p.y-ih-s*.095);ctx.stroke();}
+    ctx.fillStyle='#c7dbe0';ctx.beginPath();ctx.arc(p.x+iw*.05,p.y-ih-s*.20,s*.045,0,7);ctx.fill();
+    ctx.strokeStyle='#c7dbe0';ctx.lineWidth=Math.max(.6,zoom*.5);ctx.beginPath();ctx.moveTo(p.x+iw*.05,p.y-ih-s*.20);ctx.lineTo(p.x+iw*.05,p.y-ih-s*.30);ctx.stroke();
+  }
+  drawGroundDetails(b,p,s,iw,ih,lev,'I',v);
 }
 function drawDetailedBuilding(b){
  let lev=b.level||1, sz=b.size||1;
  // 2x2 건물은 4칸 블록의 중심을 시각적 기준점으로 사용
  let cx=b.x+(sz-1)/2, cy=b.y+(sz-1)/2;
  let p=worldToScreen(cx,cy),s=T*zoom;
- let w=s*(.55+Math.min(lev,4)*.025)*sz, h=(12+lev*7)*zoom*(sz>1?1.5:1);
+ let w=s*(.55+Math.min(lev,5)*.025)*sz, h=(12+lev*7)*zoom*(sz>1?1.5:1);
  if(b.zone==='R')drawResidential(b,p,s,w,h,lev);
  else if(b.zone==='C')drawCommercial(b,p,s,w,h,lev);
  else drawIndustrial(b,p,s,w,h,lev);
@@ -580,17 +649,40 @@ function drawDetailedBuilding(b){
 }
 function drawFacility(b){
  let p=worldToScreen(b.x,b.y),s=T*zoom;
- const c={coal:'#6d6254',gas:'#75695d',nuclear:'#77746c',pump:'#527b88',tower:'#77735c',treatment:'#5c7d79',police:'#596a7a',fire:'#8a5e55',school:'#7e8062',hospital:'#7b646b',park:'#55744e'}[b.id]||'#777';
+ // 카테고리별로 확실히 구분되는 색상 체계:
+ //  전력(power)  = 따뜻한 주황/호박색 계열 (에너지)
+ //  수도(water)  = 파랑/청록 계열 (물)
+ //  공공서비스(service) = 용도별 고유색 (경찰=남색, 소방=빨강, 교육=황토, 병원=흰벽+녹색십자, 공원=녹색)
+ //  환경시설(environment) = 청록/올리브 계열 (수도·공원과는 다른 톤)
+ const c={
+   coal:'#8a5a2e',gas:'#a06a30',nuclear:'#c98a2e',
+   pump:'#3b6f96',tower:'#2f5f82',treatment:'#3a7f8c',
+   police:'#33507a',fire:'#a3402f',
+   school:'#a3852f',highschool:'#8f6f2a',university:'#6b4a9e',
+   hospital:'#e8e4da',park:'#4a7a3d',
+   sewage:'#3d7a63',recycle:'#5a8a3a'
+ }[b.id]||'#777';
  if(b.id==='park'){
    ctx.fillStyle=c;ctx.beginPath();ctx.arc(p.x,p.y-s*.13,s*.28,0,7);ctx.fill();
    ctx.fillStyle='#3e5c3e';ctx.beginPath();ctx.arc(p.x-s*.16,p.y-s*.28,5+zoom,0,7);ctx.arc(p.x+s*.13,p.y-s*.24,5+zoom,0,7);ctx.fill();return;
  }
- let h=(10+(b.id==='nuclear'?18:10))*zoom,w=s*.55;
+ let h=(10+(b.id==='nuclear'?18:b.id==='university'?15:b.id==='highschool'?12:10))*zoom,w=s*(b.id==='university'?.72:b.id==='highschool'?.62:.55);
  ctx.fillStyle=c;ctx.fillRect(p.x-w*.5,p.y-h,w,h);
  ctx.fillStyle='#3a3e3d';ctx.beginPath();ctx.moveTo(p.x-w*.5,p.y-h);ctx.lineTo(p.x,p.y-h-s*.10);ctx.lineTo(p.x+w*.5,p.y-h);ctx.lineTo(p.x,p.y-h+s*.10);ctx.closePath();ctx.fill();
- ctx.fillStyle='#d7d0ad';ctx.fillRect(p.x-w*.30,p.y-h+s*.05,w*.6,Math.max(2,zoom*2));
+ ctx.fillStyle=b.id==='hospital'?'#8a8478':'#d7d0ad';ctx.fillRect(p.x-w*.30,p.y-h+s*.05,w*.6,Math.max(2,zoom*2));
  if(['coal','gas'].includes(b.id)){ctx.fillStyle='#4b4a45';ctx.fillRect(p.x+w*.20,p.y-h-7,3+zoom,h*.42);}
  if(b.id==='nuclear'){ctx.fillStyle='#d0c28a';ctx.beginPath();ctx.arc(p.x,p.y-h*.55,s*.18,0,7);ctx.fill();}
+ // 수도 시설(파랑 계열)은 물방울 표식으로, 공공서비스는 용도를 상징하는 작은 배지로 한번 더 구분
+ if(['pump','tower','treatment'].includes(b.id)){
+   ctx.fillStyle='#bfe3ef';ctx.beginPath();
+   ctx.moveTo(p.x,p.y-h-s*.14);ctx.quadraticCurveTo(p.x+s*.07,p.y-h-s*.04,p.x,p.y-h+s*.01);
+   ctx.quadraticCurveTo(p.x-s*.07,p.y-h-s*.04,p.x,p.y-h-s*.14);ctx.fill();
+ }
+ if(b.id==='fire'){ctx.fillStyle='#e2d8b8';ctx.fillRect(p.x-w*.08,p.y-h+s*.09,w*.16,Math.max(2,zoom*2.4));ctx.fillRect(p.x-w*.16,p.y-h+s*.13,w*.32,Math.max(2,zoom*1.6));}
+ if(b.id==='police'){ctx.fillStyle='#dfe6ef';ctx.beginPath();ctx.arc(p.x,p.y-h+s*.10,Math.max(2,zoom*2),0,7);ctx.fill();}
+ // 병원: 흰 벽 위에 뚜렷한 녹색 십자가 (소방서의 빨강과 혼동되지 않도록)
+ if(b.id==='hospital'){ctx.fillStyle='#2e9e4f';ctx.fillRect(p.x-w*.06,p.y-h+s*.03,w*.12,s*.22);ctx.fillRect(p.x-w*.17,p.y-h+s*.10,w*.34,s*.08);}
+ if(['sewage','recycle'].includes(b.id)){ctx.fillStyle='#cfe0a8';ctx.beginPath();ctx.arc(p.x,p.y-h+s*.10,Math.max(2,zoom*2),0,7);ctx.fill();}
 }
 function drawBuilding(b){
  if(b.type==='facility'){drawFacility(b);return}
@@ -665,15 +757,16 @@ function draw(){
 // 좌상단 (x,y)에서 2x2 크기로 같은 zone이 비어있고 도로 인접/전력수도 공급되는지 확인
 function canPlaceBig(x,y,zone){
   let anyNearRoad=false;
+  const connected=connectedMainRoadSet();
   for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
     const xx=x+dx,yy=y+dy;
     if(xx<3||yy<3||xx>=N-3||yy>=N-3) return false;
     const g=grid[yy]?.[xx];
     // 용도지역이 지정되어 있지 않아도, 다른 zone이어도 상관없이
-    // 도로/시설이 아닌 빈 칸이기만 하면 건설 가능 (대형 건물이 그 자리에 zone을 새로 지정함)
+    // 도로/시설이 아닌 빈 칸이기만 하면 건설 가능.
     if(!g||g.type==='road'||g.type==='forest') return false;
     if(isOccupied(xx,yy)) return false;
-    if(nearRoad(xx,yy)) anyNearRoad=true;
+    if(nearConnectedRoad(xx,yy,connected)) anyNearRoad=true;
   }
   return anyNearRoad;
 }
@@ -687,7 +780,7 @@ function placeBigZone(x,y,id,free=false){
   }
   if(!free && city.money<def.cost){news('건설할 자금이 부족합니다.');return false;}
   if(!free) city.money-=def.cost;
-  let level=city.pop>50000?5:city.pop>10000?4:city.pop>3000?3:city.pop>1500?2:1;
+  let level=city.pop>100000?6:city.pop>50000?5:city.pop>10000?4:city.pop>3000?3:city.pop>1500?2:1;
   // 대형 건물이 들어서는 4칸의 용도지역을 해당 zone으로 지정 (전력/수도 공급 판정 및 표시 일관성용)
   for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){grid[y+dy][x+dx].zone=def.zone;}
   buildings.push({x,y,zone:def.zone,level,type:'zone',size:2,bigId:id,maint:def.maint});
@@ -704,6 +797,30 @@ function placeBigZone(x,y,id,free=false){
 
 function buildingTiles(b){ return Math.max(1,(b.size||1)*(b.size||1)); }
 
+function tierEconomy(b){
+  const lv=Math.max(1,Math.min(6,Math.round(b.level||1)));
+  return TIER_ECONOMY[lv];
+}
+
+function educationEconomicStats(){
+  const e=Math.max(0,Math.min(100,Number(city.education)||0));
+  const schools=buildings.filter(b=>b.type==='facility'&&b.id==='school').length;
+  const highs=buildings.filter(b=>b.type==='facility'&&b.id==='highschool').length;
+  const unis=buildings.filter(b=>b.type==='facility'&&b.id==='university').length;
+  // 교육 단계: 초등 기반 → 중등/고등 → 대학/연구 기반. 기존 저장도 자동 호환된다.
+  const tier=e>=82&&unis>0?4:e>=68&&(highs>0||unis>0)?3:e>=52&&(schools>0||highs>0)?2:1;
+  const advancedRate=Math.max(0,Math.min(0.90,((e-48)/52)*0.62 + unis*0.10 + highs*0.025));
+  const workers=Math.max(0,Math.round((city.pop||0)*0.46));
+  const highIncomeJobs=Math.round(Math.min(workers,Math.max(0,(industrialJobsBaseEstimate()+commercialJobsBaseEstimate())*advancedRate*0.72)));
+  const productivity=1+advancedRate*0.35;
+  return {education:e,tier,advancedRate,highIncomeJobs,productivity,schools,highs,unis};
+}
+function industrialJobsBaseEstimate(){
+  return buildings.filter(b=>b.type==='zone'&&b.zone==='I').reduce((sum,b)=>sum+buildingTiles(b)*tierEconomy(b).IJobs,0);
+}
+function commercialJobsBaseEstimate(){
+  return buildings.filter(b=>b.type==='zone'&&b.zone==='C').reduce((sum,b)=>sum+buildingTiles(b)*tierEconomy(b).CJobs,0);
+}
 function citizenJobStats(){
   const rs = buildings.filter(b=>b.type==='zone'&&b.zone==='R');
   const cs = buildings.filter(b=>b.type==='zone'&&b.zone==='C');
@@ -711,23 +828,25 @@ function citizenJobStats(){
 
   // 건물 레벨과 토지가치가 높을수록 수용 인구/일자리 밀도가 상승한다.
   const residentialCapacity = rs.reduce((sum,b)=>{
-    const lv=Math.max(1,b.level||1), land=Math.max(0,Math.min(100,city.land||50));
-    return sum + buildingTiles(b)*(70 + lv*40 + land*.18);
+    const e=tierEconomy(b), land=Math.max(0,Math.min(100,city.land||50));
+    // 토지가치가 높은 곳일수록 같은 Tier에서도 조금 더 많은 주거 수용력을 갖는다.
+    return sum + buildingTiles(b)*(e.RPop + land*.18);
   },0);
 
   const commercialJobs = cs.reduce((sum,b)=>{
-    const lv=Math.max(1,b.level||1), land=Math.max(0,Math.min(100,city.land||50));
-    return sum + buildingTiles(b)*(8 + lv*7 + land*.04);
+    const e=tierEconomy(b), land=Math.max(0,Math.min(100,city.land||50));
+    return sum + buildingTiles(b)*(e.CJobs + land*.04);
   },0);
 
+  const edu=educationEconomicStats();
   const industrialJobs = is.reduce((sum,b)=>{
-    const lv=Math.max(1,b.level||1);
-    // 교육 수준이 높을수록 같은 산업지역에서 더 많은 고급/전문 일자리가 발생한다.
-    return sum + buildingTiles(b)*(10 + lv*8) * (1 + Math.max(0,city.education-50)*0.004);
+    const e=tierEconomy(b);
+    // Tier가 높아질수록 설비 규모와 일자리가 증가하고, 교육은 첨단산업 비중을 추가로 높인다.
+    return sum + buildingTiles(b)*e.IJobs * (1 + edu.advancedRate*0.42);
   },0);
 
   const serviceJobs = buildings.filter(b=>b.type==='facility').reduce((sum,b)=>{
-    const map={police:5,fire:5,school:8,hospital:12,park:1,
+    const map={police:5,fire:5,school:8,highschool:12,university:18,hospital:12,park:1,
       sewage:7,recycle:6,coal:10,gas:10,nuclear:16,pump:4,tower:3,treatment:8};
     return sum+(map[b.id]||3);
   },0);
@@ -752,7 +871,11 @@ function citizenJobStats(){
     total:Math.round(jobs),filled:Math.round(filled),unfilled:Math.round(unfilled)};
   city.households=households;
   city.workers=workers;
-  city.avgIncome=avgIncome;
+  const eco=educationEconomicStats();
+  city.educationTier=eco.tier;
+  city.advancedIndustryRate=eco.advancedRate*100;
+  city.highIncomeJobs=eco.highIncomeJobs;
+  city.avgIncome=Math.round(avgIncome*eco.productivity);
   city.employmentRate=employmentRate;
 
   // 도시 인구의 실제 취업 상태가 수요/행복에 연결된다.
@@ -760,7 +883,7 @@ function citizenJobStats(){
 
   return {
     residentialCapacity, commercialJobs, industrialJobs, serviceJobs,
-    jobs, pop, households, workers, filled, unfilled, employmentRate, avgIncome
+    jobs, pop, households, workers, filled, unfilled, employmentRate, avgIncome:city.avgIncome, educationTier:eco.tier, advancedIndustryRate:eco.advancedRate, highIncomeJobs:eco.highIncomeJobs
   };
 }
 
@@ -894,8 +1017,8 @@ function updateCommuteTraffic(){
     maxRatio=Math.max(maxRatio,ratio); weightedRatio+=Math.min(1.5,ratio); loadCount++;
   }
   const avgRatio=loadCount?weightedRatio/loadCount:0;
-  const commuterLoad=Math.min(99,maxRatio*42 + avgRatio*18);
-  const base=commuterLoad + Math.min(25,Math.max(0,(city.pop/900)-rs.count*.015));
+  const commuterLoad=Math.min(99,maxRatio*30 + avgRatio*14);
+  const base=commuterLoad + Math.min(25,Math.max(0,(city.pop/1400)-rs.count*.025));
   city.traffic=Math.max(0,Math.min(99,Math.round(base)));
   // 혼잡은 시민의 실제 통근시간을 늘리고 행복에 반영된다.
   const congestionFactor=Math.max(0,city.traffic-35)/65;
@@ -936,20 +1059,28 @@ function updateCommuteCars(dt){
 }
 
 function develop(){
+ // 전력/수도 공급 상태에 따른 개발 허용 여부는 이 tick의 develop() 호출 전체에서 동일하게 적용한다.
+ if(!canDevelopWithUtilities()) return 0;
+
+ // 핵심 수정: '주변에 도로가 있음'만으로 개발하지 않는다.
+ // 메인도로 → 연결도로망 → 해당 구역까지 실제로 이어진 경우만 후보에 넣는다.
+ const connectedRoads=connectedMainRoadSet();
  let opts=[];
  for(let y=3;y<N-3;y++)for(let x=3;x<N-3;x++){
   let g=grid[y][x];
-  if(!g.zone||isOccupied(x,y)||!nearRoad(x,y)||!is전력ed수도ed(x,y))continue;
+  if(!g.zone||isOccupied(x,y)||!nearConnectedRoad(x,y,connectedRoads))continue;
   opts.push({x,y,zone:g.zone});
  }
  if(!opts.length)return 0;
+
  const cj=updateCitizenJobSystem();
  const housingRatio=cj.residentialCapacity/Math.max(1,city.pop);
  const housingNeed=Math.max(0,Math.min(2.5,1.25-housingRatio));
  const jobNeed=Math.max(0,Math.min(2.0,(cj.workers-cj.jobs)/Math.max(1,cj.workers)));
  let built=0;
- const maxBuilds=city.pop>=50000?4:city.pop>=30000?3:city.pop>=10000?2:1;
- const baseLevel=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:city.pop>=3000?2:1;
+ const maxBuilds=city.pop>=100000?6:city.pop>=50000?4:city.pop>=30000?3:city.pop>=10000?2:1;
+ const baseLevel=1;
+
  for(let n=0;n<maxBuilds;n++){
   if(!opts.length)break;
   const weighted=[];
@@ -962,35 +1093,103 @@ function develop(){
   });
   let q=weighted[Math.floor(Math.random()*weighted.length)]||opts[0];
   const demandBoost=q.zone==='R'?Math.min(1.35,1+housingNeed*.65):1;
-  if(Math.random()>Math.min(1,taxDemand(q.zone)/100*demandBoost)){opts=opts.filter(o=>o.x!==q.x||o.y!==q.y);continue;}
-  buildings.push({...q,level:baseLevel,type:'zone',size:1,age:0}); built++;
+  if(Math.random()>Math.min(1,taxDemand(q.zone)/100*demandBoost)){
+    opts=opts.filter(o=>o.x!==q.x||o.y!==q.y);
+    continue;
+  }
+  buildings.push({...q,level:baseLevel,type:'zone',size:1,age:0,variant:Math.abs((q.x*17+q.y*31+Math.floor(Math.random()*5))%5)});
+  built++;
   opts=opts.filter(o=>o.x!==q.x||o.y!==q.y);
  }
- recalcUtilities(); return built;
+ recalcUtilities();
+ return built;
 }
 
-function upgradeResidentialBuildings(){
+function upgradeZoneBuildings(){
   const cj=citizenSystemEffects();
-  const pressure=city.pop/Math.max(1,cj.residentialCapacity);
-  const candidates=buildings.filter(b=>b.type==='zone'&&b.zone==='R'&&(b.level||1)<5);
-  if(!candidates.length)return 0;
-  const maxUpgrades=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:2;
-  const target=city.pop>=50000?5:city.pop>=30000?4:city.pop>=10000?3:2;
+  const edu=educationEconomicStats();
   let upgraded=0;
+  const candidates=buildings.filter(b=>b.type==='zone' && ['R','C','I'].includes(b.zone) && (b.level||1)<6);
   candidates.sort((a,b)=>(a.level||1)-(b.level||1));
+  // 인구 규모가 커질수록 한 tick에 승급 가능한 건물 수도 늘려, 대도시 단계에서 성장이 멈추지 않게 한다.
+  const maxUpgrades=city.pop>=100000?12:city.pop>=50000?9:city.pop>=30000?6:city.pop>=10000?5:city.pop>=3000?4:3;
   for(const b of candidates){
     if(upgraded>=maxUpgrades)break;
-    const lv=b.level||1; if(lv>=target)continue;
+    const lv=Math.max(1,b.level||1);
     const land=Math.max(0,Math.min(100,city.land||50));
-    const threshold=lv===1?52:lv===2?60:lv===3?68:76;
-    const eligible=(city.happy>=threshold||land>=threshold-4||pressure>0.72);
-    if(!eligible)continue;
-    const chance=pressure>0.92?0.72:pressure>0.78?0.48:0.24;
-    if(Math.random()<chance){b.level=lv+1;b.age=0;upgraded++;}
+    const pressure=b.zone==='R' ? city.pop/Math.max(1,cj.residentialCapacity) :
+      b.zone==='C' ? cj.workers/Math.max(1,cj.jobs) : edu.advancedRate;
+    let eligible=false, chance=0;
+    if(b.zone==='R'){
+      // lv5→6(메가시티 아파트)은 행복도/토지가치 요구 수준을 한 단계 더 높여 고급 단계로 취급
+      eligible=city.happy>=([0,44,52,60,68,78][lv]) || land>=[0,40,48,56,64,74][lv] || pressure>.55;
+      chance=(pressure>.80?.82:pressure>.62?.58:.34)*(lv>=5?0.65:1);
+    }else if(b.zone==='C'){
+      eligible=city.happy>=([0,46,54,62,70,80][lv]) || land>=[0,42,50,58,66,76][lv] || cj.employmentRate>65;
+      chance=(cj.employmentRate>82?.72:cj.employmentRate>65?.50:.28)*(lv>=5?0.65:1);
+    }else{
+      // 공업은 교육/첨단산업 전환이 성장의 핵심. 교육이 높을수록 고단계 공장으로 진화한다.
+      const eduGate=[0,0.05,0.16,0.32,0.52,0.72][lv];
+      eligible=edu.advancedRate>=eduGate || city.land>=48 || city.pollution<48;
+      chance=edu.advancedRate>eduGate+.18?.78:edu.advancedRate>=eduGate?.52:.22;
+      if(lv>=4) chance*=Math.min(1,0.5+edu.advancedRate);
+      if(lv>=5) chance*=0.65;
+    }
+    if(eligible && Math.random()<chance){
+      b.level=lv+1;
+      b.age=0;
+      b.variant=(Number.isFinite(b.variant)?b.variant:((b.x*7+b.y*11+lv*13)%5));
+      upgraded++;
+    }
   }
   return upgraded;
 }
-function nearRoad(x,y){for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(grid[yy]?.[xx]?.type==='road')return true;return false}
+// 기존 함수명과의 호환성 유지
+function upgradeResidentialBuildings(){ return upgradeZoneBuildings(); }
+
+// 건물 개발용 도로 연결 판정
+// 단순히 '주변에 도로가 있느냐'가 아니라, 그 도로가 최초 메인도로망과
+// 실제로 4방향으로 연결되어 있는지를 검사한다.
+function nearRoad(x,y){
+  for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+    if(grid[yy]?.[xx]?.type==='road') return true;
+  }
+  return false;
+}
+function markCanonicalMainRoads(){
+  // v26 이전 저장 데이터에는 mainRoad 플래그가 없을 수 있으므로
+  // 최초 도시의 간선도로 좌표를 한 번 복구한다.
+  for(let x=8;x<52;x++) if(grid[29]?.[x]?.type==='road' && grid[29][x].mainRoad===undefined) grid[29][x].mainRoad=true;
+  for(let y=10;y<49;y++) if(grid[y]?.[30]?.type==='road' && grid[y][30].mainRoad===undefined) grid[y][30].mainRoad=true;
+}
+function connectedMainRoadSet(){
+  markCanonicalMainRoads();
+  const seen=new Set(), q=[];
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const g=grid[y][x];
+    if(g.type==='road' && g.mainRoad===true){
+      const k=x+','+y;
+      if(!seen.has(k)){seen.add(k);q.push({x,y});}
+    }
+  }
+  let head=0;
+  while(head<q.length){
+    const {x,y}=q[head++];
+    for(const d of Object.values(DIRV)){
+      const nx=x+d.dx, ny=y+d.dy, g=grid[ny]?.[nx];
+      if(g?.type!=='road') continue;
+      const k=nx+','+ny;
+      if(!seen.has(k)){seen.add(k);q.push({x:nx,y:ny});}
+    }
+  }
+  return seen;
+}
+function nearConnectedRoad(x,y,connected){
+  for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+    if(connected.has(xx+','+yy)) return true;
+  }
+  return false;
+}
 // 도로 총량/평균 차선 통계 (교통량 계산에 사용)
 function roadStats(){
   let count=0, laneSum=0;
@@ -1039,17 +1238,37 @@ function canBuildAt(x,y){
  return true;
 }
 function recalcUtilities(){
+ if(!TIER_ECONOMY) return;
  city.powerCap=buildings.filter(b=>['coal','gas','nuclear'].includes(b.id)).reduce((a,b)=>a+b.cap,0);
  city.waterCap=buildings.filter(b=>['pump','tower','treatment'].includes(b.id)).reduce((a,b)=>a+b.cap,0);
- const tiles=b=>(b.size||1)*(b.size||1);
- city.powerUse=Math.round(buildings.filter(b=>b.type==='zone').reduce((a,b)=>a+(b.zone==='I'?28:b.zone==='C'?16:7)*tiles(b),0));
- city.waterUse=Math.round(buildings.filter(b=>b.type==='zone').reduce((a,b)=>a+(b.zone==='I'?24:b.zone==='C'?13:8)*tiles(b),0));
+ // Tier 상승 = 실제 전력/수도 소비 증가. 시설은 생산능력(cap)을 별도로 가진다.
+ city.powerUse=Math.round(buildings.filter(b=>b.type==='zone').reduce((a,b)=>{
+   const e=tierEconomy(b);
+   return a+(b.zone==='I'?e.powerI:b.zone==='C'?e.powerC:e.powerR)*buildingTiles(b);
+ },0));
+ city.waterUse=Math.round(buildings.filter(b=>b.type==='zone').reduce((a,b)=>{
+   const e=tierEconomy(b);
+   return a+(b.zone==='I'?e.waterI:b.zone==='C'?e.waterC:e.waterR)*buildingTiles(b);
+ },0));
 }
 function is전력ed수도ed(x,y){
  recalcUtilities();
  const powerOK=city.powerCap>0 && city.powerUse<=city.powerCap;
  const waterOK=city.waterCap>0 && city.waterUse<=city.waterCap;
  return powerOK&&waterOK;
+}
+// 신규 개발(develop()) 허용 여부 판정. 완전 공급 중단이 아니라면, 부족한 정도에 비례해
+// 확률적으로 개발을 허용한다. 예전에는 조금이라도 초과하면 100% 차단되어, 발전소 증설을
+// 게을리하면 도시가 영구히 정체되는 문제가 있었다.
+function canDevelopWithUtilities(){
+ recalcUtilities();
+ if(city.powerCap<=0||city.waterCap<=0) return false;
+ const powerRatio=city.powerUse/city.powerCap;
+ const waterRatio=city.waterUse/city.waterCap;
+ if(powerRatio<=1&&waterRatio<=1) return true;
+ const overage=Math.max(powerRatio-1,0)+Math.max(waterRatio-1,0);
+ const allowChance=Math.max(0.08,1-overage*1.2);
+ return Math.random()<allowChance;
 }
 function localEnvironmental(x,y){
  let reduction=0;
@@ -1061,7 +1280,7 @@ function localEnvironmental(x,y){
 function localLandValue(x,y){
  const g=grid[y][x];
  const park=buildings.filter(b=>b.id==='park'&&Math.abs(b.x-x)<=5&&Math.abs(b.y-y)<=5).length;
- const svc=buildings.filter(b=>['police','fire','school','hospital'].includes(b.id)&&Math.abs(b.x-x)<=9&&Math.abs(b.y-y)<=9).length;
+ const svc=buildings.filter(b=>['police','fire','school','highschool','university','hospital'].includes(b.id)&&Math.abs(b.x-x)<=9&&Math.abs(b.y-y)<=9).length;
  const pollution=localEnvironmental(x,y);
  const traffic=nearRoad(x,y)?city.traffic:Math.max(0,city.traffic-8);
  return Math.max(0,Math.min(100,city.land + park*5 + svc*2 - pollution*.28 - traffic*.10));
@@ -1069,7 +1288,7 @@ function localLandValue(x,y){
 function localHappiness(x,y){
  const pollution=localEnvironmental(x,y), land=localLandValue(x,y);
  const parks=buildings.filter(b=>b.id==='park'&&Math.abs(b.x-x)<=5&&Math.abs(b.y-y)<=5).length;
- const services=buildings.filter(b=>['police','fire','school','hospital'].includes(b.id)&&Math.abs(b.x-x)<=9&&Math.abs(b.y-y)<=9).length;
+ const services=buildings.filter(b=>['police','fire','school','highschool','university','hospital'].includes(b.id)&&Math.abs(b.x-x)<=9&&Math.abs(b.y-y)<=9).length;
  return Math.max(0,Math.min(100,city.happy + (land-50)*.20 + parks*2.5 + services*1.2 - pollution*.16));
 }
 function dataValue(x,y){
@@ -1153,7 +1372,7 @@ function bulldozeAt(x,y){
    recalcUtilities();return true;
  }
  if(grid[y][x].type==='road'){
-   grid[y][x].type='grass';grid[y][x].zone=null;grid[y][x].service=null;grid[y][x].lanes=2;grid[y][x].elevated=false; commuteDirty=true;
+   grid[y][x].type='grass';grid[y][x].zone=null;grid[y][x].service=null;grid[y][x].lanes=2;grid[y][x].elevated=false;grid[y][x].mainRoad=false; commuteDirty=true;
    news(`도로 철거 완료 — ${x}, ${y}`);
    syncCarsToCommute();
    recalcUtilities();return true;
@@ -1260,7 +1479,7 @@ function placeAt(x,y){
  else if(tool==='road'){
    if(occupied){news('이미 건물이나 시설이 있는 칸에는 도로를 놓을 수 없습니다. 먼저 철거하세요.');}
    else if(grid[y][x].type!=='road'){
-     grid[y][x].type='road';grid[y][x].lanes=2;grid[y][x].elevated=false;
+     grid[y][x].type='road';grid[y][x].lanes=2;grid[y][x].elevated=false;grid[y][x].mainRoad=false;
      city.money-=20;commuteDirty=true;syncCarsToCommute();
    }
  }
@@ -1291,7 +1510,7 @@ function inspect(x,y){
    return;
  }
  document.getElementById('inspect').innerHTML=b?`<b>${b.bigId?BUILDINGS.bigzone.find(d=>d.id===b.bigId)?.name:(b.zone==='R'?'주거 건물':b.zone==='C'?'상업 건물':'공업 건물')}${b.size===2?' (대형 2×2)':''}</b>
- <div class="row"><span>건물 단계</span><b>${b.level}</b></div>
+ <div class="row"><span>건물 단계</span><b>Tier ${b.level} · ${b.zone==='R'?['','작은 단독주택','중형 주택','저층 아파트','고층 아파트','초고층 주거시설'][b.level]:b.zone==='C'?['','작은 상점','상가','중형 상업건물','대형 쇼핑센터','대형 복합시설'][b.level]:['','작은 공방','소규모 공장','공장단지','대형 산업시설','첨단 산업시설'][b.level]}</b></div>
  <div class="row"><span>주민/일자리</span><b>${(b.zone==='R'?b.level*90:b.level*65)*((b.size||1)*(b.size||1))}</b></div>
  ${b.maint?`<div class="row"><span>유지비</span><b>$${b.maint}/mo</b></div>`:''}
  <div class="row"><span>전력</span><b>${is전력ed수도ed(x,y)?'연결됨':'공급 부족'}</b></div>
@@ -1311,7 +1530,7 @@ function serviceStats(){
   const base=Math.max(1,r), bd=budgetState();
   const police=Math.min(100,cnt('police')*Math.max(18,Math.round(100/base*6)))*(bd.police/100);
   const fire=Math.min(100,cnt('fire')*Math.max(18,Math.round(100/base*6)))*(bd.fire/100);
-  const education=Math.min(100,cnt('school')*Math.max(16,Math.round(100/base*5)))*(bd.education/100);
+  const education=Math.min(100,(cnt('school')*Math.max(16,Math.round(100/base*5)))+(cnt('highschool')*Math.max(10,Math.round(100/base*3.5)))+(cnt('university')*Math.max(8,Math.round(100/base*2.8))))*(bd.education/100);
   const health=Math.min(100,cnt('hospital')*Math.max(18,Math.round(100/base*6)))*(bd.health/100);
   const park=Math.min(100,cnt('park')*Math.max(12,Math.round(100/base*4)))*(bd.parks/100);
   city.crime=Math.max(2,Math.min(99,14-police*.08));
@@ -1344,7 +1563,7 @@ function updateUI(){
  for(const [id,val] of [['pop',Math.round(city.pop).toLocaleString()],['money','$'+Math.max(0,Math.round(city.money)).toLocaleString()],['balance',(city.balance>=0?'+':'')+'$'+Math.round(city.balance).toLocaleString()],['happy',Math.round(city.happy)+'%'],['traffic',Math.round(city.traffic)+'%'],['pollution',Math.round(city.pollution)+'%'],['crime',Math.round(city.crime)+'%'],['education',Math.round(city.education)+'%'],['health',Math.round(city.health)+'%'],['land',Math.round(city.land)],['power',shown전력+'%'],['water',shown수도+'%']])document.getElementById(id).textContent=val;
  const cj=updateCitizenJobSystem();
     const commute=updateCommuteTraffic();
-    if(commute.congestionFactor>0) city.happy=Math.max(20,city.happy-commute.congestionFactor*1.4);
+    if(commute.congestionFactor>0) city.happy=Math.max(25,city.happy-commute.congestionFactor*0.6);
   const emp=document.getElementById('employment'), jobsEl=document.getElementById('jobs'), inc=document.getElementById('income');
   if(emp)emp.textContent=Math.round(cj.employmentRate)+'%';
   if(jobsEl)jobsEl.textContent=Math.round(cj.jobs).toLocaleString();
@@ -1355,6 +1574,9 @@ function updateUI(){
  document.getElementById('ibar').style.width=Math.min(100,Math.max(5,taxDemand('I')-city.pollution*.35+city.happy*.08))+'%';
 }
 function tick(){
+  try{ if(typeof city.happy==='number') city.happy=Math.max(0,Math.min(100,city.happiness+(city.publicAmenityHappiness||0)*0.08)); }catch(e){}
+  try{ if(window.v25ApplyAmenityToHousing) window.v25ApplyAmenityToHousing(); }catch(e){}
+
  if(!running||speed===0)return;
  for(let i=0;i<speed;i++){
    city.month++;if(city.month>12){city.month=1;city.year++}
@@ -1366,9 +1588,14 @@ function tick(){
    const bd=budgetState();
    const effectivePowerCap=city.powerCap*(0.65+0.35*bd.power/100);
    const effectiveWaterCap=city.waterCap*(0.65+0.35*bd.water/100);
-   const shortage=(city.powerUse>effectivePowerCap?20:0)+(city.waterUse>effectiveWaterCap?18:0);
+   // 전력/수도가 부족할 때 성장을 완전히 멈추는 대신, 부족한 정도(초과 비율)에 비례해 페널티를 준다.
+   // (예: 발전소를 안 늘려도 도시가 영구히 멈추지 않고, 다만 성장이 느려지는 정도로 그친다.)
+   const powerDeficitRatio=effectivePowerCap>0?Math.max(0,(city.powerUse-effectivePowerCap)/effectivePowerCap):(city.powerUse>0?1:0);
+   const waterDeficitRatio=effectiveWaterCap>0?Math.max(0,(city.waterUse-effectiveWaterCap)/effectiveWaterCap):(city.waterUse>0?1:0);
+   const shortage=Math.min(22, powerDeficitRatio*26 + waterDeficitRatio*24);
+   const shortageFactor=Math.max(0.35,1-Math.min(1,powerDeficitRatio+waterDeficitRatio)*0.65);
    const residentGrowthFactor=0.55+0.45*taxDemand('R')/100;
-   city.pop+=r*(shortage?0.30:1.35)*residentGrowthFactor*(0.72+0.28*bd.welfare/100);
+   city.pop+=r*(shortage?1.35*shortageFactor:1.35)*residentGrowthFactor*(0.72+0.28*bd.welfare/100);
    const rs=roadStats();
    commuteDirty=true;
    updateCommuteTraffic();
@@ -1376,8 +1603,8 @@ function tick(){
    city.traffic=Math.min(99,city.traffic*capacityRelief);
    updateCommuteTraffic();
    const envRelief=buildings.filter(b=>b.id==='sewage'||b.id==='recycle').reduce((a,b)=>a+(b.env||0),0);
-   city.pollution=Math.max(0,Math.min(99,10+ind*2.2+city.traffic*.18+buildings.filter(b=>b.id==='coal').length*3-envRelief));
-   const avgLand=Math.max(0,Math.min(100,54 + buildings.filter(b=>b.id==='park').length*1.8 - city.pollution*.28 + city.education*.10 + city.health*.08));
+   city.pollution=Math.max(0,Math.min(99,10+ind*1.5+city.traffic*.18+buildings.filter(b=>b.id==='coal').length*3-envRelief));
+   const avgLand=Math.max(0,Math.min(100,54 + buildings.filter(b=>b.id==='park').length*1.8 - city.pollution*.18 + city.education*.10 + city.health*.08));
    city.land=avgLand;
    const svc=serviceStats();
    const serviceBonus=svc.police*.035+svc.fire*.03+svc.education*.035+svc.health*.04+svc.park*.05;
@@ -1388,16 +1615,19 @@ function tick(){
     const employmentGrowth=Math.max(0.65,Math.min(1.25,0.78+cj.employmentRate/210));
     const housingGrowth=Math.max(0.65,Math.min(1.10,cj.residentialCapacity>0?Math.min(1.05,cj.residentialCapacity/Math.max(1,city.pop*1.02)):0.65));
     const welfareGrowth=0.85+(budgetState().welfare/100)*0.15;
-    city.pop=Math.max(0,city.pop*(1+0.0070*employmentGrowth*housingGrowth*welfareGrowth)+
+    city.pop=Math.max(0,city.pop*(1+0.0070*employmentGrowth*housingGrowth*welfareGrowth*shortageFactor)+
       Math.max(0,cj.jobs-cj.workers)*0.08-
       Math.max(0,cj.workers-cj.jobs)*0.05);
-    upgradeResidentialBuildings();
+    upgradeZoneBuildings();
     // 프로토타입에서는 주거 공급이 충분하면 10,000명 이후에도 자연스럽게 성장하도록
     // 인구 상한을 두지 않는다. 대신 주거 수용력 부족만 성장률을 낮춘다.
     const fin=calculateFinances();
    city.balance=fin.monthlyNet;
    city.money+=city.balance;
-   if(shortage===0&&Math.random()<.34)develop();
+   // 전력/수도가 심각하게 부족할 때(50% 이상 초과)만 신규 개발을 크게 억제하고,
+   // 그 미만이면 개발 확률을 낮출 뿐 완전히 차단하지는 않는다.
+   const developChance=.34*Math.max(0.15,1-Math.min(1,powerDeficitRatio+waterDeficitRatio));
+   if(Math.random()<developChance)develop();
    updateCars(speed);
    syncCarsToCommute();
  }
@@ -1502,12 +1732,16 @@ function calculateFinances(){
   const ind=buildings.filter(b=>b.type==='zone'&&b.zone==='I').reduce((a,b)=>a+tiles(b),0);
   const landBase=Math.max(0,city.land||50);
   // 기본 세율(R7/C6/I5)에서도 정상적인 도시가 흑자를 낼 수 있도록 세수 구조를 조정한다.
+  const tierTaxR=buildings.filter(b=>b.type==='zone'&&b.zone==='R').reduce((a,b)=>a+buildingTiles(b)*tierEconomy(b).tax,0);
+  const tierTaxC=buildings.filter(b=>b.type==='zone'&&b.zone==='C').reduce((a,b)=>a+buildingTiles(b)*tierEconomy(b).tax,0);
+  const tierTaxI=buildings.filter(b=>b.type==='zone'&&b.zone==='I').reduce((a,b)=>a+buildingTiles(b)*tierEconomy(b).tax,0);
   const revenue=Math.max(0,
-    r*(city.taxR/7)*14 +
-    c*(city.taxC/6)*30 +
-    ind*(city.taxI/5)*28 +
+    tierTaxR*(city.taxR/7)*14 +
+    tierTaxC*(city.taxC/6)*30 +
+    tierTaxI*(city.taxI/5)*28 +
     (r+c+ind)*landBase*(city.taxLand/100)*0.35 +
-    Math.max(0,city.pop)*city.taxSpecial*0.0025
+    Math.max(0,city.pop)*city.taxSpecial*0.0025 +
+     Math.max(0,city.highIncomeJobs||0)*(city.taxR/7)*1.8
   );
   const bd=budgetState(), pf=Math.max(1,city.pop/1000), rc=roadStats().count;
   const maintBy=id=>buildings.filter(b=>b.type==='facility'&&b.id===id).reduce((a,b)=>a+(b.maint||0),0);
@@ -1517,7 +1751,7 @@ function calculateFinances(){
   const bases={
     police:maintBy('police')+pf*3.0,
     fire:maintBy('fire')+pf*2.5,
-    education:maintBy('school')+pf*3.5,
+    education:maintBy('school')+maintBy('highschool')+maintBy('university')+pf*3.5,
     health:maintBy('hospital')+pf*3.0,
     traffic:pf*1.8+rc*.35,
     roads:rc*.55,
@@ -1549,7 +1783,7 @@ function openBudget(){document.getElementById('modal').style.display='flex';rend
 function closeModal(){document.getElementById('modal').style.display='none'}
 document.getElementById('budgetBtn').onclick=openBudget;document.getElementById('budgetBtn2').onclick=openBudget;
 document.getElementById('saveBtn').onclick=()=>{localStorage.citySim=JSON.stringify({grid,buildings,city,cars});news('저장 완료 — 도시 상태가 브라우저에 저장되었습니다.')};
-document.getElementById('loadBtn').onclick=()=>{try{let s=JSON.parse(localStorage.citySim);Object.assign(city,s.city);budgetState();for(let y=0;y<N;y++)for(let x=0;x<N;x++)grid[y][x]=s.grid[y][x];buildings.splice(0,buildings.length,...s.buildings);cars.splice(0,cars.length,...s.cars);news('불러오기 완료.')}catch(e){news('저장된 도시가 없습니다.')}updateUI();draw()};
+document.getElementById('loadBtn').onclick=()=>{try{let s=JSON.parse(localStorage.citySim);Object.assign(city,s.city);city.educationTier=Number(city.educationTier)||1;city.advancedIndustryRate=Number(city.advancedIndustryRate)||0;city.highIncomeJobs=Number(city.highIncomeJobs)||0;budgetState();for(let y=0;y<N;y++)for(let x=0;x<N;x++)grid[y][x]=s.grid[y][x];buildings.splice(0,buildings.length,...s.buildings);cars.splice(0,cars.length,...s.cars);markCanonicalMainRoads();recalcUtilities();news('불러오기 완료.')}catch(e){news('저장된 도시가 없습니다.')}updateUI();draw()};
 function setRightPanel(show){
  document.getElementById('right').classList.toggle('show',show);
  setTimeout(resize,220);
@@ -1560,6 +1794,72 @@ document.getElementById('rightToggle')?.addEventListener('click',()=>{
 document.getElementById('rightClose')?.addEventListener('click',()=>setRightPanel(false));
 addEventListener('orientationchange',()=>setTimeout(resize,200));
 resize();updateUI();
+</script>
+
+<script id="v25-budget-happiness-patch">
+(function(){
+  function bindBudgetSafety(){
+    document.querySelectorAll('input[type="range"]').forEach(function(el){
+      if(el.__v25bound) return;
+      el.__v25bound = true;
+      el.addEventListener('pointerdown', function(e){ e.stopPropagation(); }, true);
+      el.addEventListener('pointermove', function(e){ e.stopPropagation(); }, true);
+      el.addEventListener('pointerup', function(e){ e.stopPropagation(); }, true);
+      el.addEventListener('touchstart', function(e){ e.stopPropagation(); }, {capture:true,passive:false});
+      el.addEventListener('touchmove', function(e){ e.stopPropagation(); }, {capture:true,passive:false});
+      el.addEventListener('touchend', function(e){ e.stopPropagation(); }, {capture:true,passive:false});
+      el.addEventListener('change', function(e){ e.stopPropagation(); }, true);
+      el.addEventListener('input', function(e){ e.stopPropagation(); }, true);
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindBudgetSafety);
+  else bindBudgetSafety();
+  window.addEventListener('load', bindBudgetSafety);
+  window.addEventListener('pointerdown', function(e){
+    if(e.target && e.target.matches && e.target.matches('input[type="range"]')) e.stopPropagation();
+  }, true);
+})();
+
+/* 공공시설 → 인접 주거지 행복도/수용인구 보정 */
+window.v25PublicAmenity = function(){
+  if(typeof buildings==='undefined' || typeof city==='undefined') return;
+  var residential = buildings.filter(function(b){
+    return b && b.type==='zone' && b.zone==='R';
+  });
+  var facilities = buildings.filter(function(b){
+    return b && b.type==='facility' && ['school','highschool','university','hospital','park','police','fire'].includes(b.id);
+  });
+  var amenity = {happiness:0, capacity:0};
+  residential.forEach(function(r){
+    var bestH=0, bestCap=0;
+    facilities.forEach(function(f){
+      var d=Math.hypot((r.x||0)-(f.x||0),(r.y||0)-(f.y||0));
+      var radius = f.id==='school' ? 10 : f.id==='highschool' ? 12 : f.id==='university' ? 15 :
+                   f.id==='hospital' ? 13 : f.id==='park' ? 9 : 8;
+      if(d<=radius){
+        var falloff=1-d/radius;
+        var h=f.id==='school'?7:f.id==='highschool'?9:f.id==='university'?11:f.id==='hospital'?6:f.id==='park'?5:3;
+        var cap=f.id==='school'?0.06:f.id==='highschool'?0.08:f.id==='university'?0.10:f.id==='hospital'?0.05:f.id==='park'?0.04:0.025;
+        bestH=Math.max(bestH,h*falloff);
+        bestCap=Math.max(bestCap,cap*falloff);
+      }
+    });
+    r.localAmenityHappiness=bestH;
+    r.localAmenityCapacity=bestCap;
+  });
+  city.publicAmenityHappiness=residential.length ? residential.reduce(function(s,r){return s+(r.localAmenityHappiness||0);},0)/residential.length : 0;
+};
+
+/* 매월 실제 주거 수용력에 공공시설 인접 효과를 반영 */
+window.v25ApplyAmenityToHousing = function(){
+  if(typeof buildings==='undefined') return;
+  v25PublicAmenity();
+  buildings.forEach(function(b){
+    if(!b || b.type!=='zone' || b.zone!=='R') return;
+    b.__v25BaseCapacityMultiplier = Math.max(1, b.__v25BaseCapacityMultiplier || 1);
+    b.__v25AmenityCapacityMultiplier = 1 + Math.min(0.12, Math.max(0,b.localAmenityCapacity||0));
+  });
+};
 </script>
 </body>
 </html>
