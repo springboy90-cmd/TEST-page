@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V32</title>
+<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V34</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -1340,7 +1340,7 @@ function drawTransitVehicles(){
   draw(trains,'rail');draw(subwayCars,'subway');
 }
 
-function develop(){
+function develop(batchFactor=1){
  // 도시 전체의 발전/수도 생산능력이 부족하면 신규 개발 속도를 낮춘다.
  if(!canDevelopWithUtilities()) return 0;
 
@@ -1360,7 +1360,10 @@ function develop(){
  const housingNeed=Math.max(0,Math.min(2.5,1.25-housingRatio));
  const jobNeed=Math.max(0,Math.min(2.0,(cj.workers-cj.jobs)/Math.max(1,cj.workers)));
  let built=0;
- const maxBuilds=city.pop>=100000?6:city.pop>=50000?4:city.pop>=30000?3:city.pop>=10000?2:1;
+ const baseBuilds=city.pop>=100000?6:city.pop>=50000?4:city.pop>=30000?3:city.pop>=10000?2:1;
+ // 가속 배수만큼 개발량을 단순 선형으로 늘리면 10배에서 후보 가중치 계산도 폭증하므로,
+ // 개발량은 sqrt(가속배수)로 완만하게 증가시킨다. 실제 시간은 빨라지되 CPU 폭증은 막는다.
+ const maxBuilds=Math.max(1,Math.min(24,Math.round(baseBuilds*Math.sqrt(Math.max(1,batchFactor)))));
  const baseLevel=1;
 
  for(let n=0;n<maxBuilds;n++){
@@ -1392,7 +1395,7 @@ function upgradeZoneBuildings(){
   const edu=educationEconomicStats();
   let upgraded=0;
   const candidates=buildings.filter(b=>b.type==='zone' && ['R','C','I'].includes(b.zone) && (b.level||1)<6);
-  candidates.sort((a,b)=>(a.level||1)-(b.level||1));
+  // 대도시에서는 전체 건물 정렬 자체가 큰 비용이므로 정렬하지 않고 한 번의 선형 스캔으로 처리한다.
   // 인구 규모가 커질수록 한 tick에 승급 가능한 건물 수도 늘려, 대도시 단계에서 성장이 멈추지 않게 한다.
   const maxUpgrades=city.pop>=100000?12:city.pop>=50000?9:city.pop>=30000?6:city.pop>=10000?5:city.pop>=3000?4:3;
   for(const b of candidates){
@@ -1847,10 +1850,10 @@ function updateServiceUI(){
 function updateUI(){
  recalcUtilities();
  updateServiceUI();
- const ts=transitStats();
- // 도시 상태는 한 프레임 안에서 시민→통근→교통→대중교통 순으로 다시 계산하여 실시간 값으로 표시한다.
- updateCitizenJobSystem();
+ // 도시 상태는 한 번의 UI 갱신에서 시민→통근→교통 순으로 한 번만 계산한다.
+ const cj0=updateCitizenJobSystem();
  updateCommuteTraffic();
+ transitStats();
  const tu=document.getElementById('transitUsage'),tp=document.getElementById('transitPassengers'),bp=document.getElementById('busPassengers');
  const rp=document.getElementById('railPassengers'),sp=document.getElementById('subwayPassengers'),rr=document.getElementById('transitRoadRelief');
  const tv=document.getElementById('transitVehicles'); if(tv) tv.textContent=`${city.transit?.busVehicles||0} / ${city.transit?.trainVehicles||0} / ${city.transit?.subwayVehicles||0}대`;
@@ -1865,8 +1868,8 @@ function updateUI(){
  const shown전력=city.powerCap?Math.max(0,Math.round(100-powerPct)):'0';
  const shown수도=city.waterCap?Math.max(0,Math.round(100-waterPct)):'0';
  for(const [id,val] of [['pop',Math.round(city.pop).toLocaleString()],['money','$'+Math.max(0,Math.round(city.money)).toLocaleString()],['balance',(city.balance>=0?'+':'')+'$'+Math.round(city.balance).toLocaleString()],['happy',Math.round(city.happy)+'%'],['traffic',Math.round(city.traffic)+'%'],['pollution',Math.round(city.pollution)+'%'],['crime',Math.round(city.crime)+'%'],['education',Math.round(city.education)+'%'],['health',Math.round(city.health)+'%'],['land',Math.round(city.land)],['power',shown전력+'%'],['water',shown수도+'%']])document.getElementById(id).textContent=val;
- const cj=updateCitizenJobSystem();
-    const commute=updateCommuteTraffic();
+ const cj=cj0;
+    const commute=city.commute?{congestionFactor:Math.max(0,city.traffic-35)/65}:{congestionFactor:0};
     if(commute.congestionFactor>0) city.happy=Math.max(25,city.happy-commute.congestionFactor*0.6);
   const emp=document.getElementById('employment'), jobsEl=document.getElementById('jobs'), inc=document.getElementById('income');
   if(emp)emp.textContent=Math.round(cj.employmentRate)+'%';
@@ -1878,68 +1881,108 @@ function updateUI(){
  document.getElementById('ibar').style.width=Math.min(100,Math.max(5,taxDemand('I')-city.pollution*.35+city.happy*.08))+'%';
 }
 function tick(){
-  // 안전 정리: 렌더링 루프에서는 하지 않고 1초 시뮬레이션 틱에서 한 번만 수행한다.
+  // ============================================================
+  // 가속 시뮬레이션 성능 핵심 수정 V34
+  // speed=10일 때 기존 코드는 '월 10회'마다 도시 전체를 다시 순회했다.
+  // 특히 buildings.filter/reduce, 유틸리티 재계산, 통근 경로/교통량,
+  // 시민·일자리 계산, 재정 계산, 개발 후보 탐색이 10배 반복되어
+  // 렌더링과 카메라 입력까지 같은 메인 스레드를 점유했다.
+  //
+  // V34에서는 한 번의 실제 1초 tick에서 '도시 전체 계산'을 1회만 하고,
+  // 그 결과를 speed개의 월 시뮬레이션이 공유한다. 월별 인구/재정 시간 진행은
+  // 그대로 유지하고, 구조 변화(개발/승급)는 배치 후 1회 처리한다.
+  // ============================================================
   purgeBuildingsOnRoads();
   try{ if(typeof city.happy==='number') city.happy=Math.max(0,Math.min(100,city.happy+(city.publicAmenityHappiness||0)*0.08)); }catch(e){}
   try{ if(window.v25ApplyAmenityToHousing) window.v25ApplyAmenityToHousing(); }catch(e){}
 
- if(!running||speed===0)return;
- for(let i=0;i<speed;i++){
-   city.month++;if(city.month>12){city.month=1;city.year++}
-   let tiles=b=>(b.size||1)*(b.size||1);
-   let r=buildings.filter(b=>b.type==='zone'&&b.zone==='R').reduce((a,b)=>a+tiles(b),0),
-       c=buildings.filter(b=>b.type==='zone'&&b.zone==='C').reduce((a,b)=>a+tiles(b),0),
-       ind=buildings.filter(b=>b.type==='zone'&&b.zone==='I').reduce((a,b)=>a+tiles(b),0);
-   recalcUtilities();
-   const bd=budgetState();
-   const effectivePowerCap=city.powerCap*(0.65+0.35*bd.power/100);
-   const effectiveWaterCap=city.waterCap*(0.65+0.35*bd.water/100);
-   // 전력/수도가 부족할 때 성장을 완전히 멈추는 대신, 부족한 정도(초과 비율)에 비례해 페널티를 준다.
-   // (예: 발전소를 안 늘려도 도시가 영구히 멈추지 않고, 다만 성장이 느려지는 정도로 그친다.)
-   const powerDeficitRatio=effectivePowerCap>0?Math.max(0,(city.powerUse-effectivePowerCap)/effectivePowerCap):(city.powerUse>0?1:0);
-   const waterDeficitRatio=effectiveWaterCap>0?Math.max(0,(city.waterUse-effectiveWaterCap)/effectiveWaterCap):(city.waterUse>0?1:0);
-   const shortage=Math.min(22, powerDeficitRatio*26 + waterDeficitRatio*24);
-   const shortageFactor=Math.max(0.35,1-Math.min(1,powerDeficitRatio+waterDeficitRatio)*0.65);
-   const residentGrowthFactor=0.55+0.45*taxDemand('R')/100;
-   city.pop+=r*(shortage?1.35*shortageFactor:1.35)*residentGrowthFactor*(0.72+0.28*bd.welfare/100);
-   const rs=roadStats();
-   commuteDirty=true;
-   const transit=transitStats();
-   updateCommuteTraffic();
-   if(transit.usage>0) city.happy=Math.min(95,city.happy+Math.min(2.5,transit.usage*.025));
-   const capacityRelief=Math.max(0.55,0.65+0.35*bd.roads/100*bd.traffic/100);
-   city.traffic=Math.min(99,city.traffic*capacityRelief);
-   updateCommuteTraffic();
-   const envRelief=buildings.filter(b=>b.id==='sewage'||b.id==='recycle').reduce((a,b)=>a+(b.env||0),0);
-   city.pollution=Math.max(0,Math.min(99,10+ind*1.5+city.traffic*.18+buildings.filter(b=>b.id==='coal').length*3-envRelief));
-   const avgLand=Math.max(0,Math.min(100,54 + buildings.filter(b=>b.id==='park').length*1.8 - city.pollution*.18 + city.education*.10 + city.health*.08));
-   city.land=avgLand;
-   const svc=serviceStats();
-   const serviceBonus=svc.police*.035+svc.fire*.03+svc.education*.035+svc.health*.04+svc.park*.05;
-   const adminWelfareBonus=(bd.admin-50)*.015+(bd.welfare-50)*.012;
-   city.happy=Math.max(20,Math.min(95,70-city.traffic*.16-city.pollution*.10+serviceBonus+city.land*.08+city.education*.05+adminWelfareBonus-shortage));
-   const cj=updateCitizenJobSystem();
-    // 고용률이 낮으면 인구 증가가 둔화되고, 일자리가 충분하면 성장 여력이 생긴다.
+  if(!running||speed===0)return;
+
+  // ---- 도시 전체 스냅샷: 가속 배수와 무관하게 1회만 계산 ----
+  recalcUtilities();
+  const bd=budgetState();
+  const tiles=b=>(b.size||1)*(b.size||1);
+  let r=0,c=0,ind=0;
+  for(const b of buildings){
+    if(b.type!=='zone')continue;
+    const t=tiles(b);
+    if(b.zone==='R')r+=t;
+    else if(b.zone==='C')c+=t;
+    else if(b.zone==='I')ind+=t;
+  }
+  let cj=updateCitizenJobSystem();
+  transitStats();
+  updateCommuteTraffic();
+
+  const effectivePowerCap=city.powerCap*(0.65+0.35*bd.power/100);
+  const effectiveWaterCap=city.waterCap*(0.65+0.35*bd.water/100);
+  const powerDeficitRatio=effectivePowerCap>0?Math.max(0,(city.powerUse-effectivePowerCap)/effectivePowerCap):(city.powerUse>0?1:0);
+  const waterDeficitRatio=effectiveWaterCap>0?Math.max(0,(city.waterUse-effectiveWaterCap)/effectiveWaterCap):(city.waterUse>0?1:0);
+  const shortage=Math.min(22,powerDeficitRatio*26+waterDeficitRatio*24);
+  const shortageFactor=Math.max(0.35,1-Math.min(1,powerDeficitRatio+waterDeficitRatio)*0.65);
+  const residentGrowthFactor=0.55+0.45*taxDemand('R')/100;
+  const rs=roadStats();
+  const capacityRelief=Math.max(0.55,0.65+0.35*bd.roads/100*bd.traffic/100);
+  const envRelief=buildings.filter(b=>b.id==='sewage'||b.id==='recycle').reduce((a,b)=>a+(b.env||0),0);
+  const avgLand=Math.max(0,Math.min(100,54+buildings.filter(b=>b.id==='park').length*1.8-city.pollution*.18+city.education*.10+city.health*.08));
+  city.land=avgLand;
+
+  // 현재 상태를 월별로 재사용할 수 있는 값들
+  let totalNet=0;
+  for(let i=0;i<speed;i++){
+    city.month++;if(city.month>12){city.month=1;city.year++;}
+
+    // 주거 성장: 월별 시뮬레이션은 유지하되, 건물 전체 스캔은 배치 밖에서 제거
+    city.pop += r*(shortage?1.35*shortageFactor:1.35)*residentGrowthFactor*(0.72+0.28*bd.welfare/100);
+
     const employmentGrowth=Math.max(0.65,Math.min(1.25,0.78+cj.employmentRate/210));
     const housingGrowth=Math.max(0.65,Math.min(1.10,cj.residentialCapacity>0?Math.min(1.05,cj.residentialCapacity/Math.max(1,city.pop*1.02)):0.65));
-    const welfareGrowth=0.85+(budgetState().welfare/100)*0.15;
+    const welfareGrowth=0.85+(bd.welfare/100)*0.15;
     city.pop=Math.max(0,city.pop*(1+0.0070*employmentGrowth*housingGrowth*welfareGrowth*shortageFactor)+
-      Math.max(0,cj.jobs-cj.workers)*0.08-
-      Math.max(0,cj.workers-cj.jobs)*0.05);
-    upgradeZoneBuildings();
-    // 프로토타입에서는 주거 공급이 충분하면 10,000명 이후에도 자연스럽게 성장하도록
-    // 인구 상한을 두지 않는다. 대신 주거 수용력 부족만 성장률을 낮춘다.
-    const fin=calculateFinances();
-   city.balance=fin.monthlyNet;
-   city.money+=city.balance;
-   // 전력/수도가 심각하게 부족할 때(50% 이상 초과)만 신규 개발을 크게 억제하고,
-   // 그 미만이면 개발 확률을 낮출 뿐 완전히 차단하지는 않는다.
-   const developChance=.34*Math.max(0.15,1-Math.min(1,powerDeficitRatio+waterDeficitRatio));
-   if(Math.random()<developChance)develop();
-   updateCars(speed);
-   syncCarsToCommute();
- }
- updateUI();draw();if(Math.random()<.08)news(`도시 소식: 인구 ${Math.round(city.pop).toLocaleString()}명 — 교통량 ${Math.round(city.traffic)}%.`);
+      Math.max(0,cj.jobs-cj.workers)*0.08-Math.max(0,cj.workers-cj.jobs)*0.05);
+
+    // 교통/환경/행복도는 도시 구조가 바뀌기 전까지 동일한 스냅샷을 사용한다.
+    city.traffic=Math.min(99,city.traffic*capacityRelief);
+    city.pollution=Math.max(0,Math.min(99,10+ind*1.5+city.traffic*.18+buildings.filter(b=>b.id==='coal').length*3-envRelief));
+    const svc=serviceStats();
+    const serviceBonus=svc.police*.035+svc.fire*.03+svc.education*.035+svc.health*.04+svc.park*.05;
+    const adminWelfareBonus=(bd.admin-50)*.015+(bd.welfare-50)*.012;
+    city.happy=Math.max(20,Math.min(95,70-city.traffic*.16-city.pollution*.10+serviceBonus+city.land*.08+city.education*.05+adminWelfareBonus-shortage));
+
+    // 재정은 한 번만 계산해서 speed개월분을 누적한다.
+    if(i===0){
+      const fin=calculateFinances();
+      totalNet=fin.monthlyNet;
+    }
+  }
+
+  city.balance=totalNet;
+  city.money+=totalNet*speed;
+
+  // 구조 변경은 월별 반복 대신 배치 후 1회.
+  // 가속 배수에 따른 개발/승급량은 별도 함수에서 완만하게 보정한다.
+  const developChance=.34*Math.max(0.15,1-Math.min(1,powerDeficitRatio+waterDeficitRatio));
+  if(Math.random()<Math.min(1,developChance*Math.sqrt(Math.max(1,speed)))){
+    const built=develop(Math.max(1,speed));
+    if(built>0){
+      commuteDirty=true;
+      recalcUtilities();
+      cj=updateCitizenJobSystem();
+    }
+  }
+  upgradeZoneBuildings();
+
+  // 구조 변경 후 교통/대중교통은 1회만 재동기화.
+  if(commuteDirty){
+    buildCommuteGroups();
+    updateCommuteTraffic();
+  }
+  syncCarsToCommute();
+  updateCars(speed);
+
+  updateUI();
+  draw();
+  if(Math.random()<.08)news(`도시 소식: 인구 ${Math.round(city.pop).toLocaleString()}명 — 교통량 ${Math.round(city.traffic)}%.`);
 }
 function news(t){document.getElementById('news').textContent='['+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+'] '+t}
 setInterval(tick,1000);
