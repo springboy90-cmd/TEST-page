@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V36</title>
+<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V42</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -39,6 +39,7 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
 #buildHint{font-size:10px;color:#c9c2a6;margin-top:7px;line-height:1.35}
 .tool[data-tool="bulldoze"].active{background:#744e48;border-color:#c28f83}
 .tool[data-tool="widen"].active{background:#4e6a74;border-color:#83b3c2}
+.tool[data-tool="roadedit"].active{background:#5b6848;border-color:#aebd78}
 .ghost{pointer-events:none}
 
 #rightToggle{display:none}
@@ -113,6 +114,7 @@ input[type="range"]{touch-action:pan-x !important; pointer-events:auto !importan
 <aside id="tools">
   <button class="tool active" data-tool="select">↖ 선택<small>건물/시설 정보</small></button>
   <button class="tool" data-tool="road">▰ 도로<small>드래그하여 건설</small></button>
+  <button class="tool" data-tool="roadedit">🗺 도로편집<small>건물/시설 외형 숨기기</small></button>
   <button class="tool" data-tool="widen">⬌ 차선확장<small>2차선→4차선 ($350)</small></button>
   <button class="tool" data-tool="highway">▰ 고가도로<small>6차선 · 지상도로 위/빈 부지 건설 ($120/칸)</small></button>
   <button class="tool" data-tool="bulldoze">⌫ 철거<small>잘못 만든 시설 삭제</small></button>
@@ -172,6 +174,7 @@ input[type="range"]{touch-action:pan-x !important; pointer-events:auto !importan
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let W=0,H=0,camX=0,camY=0,zoom=1,tool='select',speed=1,dataMode='',running=true,drag=false,last=null;
+let roadEditMode=false; // 도로 편집 모드: 건물/시설 외형 숨김
 let buildType=null, ghost={x:-1,y:-1}, selected=null, panActive=false, panStart=null, camStart=null, touchMoved=false;
 const N=60,T=(innerWidth<=700?32:(innerWidth<=1100?23:18));
 const grid=Array.from({length:N},()=>Array.from({length:N},()=>({
@@ -550,7 +553,15 @@ function drawTile(x,y){
  ctx.beginPath();poly.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();
  let g=grid[y][x],c=colors[g.type]||colors.grass;
  if(g.type==='forest')c='#536b4d'; if(g.zone==='R')c='#7f9a68';if(g.zone==='C')c='#aa9160';if(g.zone==='I')c='#8d6960';
- ctx.fillStyle=c;ctx.fill();if(g.type!=='road'){ctx.strokeStyle='#66725a';ctx.lineWidth=.45;ctx.stroke();}
+ ctx.fillStyle=c;ctx.fill();
+ if(roadEditMode){
+   // 도로 편집 모드에서는 건물/시설 외형을 모두 숨기고 지면 타일만 표시한다.
+   // 도로도 가로등/차선/혼잡도 숫자 없이 바닥색만 남겨 도로·선로 작업 공간을 확보한다.
+   ctx.strokeStyle=g.type==='road'?'#6d716c':'#66725a';
+   ctx.lineWidth=.55;ctx.stroke();
+   return;
+ }
+ if(g.type!=='road'){ctx.strokeStyle='#66725a';ctx.lineWidth=.45;ctx.stroke();}
  if(g.type==='road')drawRoad(x,y,p,s);
  if(g.type==='road' && !dataMode){
    const cv=roadCongestion(x,y);
@@ -793,7 +804,7 @@ function drawBuilding(b){
  drawDetailedBuilding(b);
 }
 function drawGhost(){
- if(tool==='select'||!buildType||ghost.x<0||ghost.y<0)return;
+ if(roadEditMode||tool==='select'||!buildType||ghost.x<0||ghost.y<0)return;
  let s=T*zoom;
  if(tool==='bigbuild'){
    // 2x2 블록 중심을 기준으로 확대된 윤곽선 표시
@@ -848,10 +859,12 @@ function draw(){
    if(p.x<-s*2||p.x>W+s*2||p.y<-s*3||p.y>H+s*3)continue;
    drawTile(x,y);
  }
- buildings.forEach(b=>{
-   const p=worldToScreen(b.x+(b.size-1||0)*.5,b.y+(b.size-1||0)*.5),s=T*zoom;
-   if(p.x>-s*2&&p.x<W+s*2&&p.y>-s*4&&p.y<H+s*4)drawBuilding(b);
- });
+ if(!roadEditMode){
+   buildings.forEach(b=>{
+     const p=worldToScreen(b.x+(b.size-1||0)*.5,b.y+(b.size-1||0)*.5),s=T*zoom;
+     if(p.x>-s*2&&p.x<W+s*2&&p.y>-s*4&&p.y<H+s*4)drawBuilding(b);
+   });
+ }
  cars.forEach(c=>{
    if(!c.route||c.route.length<2)return;
    const a=c.route[c.index],b=c.route[Math.min(c.index+1,c.route.length-1)];
@@ -2317,14 +2330,27 @@ canvas.addEventListener('wheel',e=>{
 },{passive:false});
 document.querySelectorAll('.tool[data-tool]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));b.classList.add('active');
- tool=b.dataset.tool;dataMode=tool==='data'?'population':''; if(tool==='bulldoze') news('철거 모드 — 잘못 만든 도로, 구역, 건물을 클릭하거나 드래그하세요.');
+ const kind=b.dataset.tool;
+ if(kind==='roadedit'){
+   roadEditMode=!roadEditMode;
+   document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
+   b.classList.toggle('active',roadEditMode);
+   buildType=null; dataMode=''; tool='select';
+   document.getElementById('buildPalette').classList.remove('show');
+   document.getElementById('right').classList.remove('show');
+   news(roadEditMode?'도로 편집 모드 — 건물/시설 외형을 숨기고 바닥 타일만 표시합니다.':'일반 화면으로 돌아왔습니다.');
+   if(!roadEditMode) document.querySelector('.tool[data-tool="select"]')?.classList.add('active');
+   draw(); return;
+ }
+ roadEditMode=false;
+ tool=kind;dataMode=tool==='data'?'population':''; if(tool==='bulldoze') news('철거 모드 — 잘못 만든 도로, 구역, 건물을 클릭하거나 드래그하세요.');
  if(tool==='widen') news(`차선 확장 모드 — 2차선 도로를 클릭하면 4차선으로 확장됩니다 (칸당 $${WIDEN_COST.toLocaleString()}).`);
  if(tool==='power'||tool==='water'||tool==='service'||tool==='transport'||tool==='environment'||tool==='bigbuild'){showPalette(tool)}
  else{buildType=null;document.getElementById('buildPalette').classList.remove('show')}
  if(tool==='bulldoze'){buildType=null;document.getElementById('buildHint')?.replaceChildren();}
  draw();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){buildType=null;movingBuilding=null;tool='select';document.getElementById('buildPalette').classList.remove('show');document.getElementById('right').classList.remove('show');document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));document.querySelector('.tool[data-tool="select"]').classList.add('active');draw()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){buildType=null;movingBuilding=null;tool='select';roadEditMode=false;document.getElementById('buildPalette').classList.remove('show');document.getElementById('right').classList.remove('show');document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));document.querySelector('.tool[data-tool="select"]').classList.add('active');draw()}});
 function setData(m){dataMode=m;tool='data';draw()}function setSpeed(v){speed=v;running=v>0}
 function calculateFinances(){
   const tiles=b=>(b.size||1)*(b.size||1);
