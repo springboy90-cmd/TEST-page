@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V30</title>
+<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V32</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -255,8 +255,8 @@ function resize(){W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=W;canv
 
 function seed(){
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<3||y<3||x>N-4||y>N-4)grid[y][x].type='forest';}
-  // 도시의 최초 간선도로망. 이후 자동개발은 이 '메인도로'에서
-  // 실제로 이어진 도로망을 통해서만 허용한다.
+  // 최초 도시의 기반도로. 자동개발 판정은 메인도로 여부가 아니라
+  // 실제 전력/수도 공급망에 연결된 도로인지 확인한다.
   for(let x=8;x<52;x++){ grid[29][x].type='road'; grid[29][x].mainRoad=true; }
   for(let y=10;y<49;y++){ grid[y][30].type='road'; grid[y][30].mainRoad=true; }
   for(let x=12;x<28;x++) grid[24][x].type='road';
@@ -304,7 +304,18 @@ seed();
 function worldToScreen(x,y){let s=T*zoom;return {x:(x-y)*s*.82+W/2+camX,y:(x+y)*s*.41+H/2+camY}}
 function screenToWorld(px,py){let s=T*zoom,a=(px-W/2-camX)/(.82*s),b=(py-H/2-camY)/(.41*s);return {x:(a+b)/2,y:(b-a)/2}}
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
-function worldCellFromEvent(e){const p=canvasPoint(e),q=screenToWorld(p.x,p.y);return {x:Math.floor(q.x),y:Math.floor(q.y),px:p.x,py:p.y};}
+function worldCellFromEvent(e,snapNearest=false){
+  const r=canvas.getBoundingClientRect();
+  // CSS 크기와 실제 canvas 픽셀 크기가 달라지는 모바일 브라우저/확대 상황에서도
+  // 터치 좌표를 정확히 canvas 내부 좌표로 변환한다.
+  const sx=canvas.width/Math.max(1,r.width), sy=canvas.height/Math.max(1,r.height);
+  const p={x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};
+  const q=screenToWorld(p.x,p.y);
+  // 터치 설치는 셀의 시각적 중심에 가장 가까운 칸으로 스냅해 경계 오차를 줄인다.
+  const fx=snapNearest?Math.floor(q.x+0.5):Math.floor(q.x);
+  const fy=snapNearest?Math.floor(q.y+0.5):Math.floor(q.y);
+  return {x:fx,y:fy,px:p.x,py:p.y};
+}
 
 
 
@@ -779,10 +790,18 @@ function initializeRoadOnlyStart(){
 }
 
 function draw(){
- purgeBuildingsOnRoads();
+ const now=performance.now(); lastDrawStamp=now;
  ctx.clearRect(0,0,W,H);ctx.fillStyle='#7f9165';ctx.fillRect(0,0,W,H);
- for(let y=0;y<N;y++)for(let x=0;x<N;x++)drawTile(x,y);
- buildings.forEach(drawBuilding);
+ // 화면 밖 타일은 그리지 않는다. 지도 데이터 자체는 그대로 유지한다.
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+   const p=worldToScreen(x,y),s=T*zoom;
+   if(p.x<-s*2||p.x>W+s*2||p.y<-s*3||p.y>H+s*3)continue;
+   drawTile(x,y);
+ }
+ buildings.forEach(b=>{
+   const p=worldToScreen(b.x+(b.size-1||0)*.5,b.y+(b.size-1||0)*.5),s=T*zoom;
+   if(p.x>-s*2&&p.x<W+s*2&&p.y>-s*4&&p.y<H+s*4)drawBuilding(b);
+ });
  cars.forEach(c=>{
    if(!c.route||c.route.length<2)return;
    const a=c.route[c.index],b=c.route[Math.min(c.index+1,c.route.length-1)];
@@ -804,7 +823,7 @@ function draw(){
 // 좌상단 (x,y)에서 2x2 크기로 같은 zone이 비어있고 도로 인접/전력수도 공급되는지 확인
 function canPlaceBig(x,y,zone){
   let anyNearRoad=false;
-  const connected=connectedMainRoadSet();
+  const utilityRoads=utilityConnectedRoadSets();
   for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
     const xx=x+dx,yy=y+dy;
     if(xx<3||yy<3||xx>=N-3||yy>=N-3) return false;
@@ -813,7 +832,7 @@ function canPlaceBig(x,y,zone){
     // 도로/시설이 아닌 빈 칸이기만 하면 건설 가능.
     if(!g||g.type==='road'||g.type==='forest') return false;
     if(isOccupied(xx,yy)) return false;
-    if(nearConnectedRoad(xx,yy,connected)) anyNearRoad=true;
+    if(nearUtilityConnectedRoad(xx,yy,utilityRoads)) anyNearRoad=true;
   }
   return anyNearRoad;
 }
@@ -822,7 +841,7 @@ function placeBigZone(x,y,id,free=false){
   const def=BUILDINGS.bigzone.find(d=>d.id===id);
   if(!def) return false;
   if(!canPlaceBig(x,y,def.zone)){
-    news('대형 건물은 도로에 인접한 2×2 빈 부지(다른 건물·도로가 없는 평지)에만 지을 수 있습니다.');
+    news('대형 건물은 전력+수도가 연결된 도로에 인접한 2×2 빈 부지에만 지을 수 있습니다.');
     return false;
   }
   if(!free && city.money<def.cost){news('건설할 자금이 부족합니다.');return false;}
@@ -983,6 +1002,12 @@ function renderCitizenInfo(b){
 let commuteTrips=[];
 let roadTraffic={};
 let commuteDirty=true;
+// 모바일 대도시 성능 캐시: 매 프레임/타일마다 반복 계산하지 않는다.
+let transitPerfCache={stamp:0, stats:null, active:{rail:false,subway:false}, relief:new Map(), facilities:{busstop:[],busterminal:[],trainstation:[],subwaystation:[]}};
+let roadCongestionCache={stamp:0,map:new Map()};
+let lastDrawStamp=0;
+function invalidateTransitPerf(){transitPerfCache.stamp=0;transitPerfCache.stats=null;transitPerfCache.relief.clear();}
+
 
 function roadKey(x,y){ return x+','+y; }
 function nearestRoad(x,y){
@@ -1037,7 +1062,11 @@ function findRoadPath(start,end,maxNodes=3000){
 // ============================================================
 const TRANSIT_IDS=['busstop','busterminal','rail','trainstation','subway','subwaystation'];
 function transitBuildings(id){
-  return buildings.filter(b=>b.type==='facility'&&b.id===id);
+  const now=Date.now();
+  if(!transitPerfCache.facilities[id] || now-transitPerfCache.stamp>180){
+    transitPerfCache.facilities[id]=buildings.filter(b=>b.type==='facility'&&b.id===id);
+  }
+  return transitPerfCache.facilities[id];
 }
 function transitTrackComponent(start,trackId){
   if(!start)return new Set();
@@ -1058,12 +1087,24 @@ function hasTransitTrackNear(b,kind){
   const comp=stationTrackComponent(b,kind); return comp.size>0;
 }
 function transitLineActive(kind){
+  const now=Date.now();
+  if(now-transitPerfCache.stamp<180 && typeof transitPerfCache.active[kind]==='boolean') return transitPerfCache.active[kind];
   const id=kind==='rail'?'trainstation':'subwaystation';
   const stations=transitBuildings(id);
-  if(stations.length<2)return false;
-  for(const a of stations){const comp=stationTrackComponent(a,kind);if(!comp.size)continue;
-    for(const b of stations){if(a===b)continue;for(let yy=b.y-1;yy<=b.y+1;yy++)for(let xx=b.x-1;xx<=b.x+1;xx++)if(comp.has(`${xx},${yy}`))return true;}
-  } return false;
+  let active=false;
+  if(stations.length>=2){
+    outer: for(const a of stations){
+      const comp=stationTrackComponent(a,kind); if(!comp.size)continue;
+      for(const b of stations){
+        if(a===b)continue;
+        for(let yy=b.y-1;yy<=b.y+1;yy++)for(let xx=b.x-1;xx<=b.x+1;xx++){
+          if(comp.has(`${xx},${yy}`)){active=true;break outer;}
+        }
+      }
+    }
+  }
+  transitPerfCache.active[kind]=active; transitPerfCache.stamp=now;
+  return active;
 }
 function transitAccessScore(x,y){
   let score=0,modes=0;
@@ -1082,6 +1123,8 @@ function transitTripShare(hx,hy,wx,wy){
   return Math.max(0,Math.min(0.72,share));
 }
 function transitStats(){
+  const now=Date.now();
+  if(transitPerfCache.stats && now-transitPerfCache.stamp<150) return transitPerfCache.stats;
   const bs=transitBuildings('busstop').length;
   const bt=transitBuildings('busterminal').length;
   const rt=transitBuildings('rail').length;
@@ -1106,7 +1149,16 @@ function transitStats(){
   const railPassengers=Math.round(Math.min(totalWorkers*railShare,rs*1800||0));
   const subwayPassengers=Math.round(Math.min(totalWorkers*subwayShare,ss*2400||0));
   const transitRoadRelief=Math.round(Math.min(75,activeShare*100));
-  city.transit={busStops:bs,busTerminals:bt,railTracks:rt,railStations:rs,subwayTracks:st,subwayStations:ss,usage:Math.round(activeShare*100),passengers:Math.round(Math.min(totalWorkers*activeShare,passengerCapacity||0)),capacity:passengerCapacity,busPassengers,railPassengers,subwayPassengers,transitRoadRelief,railActive:transitLineActive('rail'),subwayActive:transitLineActive('subway')};
+  const railActive=transitLineActive('rail'), subwayActive=transitLineActive('subway');
+  city.transit={busStops:bs,busTerminals:bt,railTracks:rt,railStations:rs,subwayTracks:st,subwayStations:ss,usage:Math.round(activeShare*100),passengers:Math.round(Math.min(totalWorkers*activeShare,passengerCapacity||0)),capacity:passengerCapacity,busPassengers,railPassengers,subwayPassengers,transitRoadRelief,railActive,subwayActive};
+  // 대중교통의 실제 접근 범위를 도로 타일별 캐시. 혼잡도 계산에서 매 도로마다 .filter/.some를 반복하지 않는다.
+  transitPerfCache.relief.clear();
+  const addRelief=(list,radius,share)=>{ if(!share)return; for(const b of list){ for(let yy=Math.max(0,b.y-radius);yy<=Math.min(N-1,b.y+radius);yy++) for(let xx=Math.max(0,b.x-radius);xx<=Math.min(N-1,b.x+radius);xx++){ if(grid[yy]?.[xx]?.type!=='road')continue; const k=xx+','+yy; transitPerfCache.relief.set(k,Math.max(transitPerfCache.relief.get(k)||0,share)); } } };
+  const workerBase=Math.max(1,totalWorkers);
+  addRelief([...transitBuildings('busstop'),...transitBuildings('busterminal')],7,Math.min(.42,(busPassengers||0)/workerBase));
+  if(railActive)addRelief(transitBuildings('trainstation'),10,Math.min(.48,(railPassengers||0)/workerBase));
+  if(subwayActive)addRelief(transitBuildings('subwaystation'),10,Math.min(.55,(subwayPassengers||0)/workerBase));
+  transitPerfCache.stats=city.transit; transitPerfCache.stamp=now;
   if(typeof syncTransitVehicles==='function') syncTransitVehicles();
   return city.transit;
 }
@@ -1148,58 +1200,36 @@ function updateCommuteTraffic(){
   if(commuteDirty||!city.commute)buildCommuteGroups();
   const rs=roadStats();
   let maxRatio=0, weightedRatio=0, loadCount=0;
+  roadCongestionCache.map.clear();
   for(const k in roadTraffic){
     const [sx,sy]=k.split(',').map(Number), cell=grid[sy]?.[sx];
     const cap=Math.max(4,(cell?.lanes||2)*5.5*(cell?.elevated?1.18:1));
-    let relief=0;
-    const ts=city.transit||{};
-    if(ts.usage>0){
-      const [x,y]=[sx,sy];
-      if((ts.busStops||ts.busTerminals) && (transitBuildings('busstop').some(b=>Math.abs(b.x-x)<=7&&Math.abs(b.y-y)<=7)||transitBuildings('busterminal').some(b=>Math.abs(b.x-x)<=11&&Math.abs(b.y-y)<=11))) relief=Math.max(relief,Math.min(.42,(ts.busPassengers||0)/Math.max(1,city.workers||1)));
-      if(ts.railActive && transitBuildings('trainstation').some(b=>Math.abs(b.x-x)<=10&&Math.abs(b.y-y)<=10)) relief=Math.max(relief,Math.min(.48,(ts.railPassengers||0)/Math.max(1,city.workers||1)));
-      if(ts.subwayActive && transitBuildings('subwaystation').some(b=>Math.abs(b.x-x)<=10&&Math.abs(b.y-y)<=10)) relief=Math.max(relief,Math.min(.55,(ts.subwayPassengers||0)/Math.max(1,city.workers||1)));
-    }
+    const relief=transitPerfCache.relief.get(k)||0;
     const ratio=(roadTraffic[k]*(1-relief))/cap;
     maxRatio=Math.max(maxRatio,ratio); weightedRatio+=Math.min(1.5,ratio); loadCount++;
+    roadCongestionCache.map.set(k,Math.max(0,Math.min(100,ratio*100)));
   }
+  roadCongestionCache.stamp=Date.now();
   const avgRatio=loadCount?weightedRatio/loadCount:0;
   const commuterLoad=Math.min(99,maxRatio*30 + avgRatio*14);
   const base=commuterLoad + Math.min(25,Math.max(0,(city.pop/1400)-rs.count*.025));
   city.traffic=Math.max(0,Math.min(99,Math.round(base)));
-  // 혼잡은 시민의 실제 통근시간을 늘리고 행복에 반영된다.
   const congestionFactor=Math.max(0,city.traffic-35)/65;
   if(city.commute)city.commute.congestion=city.traffic;
   return {maxRatio,congestionFactor};
 }
 function roadCongestion(x,y){
-  const load=roadTraffic[roadKey(x,y)]||0;
-  const cell=grid[y]?.[x];
-  if(cell?.type!=='road') return 0;
-  // 혼잡도와 실제 용량 계산을 동일한 기준으로 통일한다.
-  const capacity=Math.max(4,(cell.lanes||2)*5.5*(cell.elevated?1.18:1));
-  // 대중교통이 실제로 운행 중이면 해당 도로 주변의 자동차 통근량을 즉시 감소시킨다.
-  // 단순히 도시 전체 교통량을 낮추지 않고, 정류장/역의 영향권에 있는 도로에만 적용한다.
-  let relief=0;
-  const ts=city.transit||{};
-  if(ts.usage>0){
-    const activeBus=ts.busStops>0||ts.busTerminals>0;
-    const activeRail=!!ts.railActive, activeSubway=!!ts.subwayActive;
-    if(activeBus){
-      const nearBus=transitBuildings('busstop').some(b=>Math.abs(b.x-x)<=7&&Math.abs(b.y-y)<=7) || transitBuildings('busterminal').some(b=>Math.abs(b.x-x)<=11&&Math.abs(b.y-y)<=11);
-      if(nearBus) relief=Math.max(relief,Math.min(.42,(ts.busPassengers||0)/Math.max(1,city.workers||1)));
-    }
-    if(activeRail){
-      const nearRail=transitBuildings('trainstation').some(b=>Math.abs(b.x-x)<=10&&Math.abs(b.y-y)<=10);
-      if(nearRail) relief=Math.max(relief,Math.min(.48,(ts.railPassengers||0)/Math.max(1,city.workers||1)));
-    }
-    if(activeSubway){
-      const nearSub=transitBuildings('subwaystation').some(b=>Math.abs(b.x-x)<=10&&Math.abs(b.y-y)<=10);
-      if(nearSub) relief=Math.max(relief,Math.min(.55,(ts.subwayPassengers||0)/Math.max(1,city.workers||1)));
-    }
-  }
-  const effectiveLoad=load*(1-relief);
-  const ratio=effectiveLoad/capacity;
-  return Math.max(0,Math.min(100,Math.round(Math.pow(Math.min(1.8,ratio)/1.25,1.15)*100)));
+ const k=x+','+y, now=Date.now();
+ if(roadCongestionCache.stamp!==transitPerfCache.stamp && now-roadCongestionCache.stamp<180){
+   return roadCongestionCache.map.get(k)||0;
+ }
+ const v=roadTraffic[k]||0;
+ const cell=grid[y]?.[x], cap=Math.max(4,(cell?.lanes||2)*5.5*(cell?.elevated?1.18:1));
+ let relief=transitPerfCache.relief.get(k)||0;
+ const ratio=v*(1-relief)/cap;
+ const out=Math.max(0,Math.min(100,ratio*100));
+ roadCongestionCache.map.set(k,out);roadCongestionCache.stamp=now;
+ return out;
 }
 function spawnCommuteCar(trip){
   if(!trip||trip.path.length<2)return null;
@@ -1311,16 +1341,16 @@ function drawTransitVehicles(){
 }
 
 function develop(){
- // 전력/수도 공급 상태에 따른 개발 허용 여부는 이 tick의 develop() 호출 전체에서 동일하게 적용한다.
+ // 도시 전체의 발전/수도 생산능력이 부족하면 신규 개발 속도를 낮춘다.
  if(!canDevelopWithUtilities()) return 0;
 
- // 핵심 수정: '주변에 도로가 있음'만으로 개발하지 않는다.
- // 메인도로 → 연결도로망 → 해당 구역까지 실제로 이어진 경우만 후보에 넣는다.
- const connectedRoads=connectedMainRoadSet();
+ // 핵심 수정: 메인도로 여부/메인도로와의 연결 여부를 사용하지 않는다.
+ // 실제로 전력과 수도가 모두 연결된 도로에 인접한 용도지역만 개발 후보가 된다.
+ const utilityRoads=utilityConnectedRoadSets();
  let opts=[];
  for(let y=3;y<N-3;y++)for(let x=3;x<N-3;x++){
   let g=grid[y][x];
-  if(!g.zone||isOccupied(x,y)||!nearConnectedRoad(x,y,connectedRoads))continue;
+  if(!g.zone||isOccupied(x,y)||!nearUtilityConnectedRoad(x,y,utilityRoads))continue;
   opts.push({x,y,zone:g.zone});
  }
  if(!opts.length)return 0;
@@ -1400,48 +1430,52 @@ function upgradeZoneBuildings(){
 function upgradeResidentialBuildings(){ return upgradeZoneBuildings(); }
 
 // 건물 개발용 도로 연결 판정
-// 단순히 '주변에 도로가 있느냐'가 아니라, 그 도로가 최초 메인도로망과
-// 실제로 4방향으로 연결되어 있는지를 검사한다.
+// 기존의 "최초 메인도로망과 4방향으로 연결" 방식은 폐기한다.
+// 이제 전력시설/수도시설에 실제로 연결된 도로망을 각각 BFS하고,
+// 두 공급망에 모두 포함된 도로에 인접한 용도지역만 자동 개발 후보가 된다.
 function nearRoad(x,y){
   for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
     if(grid[yy]?.[xx]?.type==='road') return true;
   }
   return false;
 }
-function markCanonicalMainRoads(){
-  // v26 이전 저장 데이터에는 mainRoad 플래그가 없을 수 있으므로
-  // 최초 도시의 간선도로 좌표를 한 번 복구한다.
-  for(let x=8;x<52;x++) if(grid[29]?.[x]?.type==='road' && grid[29][x].mainRoad===undefined) grid[29][x].mainRoad=true;
-  for(let y=10;y<49;y++) if(grid[y]?.[30]?.type==='road' && grid[y][30].mainRoad===undefined) grid[y][30].mainRoad=true;
-}
-function connectedMainRoadSet(){
-  markCanonicalMainRoads();
-  const seen=new Set(), q=[];
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-    const g=grid[y][x];
-    if(g.type==='road' && g.mainRoad===true){
-      const k=x+','+y;
-      if(!seen.has(k)){seen.add(k);q.push({x,y});}
+function utilityConnectedRoadSet(kind){
+  const seen=new Set(),q=[];
+  const isSource=b=>kind==='power'?['coal','gas','nuclear'].includes(b.id):['pump','tower','treatment'].includes(b.id);
+  buildings.filter(isSource).forEach(b=>{
+    for(let yy=b.y-1;yy<=b.y+1;yy++)for(let xx=b.x-1;xx<=b.x+1;xx++){
+      if(grid[yy]?.[xx]?.type!=='road') continue;
+      const k=xx+','+yy;if(!seen.has(k)){seen.add(k);q.push({x:xx,y:yy});}
     }
-  }
+  });
   let head=0;
   while(head<q.length){
     const {x,y}=q[head++];
     for(const d of Object.values(DIRV)){
-      const nx=x+d.dx, ny=y+d.dy, g=grid[ny]?.[nx];
-      if(g?.type!=='road') continue;
-      const k=nx+','+ny;
-      if(!seen.has(k)){seen.add(k);q.push({x:nx,y:ny});}
+      const nx=x+d.dx,ny=y+d.dy;
+      if(grid[ny]?.[nx]?.type!=='road')continue;
+      const k=nx+','+ny;if(!seen.has(k)){seen.add(k);q.push({x:nx,y:ny});}
     }
   }
   return seen;
 }
-function nearConnectedRoad(x,y,connected){
+function utilityConnectedRoadSets(){
+  return {power:utilityConnectedRoadSet('power'),water:utilityConnectedRoadSet('water')};
+}
+function nearUtilityConnectedRoad(x,y,sets){
   for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
-    if(connected.has(xx+','+yy)) return true;
+    const k=xx+','+yy;
+    if(sets.power.has(k)&&sets.water.has(k)) return true;
   }
   return false;
 }
+function roadHasUtilities(x,y,sets){
+  const k=x+','+y;return !!(sets.power.has(k)&&sets.water.has(k));
+}
+// 호환용: 외부 저장/기존 코드가 참조하더라도 개발 판정에는 사용하지 않는다.
+function markCanonicalMainRoads(){}
+function connectedMainRoadSet(){ return new Set(); }
+function nearConnectedRoad(x,y,connected){ return nearUtilityConnectedRoad(x,y,utilityConnectedRoadSets()); }
 // 도로 총량/평균 차선 통계 (교통량 계산에 사용)
 function roadStats(){
   let count=0, laneSum=0;
@@ -1844,6 +1878,8 @@ function updateUI(){
  document.getElementById('ibar').style.width=Math.min(100,Math.max(5,taxDemand('I')-city.pollution*.35+city.happy*.08))+'%';
 }
 function tick(){
+  // 안전 정리: 렌더링 루프에서는 하지 않고 1초 시뮬레이션 틱에서 한 번만 수행한다.
+  purgeBuildingsOnRoads();
   try{ if(typeof city.happy==='number') city.happy=Math.max(0,Math.min(100,city.happy+(city.publicAmenityHappiness||0)*0.08)); }catch(e){}
   try{ if(window.v25ApplyAmenityToHousing) window.v25ApplyAmenityToHousing(); }catch(e){}
 
@@ -1967,7 +2003,7 @@ canvas.addEventListener('touchmove',e=>{
   const p=e.touches[0];
   if(isPaintTool()){
    const sx=touchStartPoint?touchStartPoint.x:p.clientX,sy=touchStartPoint?touchStartPoint.y:p.clientY;
-   if(Math.hypot(p.clientX-sx,p.clientY-sy)>8){touchMoved=true;drag=true;const q=worldCellFromEvent(p);placeAt(q.x,q.y);}
+   if(Math.hypot(p.clientX-sx,p.clientY-sy)>8){touchMoved=true;drag=true;const q=worldCellFromEvent(p,true);placeAt(q.x,q.y);}
   }else movePan(p.clientX,p.clientY);
   touchLastPoint={x:p.clientX,y:p.clientY};
  }
@@ -1975,7 +2011,7 @@ canvas.addEventListener('touchmove',e=>{
 canvas.addEventListener('touchend',e=>{
  e.preventDefault();
  if(e.touches.length===0){
-  if(!touchMoved&&e.changedTouches[0]){const q=worldCellFromEvent(e.changedTouches[0]);placeAt(q.x,q.y);}
+  if(!touchMoved&&e.changedTouches[0]){const q=worldCellFromEvent(e.changedTouches[0],true);placeAt(q.x,q.y);}
   drag=false;touchStartPoint=null;touchLastPoint=null;endPan();
  }
 },{passive:false});
