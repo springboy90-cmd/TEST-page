@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V35</title>
+<title>도시경영 시뮬레이션 — 시민·일자리·출퇴근·대중교통 시스템 V36</title>
 <style>
 :root{--bg:#20262a;--panel:#30383d;--panel2:#252c30;--line:#59636a;--text:#e7e2d3;--muted:#9da5a6;--good:#79b86b;--warn:#d2a64d;--bad:#c75b52;--road:#575b59}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#15191b;color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
@@ -27,6 +27,10 @@ button:hover{background:#485258}button.active{background:#6a7158;border-color:#b
 #tooltip{position:absolute;display:none;pointer-events:none;background:#1b2022dd;border:1px solid #b8ad82;padding:7px;font-size:11px;z-index:5}
 #modal{position:absolute;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:10}
 .modalbox{width:620px;max-height:86vh;overflow:auto;background:#2c3438;border:2px solid #92907b;box-shadow:0 8px 30px #000;padding:15px}.modalbox h2{font-size:17px;margin:0 0 12px}
+#overlapModal{position:absolute;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:30}
+.overlapbox{width:min(420px,calc(100vw - 28px));background:#2c3438;border:2px solid #b8ad82;box-shadow:0 8px 30px #000;padding:16px}
+.overlapbox h2{font-size:17px;margin:0 0 10px;color:#f0e2a1}.overlapbox p{font-size:12px;line-height:1.5;margin:8px 0 14px;color:#d9d6ca}
+.overlap-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.overlap-actions button{padding:10px 7px}.overlap-actions .cancel{grid-column:1/-1;background:#3a4144}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.budget-section{border:1px solid #59636a;padding:8px;margin:7px 0}.budget-section h3{margin:0 0 7px;color:#e5d9aa;font-size:12px}.budget-item{margin:7px 0}.budget-item .row{display:flex;justify-content:space-between;align-items:center}.budget-item input[type=range]{width:100%;accent-color:#9ca77a}.budget-total{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.budget-card{background:#232a2d;border:1px solid #4e575b;padding:7px;text-align:center}.budget-card b{display:block;font-size:14px;color:#f0e2a1}.tax-note{font-size:10px;color:#abb2ae;line-height:1.4;margin-top:5px}
 .legend{font-size:10px;color:#abb2ae}
 #buildPalette{position:absolute;left:8px;top:8px;width:235px;display:none;background:#252c30ee;border:2px solid #8d8a70;box-shadow:0 6px 18px #0008;z-index:7;padding:8px}
@@ -129,7 +133,7 @@ input[type="range"]{touch-action:pan-x !important; pointer-events:auto !importan
 </aside>
 <section id="world">
 <canvas id="canvas"></canvas><div id="tooltip"></div>
-<div id="buildPalette"><div style="font-size:10px;color:#bfc3b5;margin-bottom:5px">🖱 선택 모드에서 드래그: 화면 이동 · 휠: 확대/축소 · 모바일: 한 손가락 이동 / 두 손가락 확대 · 도로 위에는 건물이 생성되지 않습니다.</div><div class="bpTitle" id="bpTitle">BUILD</div><div class="bpGrid" id="bpGrid"></div><div id="buildHint">시설을 선택한 뒤 지도에서 건설 위치를 클릭하세요.</div></div>
+<div id="buildPalette"><div style="font-size:10px;color:#bfc3b5;margin-bottom:5px">🖱 선택 모드에서 드래그: 화면 이동 · 휠: 확대/축소 · 모바일: 한 손가락 이동 / 두 손가락 확대 · 도로 위에는 건물이 생성되지 않으며, 지하철 선로는 도로 아래에 중첩 설치할 수 있습니다.</div><div class="bpTitle" id="bpTitle">BUILD</div><div class="bpGrid" id="bpGrid"></div><div id="buildHint">시설을 선택한 뒤 지도에서 건설 위치를 클릭하세요.</div></div>
 </section>
 <aside id="right">
   <div id="rightHeader"><span>도시 정보</span><button id="rightClose">✕</button></div>
@@ -164,6 +168,7 @@ input[type="range"]{touch-action:pan-x !important; pointer-events:auto !importan
 <div id="controls"><span>시간</span><button onclick="setSpeed(0)">⏸</button><button onclick="setSpeed(1)">▶ 1x</button><button onclick="setSpeed(2)">▶ 2x</button><button onclick="setSpeed(5)">▶ 5x</button><button onclick="setSpeed(10)">▶ 10x</button><button id="budgetBtn2">예산</button></div></footer>
 </div>
 <div id="modal"><div class="modalbox"><h2>도시 예산</h2><div id="budgetRows"></div><div style="text-align:right;margin-top:12px"><button onclick="closeModal()">확인</button></div></div></div>
+<div id="overlapModal"><div class="overlapbox"><h2>도로와 지하철 선로가 겹쳐 있습니다</h2><p>이 칸에는 지상 <b>도로</b>와 지하 <b>지하철 선로</b>가 함께 설치되어 있습니다.<br>철거할 대상을 선택하세요.</p><div class="overlap-actions"><button onclick="resolveSubwayRoadOverlap('subway')">🚇 지하철 선로 철거</button><button onclick="resolveSubwayRoadOverlap('road')">🛣️ 도로 철거</button><button class="cancel" onclick="closeOverlapModal()">취소</button></div></div></div>
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let W=0,H=0,camX=0,camY=0,zoom=1,tool='select',speed=1,dataMode='',running=true,drag=false,last=null;
@@ -254,29 +259,58 @@ var TIER_ECONOMY={
 function resize(){W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=W;canvas.height=H;draw()} addEventListener('resize',resize);
 
 function seed(){
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<3||y<3||x>N-4||y>N-4)grid[y][x].type='forest';}
-  // 최초 도시의 기반도로. 자동개발 판정은 메인도로 여부가 아니라
-  // 실제 전력/수도 공급망에 연결된 도로인지 확인한다.
-  for(let x=8;x<52;x++){ grid[29][x].type='road'; grid[29][x].mainRoad=true; }
-  for(let y=10;y<49;y++){ grid[y][30].type='road'; grid[y][30].mainRoad=true; }
-  for(let x=12;x<28;x++) grid[24][x].type='road';
-  for(let x=33;x<48;x++) grid[34][x].type='road';
-  for(let y=31;y<40;y++)for(let x=10;x<25;x++) if((x+y)%3!==0) grid[y][x].zone='R';
-  for(let y=25;y<29;y++)for(let x=34;x<46;x++) grid[y][x].zone='C';
-  for(let y=36;y<43;y++)for(let x=34;x<48;x++) grid[y][x].zone='I';
-  // R 주거지역을 관통하는 도로 (지역 내부까지 도로가 닿아야 개발이 진행됨)
-  for(let x=9;x<26;x++) grid[35][x].type='road';
-  for(let y=30;y<41;y++) grid[y][17].type='road';
-  // I 공업지역을 관통하는 도로 (동일한 이유로 필요)
-  for(let x=34;x<48;x++) grid[39][x].type='road';
-  for(let y=36;y<43;y++) grid[y][41].type='road';
-  // Starting town has actual municipal facilities.
-  placeBuilding(28,28,'coal',true);
-  placeBuilding(31,30,'pump',true);
-  placeBuilding(27,29,'school',true);
-  for(let i=0;i<28;i++) develop();
-  syncCarsToRoads();
+  // 신규 도시 초기화:
+  // - 기존에 자동 배치되던 주거/상업/공업 지역과 건물은 모두 제거
+  // - 지도 중앙에 십자(+) 형태의 기반 도로만 배치
+  // - 기초 전력 1기 + 기초 수도 1기만 무료로 제공
+  // - 초기 개발은 발생시키지 않는다.
+  buildings=[];
+  cars=[];
+  // commuteDirty는 아래 시뮬레이션 변수 선언부에서 let으로 초기화된다.
+  // seed()가 그 선언보다 먼저 실행되므로 여기서 접근하면 TDZ(Temporal Dead Zone)
+  // ReferenceError가 발생하여 초기 화면이 초록색만 남고 게임이 중단된다.
+
+  // 모든 타일을 깨끗한 빈 부지로 초기화한다.
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      grid[y][x].type='grass';
+      grid[y][x].zone=null;
+      grid[y][x].level=0;
+      grid[y][x].power=false;
+      grid[y][x].water=false;
+      grid[y][x].service=null;
+      grid[y][x].environment=null;
+      grid[y][x].lanes=2;
+      grid[y][x].elevated=false;
+      grid[y][x].highway=false;
+      grid[y][x].mainRoad=false;
+      grid[y][x].congestion=0;
+    }
+  }
+
+  // 지도 외곽은 기존 분위기를 유지하는 숲으로 남긴다.
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    if(x<3||y<3||x>N-4||y>N-4) grid[y][x].type='forest';
+  }
+
+  // 지도 중앙의 + 기반도로.
+  const cx=Math.floor(N/2), cy=Math.floor(N/2);
+  for(let x=3;x<N-3;x++){
+    grid[cy][x].type='road';
+    grid[cy][x].mainRoad=true;
+  }
+  for(let y=3;y<N-3;y++){
+    grid[y][cx].type='road';
+    grid[y][cx].mainRoad=true;
+  }
+
+  // 기초 전력/수도 시설만 중앙 교차로 바로 옆에 무료 배치.
+  // 두 시설 모두 기반도로와 인접하므로 신규 도시의 초기 공급망이 정상적으로 형성된다.
+  placeBuilding(cx-1,cy-1,'coal',true);
+  placeBuilding(cx+1,cy+1,'pump',true);
+
   recalcUtilities();
+  syncCarsToRoads();
 }
 function placeBuilding(x,y,id,free=false){
   const def=[...BUILDINGS.power,...BUILDINGS.water,...BUILDINGS.service,...(BUILDINGS.transport||[]),...(BUILDINGS.environment||[])].find(d=>d.id===id);
@@ -286,15 +320,26 @@ function placeBuilding(x,y,id,free=false){
   }
   if(id==='trainstation' && !hasTransitTrackNear({x,y},'rail')){news('기차역은 철도 선로에 붙어 있어야 합니다.');return false;}
   if(id==='subwaystation' && !hasTransitTrackNear({x,y},'subway')){news('지하철역은 지하철 선로에 붙어 있어야 합니다.');return false;}
-  if((id==='rail'||id==='subway') && (grid[y][x].type!=='grass' && !grid[y][x].zone)){news('선로는 빈 부지에 설치하세요.');return false;}
-  if(isOccupied(x,y) || grid[y][x].type==='road') return false;
+  // 지하철 선로는 지하 시설이므로 지상 도로와 같은 칸에 설치할 수 있다.
+  // 일반 철도는 기존처럼 지상 도로/시설과 중복 설치하지 않는다.
+  if(id==='subway'){
+    const g=grid[y][x];
+    if(g.type==='forest'){news('숲에는 지하철 선로를 설치할 수 없습니다.');return false;}
+    if(isOccupied(x,y)){news('이미 다른 건물이나 시설이 있는 칸입니다.');return false;}
+  }else{
+    if(id==='rail' && (grid[y][x].type!=='grass' && !grid[y][x].zone)){news('철도 선로는 빈 지상 부지에 설치하세요.');return false;}
+    if(isOccupied(x,y) || grid[y][x].type==='road') return false;
+  }
   if(!free && city.money<def.cost){news('건설할 자금이 부족합니다.');return false;}
   if(!free) city.money-=def.cost;
   const b={x,y,id,type:'facility',name:def.name,cost:def.cost,maint:def.maint,level:1,
     zone:null,cap:def.cap||0,range:def.range||0,pol:def.pol||0};
   buildings.push(b);
+  const subwayOnRoad=(id==='subway' && grid[y][x].type==='road');
   grid[y][x].service=(id==='police'||id==='fire'||id==='school'||id==='highschool'||id==='university'||id==='hospital'||id==='park'||id==='busstop'||id==='busterminal'||id==='rail'||id==='trainstation'||id==='subway'||id==='subwaystation')?id:null;
-  grid[y][x].type=id==='park'?'park':(id==='coal'||id==='gas'||id==='nuclear'?'power':'facility');
+  // 지하철 선로가 도로 아래에 설치된 경우 지상 도로 타일은 그대로 보존한다.
+  // subway 건물 객체가 지하 선로의 논리적 존재를 담당하고, grid.type은 road로 유지한다.
+  if(!subwayOnRoad) grid[y][x].type=id==='park'?'park':(id==='coal'||id==='gas'||id==='nuclear'?'power':'facility');
   grid[y][x].environment=(id==='sewage'||id==='recycle')?id:null;
   news(`${def.name} 건설 완료 — 비용 $${def.cost.toLocaleString()}.`);
   recalcUtilities(); return true;
@@ -765,6 +810,8 @@ function drawGhost(){
 function purgeBuildingsOnRoads(){
   const before=buildings.length;
   buildings=buildings.filter(b=>{
+    // 지하철 선로는 지상 도로와 겹쳐도 정상 상태이므로 purge 대상에서 제외한다.
+    if(b?.type==='facility' && b.id==='subway') return true;
     return !(b && b.x>=0&&b.y>=0&&b.x<N&&b.y<N && grid[b.y][b.x].type==='road');
   });
   return before-buildings.length;
@@ -1003,10 +1050,10 @@ let commuteTrips=[];
 let roadTraffic={};
 let commuteDirty=true;
 // 모바일 대도시 성능 캐시: 매 프레임/타일마다 반복 계산하지 않는다.
-let transitPerfCache={stamp:0, stats:null, active:{rail:false,subway:false}, relief:new Map(), facilities:{busstop:[],busterminal:[],trainstation:[],subwaystation:[]}};
+let transitPerfCache={stamp:0, stats:null, active:{rail:false,subway:false}, routes:{rail:[],subway:[]}, routeStamp:{rail:0,subway:0}, relief:new Map(), facilities:{busstop:[],busterminal:[],trainstation:[],subwaystation:[]}};
 let roadCongestionCache={stamp:0,map:new Map()};
 let lastDrawStamp=0;
-function invalidateTransitPerf(){transitPerfCache.stamp=0;transitPerfCache.stats=null;transitPerfCache.relief.clear();}
+function invalidateTransitPerf(){transitPerfCache.stamp=0;transitPerfCache.stats=null;transitPerfCache.relief.clear();transitPerfCache.routes.rail=[];transitPerfCache.routes.subway=[];transitPerfCache.routeStamp.rail=0;transitPerfCache.routeStamp.subway=0;transitPerfCache.active.rail=false;transitPerfCache.active.subway=false;}
 
 
 function roadKey(x,y){ return x+','+y; }
@@ -1073,38 +1120,102 @@ function transitTrackComponent(start,trackId){
   const seen=new Set(),q=[start]; seen.add(`${start.x},${start.y}`);
   while(q.length){const p=q.shift();for(const d of Object.values(DIRV)){
     const nx=p.x+d.dx,ny=p.y+d.dy;if(nx<0||ny<0||nx>=N||ny>=N)continue;
-    const t=grid[ny]?.[nx]; if(t?.type==='facility'&&t.service===trackId){const k=`${nx},${ny}`;if(!seen.has(k)){seen.add(k);q.push({x:nx,y:ny});}}
+    if(!trackCell(nx,ny,trackId))continue;
+    const k=`${nx},${ny}`;if(!seen.has(k)){seen.add(k);q.push({x:nx,y:ny});}
   }} return seen;
 }
-function stationTrackComponent(b,kind){
-  const trackId=kind==='rail'?'rail':'subway'; let adj=null;
-  for(let yy=b.y-1;yy<=b.y+1&&!adj;yy++)for(let xx=b.x-1;xx<=b.x+1&&!adj;xx++){
-    const t=grid[yy]?.[xx];if(t?.type==='facility'&&t.service===trackId)adj={x:xx,y:yy};
+function stationTrackAnchors(b,kind){
+  const trackId=kind==='rail'?'rail':'subway',out=[];
+  for(let yy=b.y-1;yy<=b.y+1;yy++)for(let xx=b.x-1;xx<=b.x+1;xx++){
+    if(xx===b.x&&yy===b.y)continue;
+    if(trackCell(xx,yy,trackId))out.push({x:xx,y:yy});
   }
-  return adj?transitTrackComponent(adj,trackId):new Set();
+  return out;
 }
-function hasTransitTrackNear(b,kind){
-  const comp=stationTrackComponent(b,kind); return comp.size>0;
+function stationTrackComponent(b,kind){
+  // 역은 선로와 '일렬'일 필요가 없다. 역 주변 8방향에 연결된 선로를 모두 인정한다.
+  const anchors=stationTrackAnchors(b,kind),out=new Set(),trackId=kind==='rail'?'rail':'subway';
+  for(const a of anchors)transitTrackComponent(a,trackId).forEach(k=>out.add(k));
+  return out;
 }
-function transitLineActive(kind){
-  const now=Date.now();
-  if(now-transitPerfCache.stamp<180 && typeof transitPerfCache.active[kind]==='boolean') return transitPerfCache.active[kind];
-  const id=kind==='rail'?'trainstation':'subwaystation';
-  const stations=transitBuildings(id);
-  let active=false;
-  if(stations.length>=2){
-    outer: for(const a of stations){
-      const comp=stationTrackComponent(a,kind); if(!comp.size)continue;
-      for(const b of stations){
-        if(a===b)continue;
-        for(let yy=b.y-1;yy<=b.y+1;yy++)for(let xx=b.x-1;xx<=b.x+1;xx++){
-          if(comp.has(`${xx},${yy}`)){active=true;break outer;}
-        }
-      }
+function hasTransitTrackNear(b,kind){return stationTrackAnchors(b,kind).length>0;}
+function shortestTransitPath(start,end,trackId){
+  if(!start||!end)return [];
+  const sk=`${start.x},${start.y}`,ek=`${end.x},${end.y}`;
+  if(sk===ek)return [start];
+  const q=[start],prev=new Map([[sk,null]]);
+  while(q.length){
+    const p=q.shift();
+    for(const d of Object.values(DIRV)){
+      const x=p.x+d.dx,y=p.y+d.dy;
+      if(x<0||y<0||x>=N||y>=N||!trackCell(x,y,trackId))continue;
+      const k=`${x},${y}`;if(prev.has(k))continue;
+      prev.set(k,p);q.push({x,y});
+      if(k===ek){const path=[];let cur=end;while(cur){path.push(cur);cur=prev.get(`${cur.x},${cur.y}`);}path.reverse();return path;}
     }
   }
-  transitPerfCache.active[kind]=active; transitPerfCache.stamp=now;
-  return active;
+  return [];
+}
+function transitRoute(kind){
+  const now=Date.now();
+  if(now-transitPerfCache.routeStamp[kind]<220)return transitPerfCache.routes[kind]||[];
+  const trackId=kind==='rail'?'rail':'subway',stationId=kind==='rail'?'trainstation':'subwaystation';
+  const stations=transitBuildings(stationId).filter(b=>stationTrackAnchors(b,kind).length);
+  if(stations.length<2){transitPerfCache.routes[kind]=[];transitPerfCache.routeStamp[kind]=now;transitPerfCache.active[kind]=false;return [];}
+
+  // 연결된 선로망마다 역을 묶는다. 하나의 역이 여러 선로에 닿아 있어도 어느 쪽이든 연결되면 인정한다.
+  const info=stations.map(st=>({station:st,anchors:stationTrackAnchors(st,kind)}));
+  let best=null;
+  for(const seed of info){
+    for(const anchor of seed.anchors){
+      const comp=transitTrackComponent(anchor,trackId);
+      const group=info.filter(it=>it.anchors.some(a=>comp.has(`${a.x},${a.y}`)));
+      if(!best||group.length>best.group.length)best={comp,group};
+    }
+  }
+  if(!best||best.group.length<2){transitPerfCache.routes[kind]=[];transitPerfCache.routeStamp[kind]=now;transitPerfCache.active[kind]=false;return [];}
+
+  // 기존에는 '첫 두 역'만 찾아 운행했다. 이제 같은 연결망의 모든 역을 방문하는 순환 노선을 만든다.
+  const remaining=best.group.slice(),first=remaining.shift();
+  let currentAnchor=first.anchors.find(a=>best.comp.has(`${a.x},${a.y}`));
+  const route=currentAnchor?[currentAnchor]:[];
+  while(remaining.length&&currentAnchor){
+    let pick=-1,pickPath=null;
+    for(let i=0;i<remaining.length;i++){
+      let candidate=null;
+      for(const a of remaining[i].anchors){
+        if(!best.comp.has(`${a.x},${a.y}`))continue;
+        const path=shortestTransitPath(currentAnchor,a,trackId);
+        if(path.length>0&&(!candidate||path.length<candidate.length))candidate=path;
+      }
+      if(candidate&&(!pickPath||candidate.length<pickPath.length)){pick=i;pickPath=candidate;}
+    }
+    if(pick<0||!pickPath)break;
+    for(let k=1;k<pickPath.length;k++)route.push(pickPath[k]);
+    currentAnchor=pickPath[pickPath.length-1];
+    remaining.splice(pick,1);
+  }
+  // 마지막 역에서 첫 역으로 복귀시켜 계속 순환한다.
+  if(!remaining.length&&currentAnchor){
+    const firstAnchor=first.anchors.find(a=>best.comp.has(`${a.x},${a.y}`));
+    const back=shortestTransitPath(currentAnchor,firstAnchor,trackId);
+    if(back.length>1)for(let k=1;k<back.length;k++)route.push(back[k]);
+  }
+  const finalRoute=!remaining.length&&route.length>1?route:[];
+  transitPerfCache.routes[kind]=finalRoute;transitPerfCache.routeStamp[kind]=now;transitPerfCache.active[kind]=finalRoute.length>1;
+  return finalRoute;
+}
+function transitLineActive(kind){return transitRoute(kind).length>1;}
+function syncTransitVehicles(){
+  const rp=transitRoute('rail'),sp=transitRoute('subway');
+  trains=rp.length>1?trains.filter(v=>v.route?.length>1):[];
+  subwayCars=sp.length>1?subwayCars.filter(v=>v.route?.length>1):[];
+  const tc=rp.length>1?Math.max(1,Math.min(4,Math.floor((city.transit?.railPassengers||0)/500)+1)):0;
+  const sc=sp.length>1?Math.max(1,Math.min(5,Math.floor((city.transit?.subwayPassengers||0)/500)+1)):0;
+  while(trains.length<tc)trains.push({route:rp,index:Math.floor(Math.random()*rp.length),t:Math.random()});
+  while(subwayCars.length<sc)subwayCars.push({route:sp,index:Math.floor(Math.random()*sp.length),t:Math.random()});
+  trains.forEach(v=>v.route=rp);subwayCars.forEach(v=>v.route=sp);
+  if(city.transit){city.transit.trainVehicles=trains.length;city.transit.subwayVehicles=subwayCars.length;}
 }
 function transitAccessScore(x,y){
   let score=0,modes=0;
@@ -1289,7 +1400,11 @@ function updateCommuteCars(dt){
 let trains=[],subwayCars=[];
 function trackCell(x,y,kind){
   const g=grid[y]?.[x];
-  return !!g && (g.type===kind || (g.type==='facility' && g.service===kind));
+  if(!g)return false;
+  // 지하철은 도로 위/아래로 중첩될 수 있으므로 grid.type만으로 판단하지 않는다.
+  const b=buildingAt(x,y);
+  if(kind==='subway' && b?.type==='facility' && b.id==='subway')return true;
+  return g.type===kind || (g.type==='facility' && g.service===kind);
 }
 function stationNearestTrack(b,kind){
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
@@ -1351,7 +1466,7 @@ function develop(batchFactor=1){
  for(let y=3;y<N-3;y++)for(let x=3;x<N-3;x++){
   let g=grid[y][x];
   // 개발 후보는 반드시 '순수 용도지역 부지'여야 한다.
-  // V35에서는 road/facility 여부를 여기서 확인하지 않아 10배속 배치 개발 시
+  // V36에서는 road/facility 여부를 여기서 확인하지 않아 10배속 배치 개발 시
   // 도로 및 기존 시설 타일에 주거/상업/공업 건물이 겹쳐 생성될 수 있었다.
   if(!g.zone||!canDevelopBuilding(x,y)||!nearUtilityConnectedRoad(x,y,utilityRoads))continue;
   opts.push({x,y,zone:g.zone});
@@ -1662,9 +1777,63 @@ function buildElevatedRoadAt(x,y){
   return true;
 }
 
+let pendingOverlap={x:-1,y:-1};
+function openOverlapModal(x,y){
+  pendingOverlap={x,y};
+  const m=document.getElementById('overlapModal');
+  if(m)m.style.display='flex';
+}
+function closeOverlapModal(){
+  pendingOverlap={x:-1,y:-1};
+  const m=document.getElementById('overlapModal');
+  if(m)m.style.display='none';
+}
+function removeSubwayTrackAt(x,y){
+  const b=buildingAt(x,y);
+  if(!b || b.id!=='subway')return false;
+  const i=buildings.indexOf(b);
+  if(i>=0)buildings.splice(i,1);
+  // 지상 도로가 있으면 도로 타일은 그대로 유지한다.
+  if(grid[y]?.[x]){
+    grid[y][x].service=null;
+    if(grid[y][x].type!=='road'){grid[y][x].type='grass';grid[y][x].zone=null;}
+  }
+  commuteDirty=true;
+  invalidateTransitPerf();
+  recalcUtilities();
+  syncTransitVehicles();
+  news('지하철 선로 철거 완료 — 지상 도로는 유지되었습니다.');
+  draw();updateUI();
+  return true;
+}
+function removeRoadUnderSubwayAt(x,y){
+  const g=grid[y]?.[x];
+  if(!g || g.type!=='road')return false;
+  // 지하철은 지하에 있으므로 도로만 철거하고 선로는 유지한다.
+  g.type='grass';g.zone=null;g.lanes=2;g.elevated=false;g.highway=false;g.mainRoad=false;
+  commuteDirty=true;
+  syncCarsToCommute();
+  recalcUtilities();
+  news('도로 철거 완료 — 지하철 선로는 지하에 유지됩니다.');
+  draw();updateUI();
+  return true;
+}
+function resolveSubwayRoadOverlap(target){
+  const {x,y}=pendingOverlap;
+  closeOverlapModal();
+  if(x<0||y<0)return;
+  if(target==='subway')removeSubwayTrackAt(x,y);
+  else if(target==='road')removeRoadUnderSubwayAt(x,y);
+}
+
 function bulldozeAt(x,y){
  if(x<0||y<0||x>=N||y>=N)return false;
  const b=buildingAt(x,y);
+ // 지하철 선로가 도로와 겹친 칸은 무엇을 철거할지 먼저 선택하게 한다.
+ if(b?.id==='subway' && grid[y]?.[x]?.type==='road'){
+   openOverlapModal(x,y);
+   return false;
+ }
  if(b){
     const i=buildings.indexOf(b);
     const refund=b.type==='facility'?Math.round((Number(b.cost)||0)*0.85):0;
@@ -1899,13 +2068,13 @@ function updateUI(){
 }
 function tick(){
   // ============================================================
-  // 가속 시뮬레이션 성능 핵심 수정 V35
+  // 가속 시뮬레이션 성능 핵심 수정 V36
   // speed=10일 때 기존 코드는 '월 10회'마다 도시 전체를 다시 순회했다.
   // 특히 buildings.filter/reduce, 유틸리티 재계산, 통근 경로/교통량,
   // 시민·일자리 계산, 재정 계산, 개발 후보 탐색이 10배 반복되어
   // 렌더링과 카메라 입력까지 같은 메인 스레드를 점유했다.
   //
-  // V35에서는 한 번의 실제 1초 tick에서 '도시 전체 계산'을 1회만 하고,
+  // V36에서는 한 번의 실제 1초 tick에서 '도시 전체 계산'을 1회만 하고,
   // 그 결과를 speed개의 월 시뮬레이션이 공유한다. 월별 인구/재정 시간 진행은
   // 그대로 유지하고, 구조 변화(개발/승급)는 배치 후 1회 처리한다.
   // ============================================================
