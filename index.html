@@ -341,11 +341,14 @@ function placeBuilding(x,y,id,free=false){
   // subway 건물 객체가 지하 선로의 논리적 존재를 담당하고, grid.type은 road로 유지한다.
   if(!subwayOnRoad) grid[y][x].type=id==='park'?'park':(id==='coal'||id==='gas'||id==='nuclear'?'power':'facility');
   grid[y][x].environment=(id==='sewage'||id==='recycle')?id:null;
+  // 역/선로가 새로 생기면 기존 대중교통 노선 캐시를 즉시 무효화한다.
+  // 특히 10배속에서 캐시가 남아 새 역이 운행망에 반영되지 않는 현상을 방지한다.
+  invalidateTransitPerf();
   news(`${def.name} 건설 완료 — 비용 $${def.cost.toLocaleString()}.`);
-  recalcUtilities(); return true;
+  recalcUtilities();
+  if(id==='rail'||id==='trainstation'||id==='subway'||id==='subwaystation') syncTransitVehicles();
+  return true;
 }
-seed();
-
 function worldToScreen(x,y){let s=T*zoom;return {x:(x-y)*s*.82+W/2+camX,y:(x+y)*s*.41+H/2+camY}}
 function screenToWorld(px,py){let s=T*zoom,a=(px-W/2-camX)/(.82*s),b=(py-H/2-camY)/(.41*s);return {x:(a+b)/2,y:(b-a)/2}}
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
@@ -1414,19 +1417,80 @@ function stationNearestTrack(b,kind){
   return null;
 }
 function transitRoute(kind){
-  const stations=transitBuildings(kind==='rail'?'trainstation':'subwaystation');
-  if(stations.length<2)return [];
-  for(let i=0;i<stations.length;i++){
-    const start=stationNearestTrack(stations[i],kind); if(!start)continue;
-    const q=[start],prev=new Map([[`${start.x},${start.y}`,null]]);
-    while(q.length){const p=q.shift();
-      for(const d of Object.values(DIRV)){const x=p.x+d.dx,y=p.y+d.dy;if(x<0||y<0||x>=N||y>=N)continue;if(!trackCell(x,y,kind))continue;const k=`${x},${y}`;if(!prev.has(k)){prev.set(k,p);q.push({x,y});}}
-    }
-    for(let j=0;j<stations.length;j++)if(i!==j){const end=stationNearestTrack(stations[j],kind);if(!end)continue;const ek=`${end.x},${end.y}`;if(!prev.has(ek))continue;
-      const path=[];let cur=end;while(cur){path.push(cur);cur=prev.get(`${cur.x},${cur.y}`);}path.reverse();if(path.length>1)return path;
+  // V37의 첫 구현은 역 두 곳 사이의 최단경로 하나만 반환하는 중복 함수가
+  // 뒤쪽에 남아 있어 실제 실행 시 그 함수가 앞쪽의 다중역 로직을 덮어썼다.
+  // 여기서는 연결된 선로망 전체를 순회하는 단일 노선을 만든다.
+  const now=Date.now();
+  const cacheKey=kind==='rail'?'rail':'subway';
+  if(transitPerfCache.routeStamp[cacheKey] && now-transitPerfCache.routeStamp[cacheKey]<220)
+    return transitPerfCache.routes[cacheKey]||[];
+
+  const trackId=cacheKey;
+  const stationId=kind==='rail'?'trainstation':'subwaystation';
+  const stations=transitBuildings(stationId).filter(b=>stationTrackAnchors(b,kind).length);
+  if(stations.length<2){
+    transitPerfCache.routes[cacheKey]=[];
+    transitPerfCache.routeStamp[cacheKey]=now;
+    transitPerfCache.active[cacheKey]=false;
+    return [];
+  }
+
+  // 모든 역의 선로 접점(8방향)을 검사해 가장 많은 역을 포함하는
+  // 연결 선로망을 선택한다. 역이 선로와 정확히 일렬일 필요는 없다.
+  let best=null;
+  const seenSeeds=new Set();
+  for(const st of stations){
+    for(const a of stationTrackAnchors(st,kind)){
+      const seedKey=`${a.x},${a.y}`;
+      if(seenSeeds.has(seedKey))continue;
+      seenSeeds.add(seedKey);
+      const comp=transitTrackComponent(a,trackId);
+      const group=stations.filter(s=>stationTrackAnchors(s,kind).some(sa=>comp.has(`${sa.x},${sa.y}`)));
+      if(!best || group.length>best.group.length || (group.length===best.group.length && comp.size>best.comp.size))
+        best={comp,group,start:a};
     }
   }
-  return [];
+  if(!best || best.group.length<2){
+    transitPerfCache.routes[cacheKey]=[];
+    transitPerfCache.routeStamp[cacheKey]=now;
+    transitPerfCache.active[cacheKey]=false;
+    return [];
+  }
+
+  // 연결된 선로망의 모든 타일을 DFS로 순회한다.
+  // 단순히 역 A-B만 왕복하지 않고, 중간역/분기선까지 모두 지나간다.
+  // 간선은 왕복 방문하므로 분기형 노선에서도 모든 선로가 실제 운행 경로에 포함된다.
+  const start=best.start;
+  const route=[{x:start.x,y:start.y}];
+  const visited=new Set([`${start.x},${start.y}`]);
+  function walk(p){
+    const next=[];
+    for(const d of Object.values(DIRV)){
+      const x=p.x+d.dx,y=p.y+d.dy,k=`${x},${y}`;
+      if(!best.comp.has(k) || visited.has(k))continue;
+      next.push({x,y});
+    }
+    // 고정된 순서를 유지해 매번 노선이 흔들리지 않게 한다.
+    for(const n of next){
+      visited.add(`${n.x},${n.y}`);
+      route.push(n);
+      walk(n);
+      route.push({x:p.x,y:p.y});
+    }
+  }
+  walk(start);
+
+  // 실제 차량은 시작점으로 돌아와 계속 순환한다.
+  if(route.length>1 && (route[route.length-1].x!==start.x || route[route.length-1].y!==start.y))
+    route.push({x:start.x,y:start.y});
+
+  // 최소 2개 역이 모두 포함된 선로망인지 최종 검증한다.
+  const allStationsActive=best.group.every(st=>stationTrackAnchors(st,kind).some(a=>best.comp.has(`${a.x},${a.y}`)));
+  const finalRoute=allStationsActive && route.length>1 ? route : [];
+  transitPerfCache.routes[cacheKey]=finalRoute;
+  transitPerfCache.routeStamp[cacheKey]=now;
+  transitPerfCache.active[cacheKey]=finalRoute.length>1;
+  return finalRoute;
 }
 function syncTransitVehicles(){
   const rp=transitRoute('rail'),sp=transitRoute('subway');
@@ -2330,6 +2394,7 @@ document.getElementById('rightToggle')?.addEventListener('click',()=>{
 });
 document.getElementById('rightClose')?.addEventListener('click',()=>setRightPanel(false));
 addEventListener('orientationchange',()=>setTimeout(resize,200));
+seed();
 resize();updateUI();
 </script>
 
